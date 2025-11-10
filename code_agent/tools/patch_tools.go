@@ -293,8 +293,19 @@ func NewApplyPatchTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "apply_patch",
 		Description: "Applies a unified diff format patch to a file. Supports dry-run preview and strict mode. More robust than string replacement for targeted edits.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryCodeEditing,
+			Priority:  3,
+			UsageHint: "Apply unified diff patches, supports dry_run for preview, good for complex multi-change edits",
+		})
+	}
+
+	return t, err
 }

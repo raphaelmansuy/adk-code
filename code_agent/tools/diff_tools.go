@@ -182,10 +182,21 @@ func NewPreviewReplaceTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "preview_replace_in_file",
 		Description: "Preview changes before applying a replace operation. Shows a unified diff and context for the changes.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryCodeEditing,
+			Priority:  5,
+			UsageHint: "Preview replace operations before applying, shows unified diff",
+		})
+	}
+
+	return t, err
 }
 
 // GeneratePatchFromReplacement generates a unified diff patch from a replacement operation

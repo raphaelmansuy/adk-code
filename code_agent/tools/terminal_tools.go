@@ -89,10 +89,21 @@ func NewExecuteCommandTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "execute_command",
 		Description: "Executes a shell command and returns its output. Use this to run tests, build code, install dependencies, or run any command-line tools. The command runs in a shell environment with a timeout.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryExecution,
+			Priority:  0,
+			UsageHint: "Run shell commands with pipes/redirects (ls | grep, make build)",
+		})
+	}
+
+	return t, err
 }
 
 // GrepSearchInput defines the input parameters for searching text in files.
@@ -201,7 +212,7 @@ func NewExecuteProgramTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name: "execute_program",
 		Description: `Execute a program with structured arguments (no shell quoting issues). 
 Use this tool when running programs that take arguments, especially arguments with spaces or special characters.
@@ -217,6 +228,17 @@ Examples:
 - Program: "gcc", Args: ["-o", "output", "input.c"]  → clean argv array
 - Program: "python", Args: ["script.py", "--verbose", "file name with spaces.txt"]  → works perfectly`,
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryExecution,
+			Priority:  1,
+			UsageHint: "Execute programs with arguments (no quoting issues), perfect for compilers/interpreters",
+		})
+	}
+
+	return t, err
 }
 
 // NewGrepSearchTool creates a tool for searching text in files (similar to grep).
@@ -290,8 +312,19 @@ func NewGrepSearchTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "grep_search",
 		Description: "Searches for text patterns in files (like grep). Returns matching lines with file paths and line numbers. Useful for finding specific code patterns, function definitions, or error messages.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategorySearchDiscovery,
+			Priority:  1,
+			UsageHint: "Search file contents for patterns, returns matches with line numbers",
+		})
+	}
+
+	return t, err
 }

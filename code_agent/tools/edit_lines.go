@@ -182,10 +182,21 @@ func NewEditLinesTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "edit_lines",
 		Description: "Edit specific lines in a file by line number. Supports replace, insert, and delete operations. More precise than string-based replacement for structural changes.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryCodeEditing,
+			Priority:  2,
+			UsageHint: "Line-based edits (replace/insert/delete by line number), perfect for structural changes",
+		})
+	}
+
+	return t, err
 }
 
 // generateEditPreview creates a human-readable preview of the changes

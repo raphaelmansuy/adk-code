@@ -80,7 +80,7 @@ func NewApplyV4APatchTool(workingDir string) (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name: "apply_v4a_patch",
 		Description: `Apply a V4A format patch to a file.
 
@@ -120,4 +120,15 @@ Use apply_patch (unified diff) when:
 
 Always use dry_run=true first to preview changes.`,
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryCodeEditing,
+			Priority:  4,
+			UsageHint: "Semantic patches using context markers (class/function names), more resilient than line-based",
+		})
+	}
+
+	return t, err
 }

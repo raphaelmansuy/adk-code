@@ -10,7 +10,6 @@ import (
 	agentiface "google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model"
-	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
 	"code_agent/tools"
@@ -50,76 +49,56 @@ func GetProjectRoot(startPath string) (string, error) {
 
 // NewCodingAgent creates a new coding agent with all necessary tools.
 func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
-	// Create all tools
-	readFileTool, err := tools.NewReadFileTool()
-	if err != nil {
+	// Initialize all tools (they register themselves in the global registry)
+	// We still need to call these to trigger registration via init side effects
+	if _, err := tools.NewReadFileTool(); err != nil {
 		return nil, fmt.Errorf("failed to create read_file tool: %w", err)
 	}
-
-	writeFileTool, err := tools.NewWriteFileTool()
-	if err != nil {
+	if _, err := tools.NewWriteFileTool(); err != nil {
 		return nil, fmt.Errorf("failed to create write_file tool: %w", err)
 	}
-
-	replaceInFileTool, err := tools.NewReplaceInFileTool()
-	if err != nil {
+	if _, err := tools.NewReplaceInFileTool(); err != nil {
 		return nil, fmt.Errorf("failed to create replace_in_file tool: %w", err)
 	}
-
-	listDirTool, err := tools.NewListDirectoryTool()
-	if err != nil {
+	if _, err := tools.NewListDirectoryTool(); err != nil {
 		return nil, fmt.Errorf("failed to create list_directory tool: %w", err)
 	}
-
-	searchFilesTool, err := tools.NewSearchFilesTool()
-	if err != nil {
+	if _, err := tools.NewSearchFilesTool(); err != nil {
 		return nil, fmt.Errorf("failed to create search_files tool: %w", err)
 	}
-
-	executeCommandTool, err := tools.NewExecuteCommandTool()
-	if err != nil {
+	if _, err := tools.NewExecuteCommandTool(); err != nil {
 		return nil, fmt.Errorf("failed to create execute_command tool: %w", err)
 	}
-
-	grepSearchTool, err := tools.NewGrepSearchTool()
-	if err != nil {
+	if _, err := tools.NewGrepSearchTool(); err != nil {
 		return nil, fmt.Errorf("failed to create grep_search tool: %w", err)
 	}
-
-	applyPatchTool, err := tools.NewApplyPatchTool()
-	if err != nil {
+	if _, err := tools.NewApplyPatchTool(); err != nil {
 		return nil, fmt.Errorf("failed to create apply_patch tool: %w", err)
 	}
-
-	applyV4APatchTool, err := tools.NewApplyV4APatchTool(cfg.WorkingDirectory)
-	if err != nil {
+	if _, err := tools.NewApplyV4APatchTool(cfg.WorkingDirectory); err != nil {
 		return nil, fmt.Errorf("failed to create apply_v4a_patch tool: %w", err)
 	}
-
-	previewReplaceTool, err := tools.NewPreviewReplaceTool()
-	if err != nil {
+	if _, err := tools.NewPreviewReplaceTool(); err != nil {
 		return nil, fmt.Errorf("failed to create preview_replace_in_file tool: %w", err)
 	}
-
-	editLinesTool, err := tools.NewEditLinesTool()
-	if err != nil {
+	if _, err := tools.NewEditLinesTool(); err != nil {
 		return nil, fmt.Errorf("failed to create edit_lines tool: %w", err)
 	}
-
-	// NEW TOOLS: Cline-inspired improvements
-	searchReplaceTool, err := tools.NewSearchReplaceTool()
-	if err != nil {
+	if _, err := tools.NewSearchReplaceTool(); err != nil {
 		return nil, fmt.Errorf("failed to create search_replace tool: %w", err)
 	}
-
-	executeProgramTool, err := tools.NewExecuteProgramTool()
-	if err != nil {
+	if _, err := tools.NewExecuteProgramTool(); err != nil {
 		return nil, fmt.Errorf("failed to create execute_program tool: %w", err)
 	}
+
+	// Get all registered tools from the registry
+	registry := tools.GetRegistry()
+	registeredTools := registry.GetAllTools()
 
 	// Determine the project root based on go.mod file
 	projectRoot := cfg.WorkingDirectory
 	if projectRoot == "" {
+		var err error
 		projectRoot, err = os.Getwd()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get current working directory: %w", err)
@@ -158,11 +137,12 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		envContext = ""
 	}
 
-	// Create enhanced instruction with workspace context
-	instruction := SystemPrompt
+	// Build dynamic system prompt from registered tools
+	dynamicPrompt := BuildEnhancedPrompt(registry)
 	workspaceSummary := wsManager.GetSummary()
 
-	instruction = fmt.Sprintf(`%s
+	// Create enhanced instruction with workspace context
+	instruction := fmt.Sprintf(`%s
 
 ## Workspace Environment
 
@@ -170,7 +150,7 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 
 Primary workspace: %s
 
-`, SystemPrompt, workspaceSummary, actualProjectRoot)
+`, dynamicPrompt, workspaceSummary, actualProjectRoot)
 
 	// Add environment context if available
 	if envContext != "" {
@@ -195,27 +175,13 @@ In multi-workspace mode, you can use @workspace:path syntax to explicitly target
 - @backend:api/server.go - targets the backend workspace
 `
 
-	// Create the coding agent
+	// Create the coding agent with dynamically registered tools
 	codingAgent, err := llmagent.New(llmagent.Config{
 		Name:        "coding_agent",
 		Model:       cfg.Model,
 		Description: "An expert coding assistant that can read, write, and modify code, execute commands, and solve programming tasks.",
 		Instruction: instruction,
-		Tools: []tool.Tool{
-			readFileTool,
-			writeFileTool,
-			replaceInFileTool,
-			listDirTool,
-			searchFilesTool,
-			executeCommandTool,
-			grepSearchTool,
-			applyPatchTool,
-			applyV4APatchTool, // NEW: V4A semantic patch format
-			previewReplaceTool,
-			editLinesTool,
-			searchReplaceTool,  // NEW: Cline-inspired SEARCH/REPLACE blocks
-			executeProgramTool, // NEW: Direct program execution without shell
-		},
+		Tools:       registeredTools, // Use tools from registry
 		GenerateContentConfig: &genai.GenerateContentConfig{
 			Temperature: genai.Ptr(float32(0.7)),
 		},

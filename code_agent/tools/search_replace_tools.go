@@ -309,7 +309,7 @@ func NewSearchReplaceTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name: "search_replace",
 		Description: `Request to replace sections of content in an existing file using SEARCH/REPLACE blocks. 
 This is the PREFERRED tool for making targeted changes to specific parts of a file. 
@@ -352,4 +352,15 @@ func processData(data string) error {
 
 The tool uses whitespace-tolerant matching as a fallback, so minor indentation differences are handled gracefully.`,
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryCodeEditing,
+			Priority:  0,
+			UsageHint: "PREFERRED for targeted edits, supports multiple blocks, whitespace-tolerant",
+		})
+	}
+
+	return t, err
 }

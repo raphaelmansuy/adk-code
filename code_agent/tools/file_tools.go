@@ -81,10 +81,21 @@ func NewReadFileTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "read_file",
 		Description: "Reads the content of a file from the filesystem with optional line range support. Use this to examine code, configuration files, or any text files.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryFileOperations,
+			Priority:  0,
+			UsageHint: "Examine code, read configs, supports line ranges (offset/limit) for large files",
+		})
+	}
+
+	return t, err
 }
 
 // WriteFileInput defines the input parameters for writing a file.
@@ -181,10 +192,21 @@ func NewWriteFileTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "write_file",
 		Description: "Writes content to a file with atomic write support and size validation for safety. Creates the file if it doesn't exist, or overwrites it if it does. Automatically creates parent directories. Prevents accidental data loss by rejecting writes that reduce file size by >90% (override with allow_size_reduce=true).",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryFileOperations,
+			Priority:  1,
+			UsageHint: "Create or overwrite files with safety checks, atomic writes prevent corruption",
+		})
+	}
+
+	return t, err
 }
 
 // ReplaceInFileInput defines the input parameters for replacing text in a file.
@@ -283,10 +305,21 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "replace_in_file",
 		Description: "Finds and replaces text in a file with safety guards. The old_text must match exactly (including whitespace). Useful for making targeted edits to existing files.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryFileOperations,
+			Priority:  2,
+			UsageHint: "Simple text replacement (exact match), has max_replacements safety",
+		})
+	}
+
+	return t, err
 }
 
 // normalizeText normalizes whitespace in text for better matching
@@ -389,10 +422,21 @@ func NewListDirectoryTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "list_directory",
 		Description: "Lists the contents of a directory. Can list recursively to explore entire directory trees. Use this to understand project structure.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategoryFileOperations,
+			Priority:  3,
+			UsageHint: "Explore directory structure, supports recursive listing",
+		})
+	}
+
+	return t, err
 }
 
 // SearchFilesInput defines the input parameters for searching files.
@@ -466,8 +510,19 @@ func NewSearchFilesTool() (tool.Tool, error) {
 		}
 	}
 
-	return functiontool.New(functiontool.Config{
+	t, err := functiontool.New(functiontool.Config{
 		Name:        "search_files",
 		Description: "Searches for files matching a pattern in a directory tree. Supports wildcards (* for any characters, ? for single character). Example: '*.go' finds all Go files.",
 	}, handler)
+
+	if err == nil {
+		Register(ToolMetadata{
+			Tool:      t,
+			Category:  CategorySearchDiscovery,
+			Priority:  0,
+			UsageHint: "Find files by pattern (*.go, test_*.py), uses wildcard matching",
+		})
+	}
+
+	return t, err
 }
