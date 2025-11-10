@@ -4,6 +4,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -16,23 +17,25 @@ import (
 	"google.golang.org/genai"
 
 	codingagent "code_agent/agent"
+	"code_agent/display"
 )
 
-const (
-	// ANSI color codes for pretty output
-	colorReset  = "\033[0m"
-	colorRed    = "\033[31m"
-	colorGreen  = "\033[32m"
-	colorYellow = "\033[33m"
-	colorBlue   = "\033[34m"
-	colorPurple = "\033[35m"
-	colorCyan   = "\033[36m"
-	colorWhite  = "\033[37m"
-	colorBold   = "\033[1m"
-)
+const version = "1.0.0"
 
 func main() {
 	ctx := context.Background()
+
+	// Parse command-line flags
+	outputFormat := flag.String("output-format", "rich", "Output format: rich, plain, or json")
+	flag.Parse()
+
+	// Create renderer
+	renderer, err := display.NewRenderer(*outputFormat)
+	if err != nil {
+		log.Fatalf("Failed to create renderer: %v", err)
+	}
+
+	bannerRenderer := display.NewBannerRenderer(renderer)
 
 	// Get API key from environment
 	apiKey := os.Getenv("GOOGLE_API_KEY")
@@ -40,15 +43,16 @@ func main() {
 		log.Fatal("GOOGLE_API_KEY environment variable is required")
 	}
 
-	// Print welcome banner
-	printBanner()
-
 	// Get working directory
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to get working directory: %v", err)
 	}
-	fmt.Printf("%s%sWorking directory:%s %s\n\n", colorBold, colorCyan, colorReset, workingDir)
+
+	// Print welcome banner
+	modelName := "gemini-2.5-flash"
+	banner := bannerRenderer.RenderStartBanner(version, modelName, workingDir)
+	fmt.Print(banner)
 
 	// Create Gemini model
 	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
@@ -96,10 +100,11 @@ func main() {
 
 	// Interactive loop
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("%s%s╭─ Enter your coding task (or 'exit' to quit)%s\n", colorBold, colorGreen, colorReset)
+	prompt := renderer.RenderMarkdown("### Enter your coding task (or 'exit' to quit)")
+	fmt.Println(prompt)
 
 	for {
-		fmt.Printf("%s%s╰─❯%s ", colorBold, colorGreen, colorReset)
+		fmt.Print(renderer.Green("╰─❯ "))
 
 		if !scanner.Scan() {
 			break
@@ -111,7 +116,8 @@ func main() {
 		}
 
 		if input == "exit" || input == "quit" {
-			fmt.Printf("\n%s%sGoodbye! Happy coding! 👋%s\n", colorBold, colorCyan, colorReset)
+			goodbye := renderer.Cyan("Goodbye! Happy coding! 👋")
+			fmt.Printf("\n%s\n", goodbye)
 			break
 		}
 
@@ -124,30 +130,35 @@ func main() {
 		}
 
 		// Run agent
-		fmt.Printf("\n%s%s🤖 Agent:%s Thinking...\n\n", colorBold, colorBlue, colorReset)
+		thinking := renderer.RenderAgentThinking()
+		fmt.Print(thinking)
 
 		hasError := false
 		for event, err := range agentRunner.Run(ctx, userID, sessionID, userMsg, agent.RunConfig{
 			StreamingMode: agent.StreamingModeNone,
 		}) {
 			if err != nil {
-				fmt.Printf("%s%sError:%s %v\n", colorBold, colorRed, colorReset, err)
+				errMsg := renderer.RenderError(err)
+				fmt.Print(errMsg)
 				hasError = true
 				break
 			}
 
 			if event != nil {
-				printEvent(event)
+				printEvent(renderer, event)
 			}
 		}
 
 		if !hasError {
-			fmt.Printf("\n%s%s✓ Task completed%s\n\n", colorBold, colorGreen, colorReset)
+			completion := renderer.RenderTaskComplete()
+			fmt.Print(completion)
 		} else {
-			fmt.Printf("\n%s%s✗ Task failed%s\n\n", colorBold, colorRed, colorReset)
+			failure := renderer.RenderTaskFailed()
+			fmt.Print(failure)
 		}
 
-		fmt.Printf("%s%s╭─ Next task?%s\n", colorBold, colorGreen, colorReset)
+		nextPrompt := renderer.RenderMarkdown("### Next task?")
+		fmt.Println(nextPrompt)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -155,59 +166,38 @@ func main() {
 	}
 }
 
-func printBanner() {
-	banner := `
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   ██████╗ ██████╗ ██████╗ ███████╗     █████╗  ██████╗    ║
-║  ██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔══██╗██╔════╝    ║
-║  ██║     ██║   ██║██║  ██║█████╗      ███████║██║  ███╗   ║
-║  ██║     ██║   ██║██║  ██║██╔══╝      ██╔══██║██║   ██║   ║
-║  ╚██████╗╚██████╔╝██████╔╝███████╗    ██║  ██║╚██████╔╝   ║
-║   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚═╝  ╚═╝ ╚═════╝    ║
-║                                                           ║
-║            AI-Powered Coding Assistant                    ║
-║            Built with Google ADK Go                       ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-`
-	fmt.Printf("%s%s%s%s\n", colorBold, colorCyan, banner, colorReset)
-}
+func printEvent(renderer *display.Renderer, event *session.Event) {
+	if event.Content == nil || len(event.Content.Parts) == 0 {
+		return
+	}
 
-func printEvent(event *session.Event) {
-	if event.Content != nil && len(event.Content.Parts) > 0 {
-		for _, part := range event.Content.Parts {
-			if part.Text != "" {
-				// Check if it's a tool call or response
-				text := part.Text
-				if strings.Contains(text, "read_file") || strings.Contains(text, "write_file") ||
-					strings.Contains(text, "execute_command") || strings.Contains(text, "list_directory") {
-					fmt.Printf("%s%s🔧 Tool:%s %s\n", colorBold, colorYellow, colorReset, text)
-				} else {
-					fmt.Printf("%s", text)
+	for _, part := range event.Content.Parts {
+		// Handle text content
+		if part.Text != "" {
+			output := renderer.RenderPartContent(part)
+			fmt.Print(output)
+		}
+
+		// Handle function calls
+		if part.FunctionCall != nil {
+			args := make(map[string]any)
+			for k, v := range part.FunctionCall.Args {
+				args[k] = v
+			}
+			output := renderer.RenderToolCall(part.FunctionCall.Name, args)
+			fmt.Print(output)
+		}
+
+		// Handle function responses
+		if part.FunctionResponse != nil {
+			result := make(map[string]any)
+			if part.FunctionResponse.Response != nil {
+				for k, v := range part.FunctionResponse.Response {
+					result[k] = v
 				}
 			}
-
-			// Handle function calls
-			if part.FunctionCall != nil {
-				fmt.Printf("%s%s🔧 Calling tool:%s %s\n", colorBold, colorYellow, colorReset, part.FunctionCall.Name)
-				// Print arguments if they're not too long
-				if len(fmt.Sprintf("%v", part.FunctionCall.Args)) < 200 {
-					fmt.Printf("%s   Args:%s %v\n", colorBold, colorReset, part.FunctionCall.Args)
-				}
-			}
-
-			// Handle function responses
-			if part.FunctionResponse != nil {
-				fmt.Printf("%s%s✓ Tool result:%s %s\n", colorBold, colorGreen, colorReset, part.FunctionResponse.Name)
-				// Print response if it's not too long
-				responseStr := fmt.Sprintf("%v", part.FunctionResponse.Response)
-				if len(responseStr) < 500 {
-					fmt.Printf("%s   Result:%s %s\n", colorBold, colorReset, responseStr)
-				} else {
-					fmt.Printf("%s   Result:%s [Large output - %d bytes]\n", colorBold, colorReset, len(responseStr))
-				}
-			}
+			output := renderer.RenderToolResult(part.FunctionResponse.Name, result)
+			fmt.Print(output)
 		}
 	}
 }
