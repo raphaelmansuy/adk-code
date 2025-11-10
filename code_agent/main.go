@@ -292,7 +292,7 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 		if part.FunctionCall != nil {
 			// First, stop the current spinner to print the tool banner
 			spinner.Stop()
-			
+
 			*activeToolName = part.FunctionCall.Name
 			*toolRunning = true
 
