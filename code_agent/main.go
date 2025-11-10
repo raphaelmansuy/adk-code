@@ -187,7 +187,7 @@ func printEvent(renderer *display.Renderer, event *session.Event) {
 			}
 			output := renderer.RenderToolCall(part.FunctionCall.Name, args)
 			fmt.Print(output)
-			
+
 			// Show explicit "executing" message for clarity
 			if display.IsTTY() {
 				fmt.Print(renderer.RenderAgentWorking("Executing"))
@@ -204,7 +204,7 @@ func printEvent(renderer *display.Renderer, event *session.Event) {
 			}
 			output := renderer.RenderToolResult(part.FunctionResponse.Name, result)
 			fmt.Print(output)
-			
+
 			// Show "analyzing" message after tool result
 			if display.IsTTY() {
 				fmt.Print(renderer.RenderAgentWorking("Analyzing result"))
