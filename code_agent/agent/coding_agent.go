@@ -4,6 +4,8 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	agentiface "google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
@@ -125,6 +127,24 @@ type Config struct {
 	WorkingDirectory string
 }
 
+// GetProjectRoot traverses upwards from the given path to find the project root,
+// identified by the presence of a "go.mod" file.
+func GetProjectRoot(startPath string) (string, error) {
+	currentPath := startPath
+	for {
+		goModPath := fmt.Sprintf("%s/go.mod", currentPath)
+		if _, err := os.Stat(goModPath); err == nil {
+			return currentPath, nil
+		}
+
+		parentPath := filepath.Dir(currentPath)
+		if parentPath == currentPath {
+			return "", fmt.Errorf("go.mod not found in %s or any parent directories", startPath)
+		}
+		currentPath = parentPath
+	}
+}
+
 // NewCodingAgent creates a new coding agent with all necessary tools.
 func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	// Create all tools
@@ -189,11 +209,23 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		return nil, fmt.Errorf("failed to create execute_program tool: %w", err)
 	}
 
+	// Determine the project root based on go.mod file
+	projectRoot := cfg.WorkingDirectory
+	if projectRoot == "" {
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current working directory: %w", err)
+		}
+	}
+
+	actualProjectRoot, err := GetProjectRoot(projectRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine project root: %w", err)
+	}
+
 	// Create instruction with working directory context
 	instruction := SystemPrompt
-	if cfg.WorkingDirectory != "" {
-		instruction = fmt.Sprintf("%s\n\n## Working Directory\n\nYou are currently operating in: %s\n\nAll file paths should be relative to this directory. For example:\n- To access a file in the current directory: \"./filename.ext\" or \"filename.ext\"\n- To access a file in a subdirectory: \"./subdir/filename.ext\" or \"subdir/filename.ext\"\n- Do NOT prefix paths with the working directory name.", SystemPrompt, cfg.WorkingDirectory)
-	}
+	instruction = fmt.Sprintf("%s\n\n## Working Directory\n\nYou are currently operating in: %s\n\nAll file paths should be relative to this directory. For example:\n- To access a file in the current directory: \"./filename.ext\" or \"filename.ext\"\n- To access a file in a subdirectory: \"./subdir/filename.ext\" or \"subdir/filename.ext\"\n- Do NOT prefix paths with the working directory name.", SystemPrompt, actualProjectRoot)
 
 	// Create the coding agent
 	codingAgent, err := llmagent.New(llmagent.Config{

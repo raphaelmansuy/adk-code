@@ -27,6 +27,7 @@ func main() {
 
 	// Parse command-line flags
 	outputFormat := flag.String("output-format", "rich", "Output format: rich, plain, or json")
+	typewriterEnabled := flag.Bool("typewriter", false, "Enable typewriter effect for text output")
 	flag.Parse()
 
 	// Create renderer
@@ -36,6 +37,13 @@ func main() {
 	}
 
 	bannerRenderer := display.NewBannerRenderer(renderer)
+
+	// Create typewriter printer
+	typewriter := display.NewTypewriterPrinter(display.DefaultTypewriterConfig())
+	typewriter.SetEnabled(*typewriterEnabled)
+
+	// Create streaming display
+	streamingDisplay := display.NewStreamingDisplay(renderer, typewriter)
 
 	// Get API key from environment
 	apiKey := os.Getenv("GOOGLE_API_KEY")
@@ -133,15 +141,18 @@ func main() {
 			},
 		}
 
-		// Run agent
-		thinking := renderer.RenderAgentThinking()
-		fmt.Print(thinking)
+		// Run agent with spinner
+		spinner := display.NewSpinner(renderer, "Agent is thinking")
+		spinner.Start()
 
 		hasError := false
+		var activeToolName string
+
 		for event, err := range agentRunner.Run(ctx, userID, sessionID, userMsg, agent.RunConfig{
 			StreamingMode: agent.StreamingModeNone,
 		}) {
 			if err != nil {
+				spinner.StopWithError("Error occurred")
 				errMsg := renderer.RenderError(err)
 				fmt.Print(errMsg)
 				hasError = true
@@ -149,11 +160,13 @@ func main() {
 			}
 
 			if event != nil {
-				printEvent(renderer, event)
+				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName)
 			}
 		}
 
+		// Stop spinner and show completion
 		if !hasError {
+			spinner.StopWithSuccess("Task completed")
 			completion := renderer.RenderTaskComplete()
 			fmt.Print(completion)
 		} else {
@@ -167,48 +180,78 @@ func main() {
 	}
 }
 
-func printEvent(renderer *display.Renderer, event *session.Event) {
+func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.StreamingDisplay,
+	event *session.Event, spinner *display.Spinner, activeToolName *string) {
+
 	if event.Content == nil || len(event.Content.Parts) == 0 {
 		return
 	}
 
+	// Create tool renderer with enhanced features
+	toolRenderer := display.NewToolRenderer(renderer)
+	toolResultParser := display.NewToolResultParser(nil)
+
 	for _, part := range event.Content.Parts {
 		// Handle text content
 		if part.Text != "" {
+			// Stop spinner once for text output
+			spinner.Stop()
+
+			// Detect if this is thinking/reasoning text
+			isThinking := strings.Contains(strings.ToLower(part.Text), "thinking") ||
+				strings.Contains(strings.ToLower(part.Text), "analyzing") ||
+				strings.Contains(strings.ToLower(part.Text), "considering")
+
+			if isThinking {
+				// Render as thinking
+				output := renderer.RenderAgentWorking("Thinking")
+				fmt.Print(output)
+			}
+
+			// Render the actual text content
 			output := renderer.RenderPartContent(part)
 			fmt.Print(output)
 		}
 
 		// Handle function calls - show what tool is being executed
 		if part.FunctionCall != nil {
+			// Stop spinner
+			spinner.Stop()
+
 			args := make(map[string]any)
 			for k, v := range part.FunctionCall.Args {
 				args[k] = v
 			}
-			output := renderer.RenderToolCall(part.FunctionCall.Name, args)
-			fmt.Print(output)
 
-			// Show explicit "executing" message for clarity
-			if display.IsTTY() {
-				fmt.Print(renderer.RenderAgentWorking("Executing"))
-			}
+			*activeToolName = part.FunctionCall.Name
+
+			// Use enhanced tool renderer with "is doing" verb tense
+			output := toolRenderer.RenderToolExecution(part.FunctionCall.Name, args)
+			fmt.Print(output)
 		}
 
 		// Handle function responses - show the result
 		if part.FunctionResponse != nil {
+			// Stop spinner
+			spinner.Stop()
+
 			result := make(map[string]any)
 			if part.FunctionResponse.Response != nil {
 				for k, v := range part.FunctionResponse.Response {
 					result[k] = v
 				}
 			}
+
+			// Use enhanced result parser for structured output
+			parsedResult := toolResultParser.ParseToolResult(part.FunctionResponse.Name, result)
+			if parsedResult != "" {
+				fmt.Print(parsedResult)
+				fmt.Print("\n")
+			}
+
+			// Show basic result indicator
 			output := renderer.RenderToolResult(part.FunctionResponse.Name, result)
 			fmt.Print(output)
-
-			// Show "analyzing" message after tool result
-			if display.IsTTY() {
-				fmt.Print(renderer.RenderAgentWorking("Analyzing result"))
-			}
 		}
 	}
 }

@@ -547,6 +547,58 @@ func (r *Renderer) RenderTaskFailed() string {
 	return "\n" + r.ErrorX("Task failed") + "\n\n"
 }
 
+// APIUsageInfo holds token usage and cost information
+type APIUsageInfo struct {
+	TokensIn    int
+	TokensOut   int
+	CacheReads  int
+	CacheWrites int
+	Cost        float64
+}
+
+// formatNumber formats numbers with k/m abbreviations
+func formatNumber(n int) string {
+	if n >= 1000000 {
+		return fmt.Sprintf("%.1fm", float64(n)/1000000.0)
+	} else if n >= 1000 {
+		return fmt.Sprintf("%.1fk", float64(n)/1000.0)
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+// RenderAPIUsage renders API usage information
+func (r *Renderer) RenderAPIUsage(status string, usage *APIUsageInfo) string {
+	if usage == nil || usage.Cost < 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, 4)
+
+	if usage.TokensIn > 0 {
+		parts = append(parts, fmt.Sprintf("↑ %s", formatNumber(usage.TokensIn)))
+	}
+	if usage.TokensOut > 0 {
+		parts = append(parts, fmt.Sprintf("↓ %s", formatNumber(usage.TokensOut)))
+	}
+	if usage.CacheReads > 0 {
+		parts = append(parts, fmt.Sprintf("→ %s", formatNumber(usage.CacheReads)))
+	}
+	if usage.CacheWrites > 0 {
+		parts = append(parts, fmt.Sprintf("← %s", formatNumber(usage.CacheWrites)))
+	}
+
+	var usageInfo string
+	if len(parts) > 0 {
+		usageInfo = fmt.Sprintf("%s $%.4f", strings.Join(parts, " "), usage.Cost)
+	} else {
+		usageInfo = fmt.Sprintf("$%.4f", usage.Cost)
+	}
+
+	markdown := fmt.Sprintf("## API %s `%s`", status, usageInfo)
+	rendered := r.RenderMarkdown(markdown)
+	return "\n" + rendered + "\n"
+}
+
 // RenderPartContent renders a content part from the agent.
 func (r *Renderer) RenderPartContent(part *genai.Part) string {
 	if part.Text != "" {
