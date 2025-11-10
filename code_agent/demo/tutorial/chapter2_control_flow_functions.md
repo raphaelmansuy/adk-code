@@ -12,7 +12,38 @@ This chapter will introduce you to controlling the flow of your Python programs 
 
 ## Conditional Statements: `if`, `elif`, `else`
 
-Conditional statements allow your program to make decisions based on certain conditions. Python uses `if`, `elif` (else if), and `else`.
+Conditional statements allow your program to make decisions based on certain conditions. Python uses `if`, `elif` (else if), and `else`. The following flowchart illustrates a typical `if-elif-else` structure:
+
+```text
+        +-------+
+        | Start |
+        +---v---+
+            |
+            v
+      +-------------+
+      | Condition 1?|
+      +------+------+
+             |   True
+        False|-------> +----------+
+             |          | Action 1 |
+             v          +----v-----+
+      +-------------+        |
+      | Condition 2?|        v
+      +------+------+
+             |   True
+        False|-------> +----------+
+             |          | Action 2 |
+             v          +----v-----+
+      +-------------+        |
+      | Action 3    |<-------+
+      |   (Else)    |
+      +-------^-----+
+              |
+              v
+            +---+
+            | End |
+            +-----+
+```
 
 ```python
 # Example 1: Basic if statement

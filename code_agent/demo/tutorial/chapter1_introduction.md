@@ -56,7 +56,25 @@ To exit the interpreter, type `exit()` and press Enter, or press `Ctrl+D` (on Li
 
 ## Your First Python Program: "Hello, World!"
 
-Let's write the classic "Hello, World!" program. Open a text editor, type the following line, and save it as `hello.py`.
+Let's write the classic "Hello, World!" program. The following diagram illustrates the simple workflow:
+
+```text
++-------------------+     +--------------------+     +------------------------+
+|       Start       | --> |  Open Text Editor  | --> | Write print("Hello...")|
++-------------------+     +--------------------+     +------------------------+
+          |                                                       |
+          v                                                       v
++-------------------+     +--------------------+     +------------------------+
+|  Save as hello.py | --> |   Open Terminal    | --> |  Navigate to Directory |
++-------------------+     +--------------------+     +------------------------+
+          |                                                       |
+          v                                                       v
++-------------------+     +--------------------+     +------------------------+
+| Run: python hello.py | --> | See "Hello, World!" Output | --> |          End           |
++-------------------+     +--------------------+     +------------------------+
+```
+
+Open a text editor, type the following line, and save it as `hello.py`.
 
 ```python
 print("Hello, World!")

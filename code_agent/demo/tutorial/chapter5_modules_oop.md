@@ -179,7 +179,23 @@ print(account.get_balance()) # Access balance via a public method
 
 ### Inheritance: Building on Existing Classes
 
-Inheritance is a mechanism that allows a new class (subclass/derived class) to inherit attributes and methods from an existing class (superclass/base class). This promotes code reuse and establishes a natural hierarchy.
+Inheritance is a mechanism that allows a new class (subclass/derived class) to inherit attributes and methods from an existing class (superclass/base class). This promotes code reuse and establishes a natural hierarchy. The following class diagram illustrates this concept:
+
+```text
+      +--------+
+      | Animal |
+      +--------+
+      | + name |
+      | + speak() |
+      +----^---^
+           |   |
+           |   |
+  +--------+---+--------+
+  | Dog    |   | Cat   |
+  +--------+   +-------+
+  | + speak()|   | + speak()|
+  +--------+   +-------+
+```
 
 ```python
 class Animal:

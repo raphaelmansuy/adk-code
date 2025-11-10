@@ -15,6 +15,15 @@ A list is an ordered, mutable (changeable) collection of items. Lists are define
 
 ### Creation and Access
 
+Lists are ordered collections, meaning items have a defined order, and that order will not change. You can access list items by referring to their index number. Indices start at 0 for the first item.
+
+```text
++---+---+---+-------+--------+------+
+| 1 | 2 | 3 | apple | banana | True |
++---+---+---+-------+--------+------+
+  0   1   2     3        4      5
+```
+
 ```python
 # Creating a list
 my_list = [1, 2, 3, "apple", "banana", True]
@@ -131,6 +140,18 @@ print(f"Name: {name}, Age: {age}, Job: {job}")
 A dictionary is an unordered, mutable collection of key-value pairs. Each key must be unique and immutable (e.g., strings, numbers, tuples). Values can be of any data type.
 
 ### Creation and Access
+
+Dictionaries are collections of key-value pairs, where each unique key maps to a specific value. They are unordered and mutable.
+
+```text
++----------+-------+
+|   Key    | Value |
++----------+-------+
+| "name"   | "Alice" |
+| "age"    | 30    |
+| "city"   | "New York" |
++----------+-------+
+```
 
 ```python
 # Creating a dictionary

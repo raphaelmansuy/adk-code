@@ -106,7 +106,36 @@ print(f"Directory: {dir_name}, File: {base_name}")
 
 ## Error Handling: `try`, `except`, `finally`
 
-Errors (or exceptions) are events that disrupt the normal flow of a program. Python provides a robust mechanism to handle these errors gracefully, preventing your program from crashing.
+Errors (or exceptions) are events that disrupt the normal flow of a program. Python provides a robust mechanism to handle these errors gracefully, preventing your program from crashing. The following flowchart illustrates the execution flow of a `try-except-finally` block:
+
+```text
+        +-------+
+        | Start |
+        +---v---+
+            |
+            v
+    +-----------------+
+    | Code in try block |
+    +--------+--------+
+             | No Error
+             |-----------> +----------------------------+
+             |             | Execute else block (if present) |
+             | Error       +--------------v-------------+
+             |                               |
+             v                               v
+    +-----------------+             +--------------------+
+    | Matching except |             | Execute finally block |
+    |      block?     |             +---------v----------+
+    +--------+--------+                       |
+             | Yes                           v
+             |----------------------------> +-----+
+             |                              | End |
+             | No                           +-----+
+             v
+    +--------------------+
+    | Propagate Exception|
+    +--------------------+
+```
 
 ### `try` and `except`
 
