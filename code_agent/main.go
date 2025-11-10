@@ -146,23 +146,23 @@ func main() {
 			fmt.Print(renderer.Cyan("\n════════════════════════════════════════════════════════════════\n"))
 			fmt.Print(renderer.Cyan("  ") + renderer.Bold("Code Agent Help") + "\n")
 			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n\n"))
-			
+
 			fmt.Print(renderer.Bold("🤖 Natural Language Requests:\n"))
 			fmt.Print(renderer.Dim("   Just type what you want in plain English!\n\n"))
-			
+
 			fmt.Print(renderer.Bold("⌨️  Built-in Commands:\n"))
 			fmt.Print(renderer.Green("  • ") + renderer.Bold("help") + " / " + renderer.Bold(".help") + " - Show this help message\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold(".tools") + " - List all available tools\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold(".prompt") + " - Display the system prompt\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold("exit") + " / " + renderer.Bold("quit") + " - Exit the agent\n")
-			
+
 			fmt.Print(renderer.Bold("\n💡 Example Requests:\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Add error handling to main.go\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Create a README.md with project overview\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Refactor the calculate function\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Run tests and fix any failures\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Add comments to all Python files\n\n"))
-			
+
 			fmt.Print(renderer.Yellow("📖 More info: ") + renderer.Dim("See USER_GUIDE.md for detailed documentation\n\n"))
 			continue
 		}
@@ -172,7 +172,7 @@ func main() {
 			fmt.Print(renderer.Cyan("\n════════════════════════════════════════════════════════════════\n"))
 			fmt.Print(renderer.Cyan("  ") + renderer.Bold("Available Tools") + "\n")
 			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n\n"))
-			
+
 			fmt.Print(renderer.Bold("📝 Core Editing Tools:\n"))
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("read_file") + " - Read file contents (supports line ranges)\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("write_file") + " - Create or overwrite files (atomic, safe)\n")
@@ -180,16 +180,16 @@ func main() {
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("edit_lines") + " - Edit by line number (structural changes)\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("apply_patch") + " - Apply unified diff patches (standard)\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("apply_v4a_patch") + " - Apply V4A semantic patches (NEW!)\n")
-			
+
 			fmt.Print(renderer.Bold("\n🔍 Discovery Tools:\n"))
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("list_files") + " - Explore directory structure\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("search_files") + " - Find files by pattern (*.go, test_*.py)\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("grep_search") + " - Search text in files (with line numbers)\n")
-			
+
 			fmt.Print(renderer.Bold("\n⚡ Execution Tools:\n"))
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("execute_command") + " - Run shell commands (pipes, redirects)\n")
 			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("execute_program") + " - Run programs directly (no quoting issues)\n\n")
-			
+
 			fmt.Print(renderer.Dim("💡 Tip: Type ") + renderer.Cyan("'help'") + renderer.Dim(" for usage examples and patterns\n\n"))
 			continue
 		}
