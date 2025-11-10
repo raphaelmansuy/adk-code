@@ -66,7 +66,15 @@ Predicate* create_predicate(const char *name, int arity);
 void free_predicate(Predicate *pred);
 Predicate* copy_predicate(Predicate *original_pred);
 
-Clause* create_clause(Predicate *head);
+PredicateList* create_predicatelist(int count);
+void free_predicatelist(PredicateList *list);
+PredicateList* copy_predicatelist(PredicateList *original_list);
+
+Rule* create_rule(Predicate *head, PredicateList *body);
+void free_rule(Rule *rule);
+Rule* copy_rule(Rule *original_rule);
+
+Clause* create_clause(enum ClauseType type, void *content_ptr);
 void free_clause(Clause *clause);
 
 Substitution* create_substitution();

@@ -7,6 +7,8 @@
 #include "prolog_parser.h"
 #include <stdarg.h>
 
+#define MAX_QUERY_LEN 256
+
 // Helper function to create a predicate from a list of terms
 Predicate *create_predicate_from_terms(const char *name, ...) {
     Predicate *p = create_predicate(name, 0); // Start with 0 arity
@@ -19,13 +21,13 @@ Predicate *create_predicate_from_terms(const char *name, ...) {
         Term **new_args = realloc(p->args, arity * sizeof(Term *));
         if (new_args == NULL) {
             perror("Failed to reallocate memory for predicate arguments");
-            // Free already allocated terms before exiting
+            // Free already allocated terms
             for (int i = 0; i < arity - 1; i++) {
                 free_term(p->args[i]); // Assuming free_term exists
             }
             free_predicate(p); // Free the predicate itself
             va_end(args);
-            exit(EXIT_FAILURE);
+            return NULL; // Indicate failure
         }
         p->args = new_args;
         p->args[arity - 1] = term;
@@ -38,19 +40,44 @@ Predicate *create_predicate_from_terms(const char *name, ...) {
 // Function to add default facts to the database
 void add_default_facts() {
     // parent(john, jim).
-    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jim"), NULL)));
+    Predicate *p1 = create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jim"), NULL);
+    if (!p1) {
+        fprintf(stderr, "Failed to create predicate for parent(john, jim).\n");
+        return;
+    }
+    add_clause(create_clause(FACT, p1));
 
     // parent(john, jane).
-    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jane"), NULL)));
+    Predicate *p2 = create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jane"), NULL);
+    if (!p2) {
+        fprintf(stderr, "Failed to create predicate for parent(john, jane).\n");
+        return;
+    }
+    add_clause(create_clause(FACT, p2));
 
     // parent(mary, john).
-    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "mary"), create_term(ATOM, "john"), NULL)));
+    Predicate *p3 = create_predicate_from_terms("parent", create_term(ATOM, "mary"), create_term(ATOM, "john"), NULL);
+    if (!p3) {
+        fprintf(stderr, "Failed to create predicate for parent(mary, john).\n");
+        return;
+    }
+    add_clause(create_clause(FACT, p3));
 
     // male(john).
-    add_clause(create_clause(FACT, create_predicate_from_terms("male", create_term(ATOM, "john"), NULL)));
+    Predicate *p4 = create_predicate_from_terms("male", create_term(ATOM, "john"), NULL);
+    if (!p4) {
+        fprintf(stderr, "Failed to create predicate for male(john).\n");
+        return;
+    }
+    add_clause(create_clause(FACT, p4));
 
     // female(mary).
-    add_clause(create_clause(FACT, create_predicate_from_terms("female", create_term(ATOM, "mary"), NULL)));
+    Predicate *p5 = create_predicate_from_terms("female", create_term(ATOM, "mary"), NULL);
+    if (!p5) {
+        fprintf(stderr, "Failed to create predicate for female(mary).\n");
+        return;
+    }
+    add_clause(create_clause(FACT, p5));
 }
 
 int main(int argc, char *argv[]) {
@@ -73,7 +100,7 @@ int main(int argc, char *argv[]) {
     printf("\n--- Interactive Query Mode ---\n");
     printf("Type 'exit.' to quit.\n");
 
-    char query_buffer[256];
+    char query_buffer[MAX_QUERY_LEN];
     while (1) {
         printf("?- ");
         if (fgets(query_buffer, sizeof(query_buffer), stdin) == NULL) {

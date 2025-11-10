@@ -54,7 +54,7 @@ func (trp *ToolResultParser) parseListDirectory(result map[string]any) string {
 	// Extract entries - try multiple field names
 	var entriesRaw []any
 	var ok bool
-	
+
 	// Try "files" first (used by our tools)
 	if entriesRaw, ok = result["files"].([]any); !ok {
 		// Try "entries"

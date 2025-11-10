@@ -1,6 +1,8 @@
 #include "prolog_query.h"
+#include "prolog_data.h" // Required for PredicateList, Rule, etc.
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // Required for strlen, strdup
 
 // Helper to generate a unique variable name for renaming
 static int var_counter = 0;

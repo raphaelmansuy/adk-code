@@ -14,6 +14,7 @@ import (
 	"google.golang.org/genai"
 
 	"code_agent/tools"
+	"code_agent/workspace"
 )
 
 // Use the enhanced system prompt from enhanced_prompt.go
@@ -125,6 +126,8 @@ type Config struct {
 	Model model.LLM
 	// WorkingDirectory is the directory where the agent operates (default: current directory).
 	WorkingDirectory string
+	// EnableMultiWorkspace enables multi-workspace support (feature flag)
+	EnableMultiWorkspace bool
 }
 
 // GetProjectRoot traverses upwards from the given path to find the project root,
@@ -223,9 +226,69 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		return nil, fmt.Errorf("failed to determine project root: %w", err)
 	}
 
-	// Create instruction with working directory context
+	// Create workspace manager with smart initialization
+	// This will:
+	// 1. Try loading from .workspace.json config file
+	// 2. Auto-detect multiple workspaces if no config exists
+	// 3. Fall back to single-directory mode if detection fails
+	var wsManager *workspace.Manager
+	if cfg.EnableMultiWorkspace {
+		// Use smart initialization for multi-workspace support
+		wsManager, err = workspace.SmartWorkspaceInitialization(actualProjectRoot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize workspace manager: %w", err)
+		}
+	} else {
+		// Use single-directory mode (backward compatible)
+		wsManager, err = workspace.FromSingleDirectory(actualProjectRoot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create workspace manager: %w", err)
+		}
+	}
+
+	// Build environment context for LLM
+	envContext, err := wsManager.BuildEnvironmentContext()
+	if err != nil {
+		// Don't fail if we can't build context, just log and continue
+		envContext = ""
+	}
+
+	// Create enhanced instruction with workspace context
 	instruction := SystemPrompt
-	instruction = fmt.Sprintf("%s\n\n## Working Directory\n\nYou are currently operating in: %s\n\nAll file paths should be relative to this directory. For example:\n- To access a file in the current directory: \"./filename.ext\" or \"filename.ext\"\n- To access a file in a subdirectory: \"./subdir/filename.ext\" or \"subdir/filename.ext\"\n- Do NOT prefix paths with the working directory name.", SystemPrompt, actualProjectRoot)
+	workspaceSummary := wsManager.GetSummary()
+
+	instruction = fmt.Sprintf(`%s
+
+## Workspace Environment
+
+%s
+
+Primary workspace: %s
+
+`, SystemPrompt, workspaceSummary, actualProjectRoot)
+
+	// Add environment context if available
+	if envContext != "" {
+		instruction += fmt.Sprintf(`### Workspace Metadata
+
+%s
+
+`, envContext)
+	}
+
+	instruction += `### Path Usage
+
+All file paths should be relative to the primary workspace directory. For example:
+- To access a file in the current directory: "./filename.ext" or "filename.ext"
+- To access a file in a subdirectory: "./subdir/filename.ext" or "subdir/filename.ext"
+- Do NOT prefix paths with the working directory name.
+
+### Workspace Hints (Future Feature)
+
+In multi-workspace mode, you can use @workspace:path syntax to explicitly target a workspace:
+- @frontend:src/index.ts - targets the frontend workspace
+- @backend:api/server.go - targets the backend workspace
+`
 
 	// Create the coding agent
 	codingAgent, err := llmagent.New(llmagent.Config{

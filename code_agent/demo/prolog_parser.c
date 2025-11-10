@@ -56,14 +56,9 @@ static Predicate* parse_predicate_string(const char *pred_string, bool is_query)
         return NULL;
     }
 
-    // Only expect a dot at the end for facts/rules, not for predicates within a rule body or query
-    if (!is_query) {
-        char *dot = strchr(close_paren, '.');
-        if (!dot || dot[1] != '\0') {
-            fprintf(stderr, "Parse error: Missing '.' at end of fact/rule or extra characters: %s\n", pred_string);
-            return NULL;
-        }
-    }
+    // For facts and rule heads (when !is_query), the clause_string will contain the dot.
+    // Individual predicates within a rule body or query do not have a dot.
+    // The dot check for the overall clause is handled in parse_clause_string.
 
     *close_paren = '\0'; // Null-terminate arguments string
     char *args_str = trim_whitespace(args_start);
@@ -102,6 +97,14 @@ Clause* parse_clause_string(const char *clause_string) {
     strncpy(buffer, clause_string, sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
 
+    // All clauses (facts and rules) must end with a dot
+    size_t len = strlen(buffer);
+    if (len == 0 || buffer[len - 1] != '.') {
+        fprintf(stderr, "Parse error: Clause must end with '.': %s\n", clause_string);
+        return NULL;
+    }
+    buffer[len - 1] = '\0'; // Remove the trailing dot for parsing
+
     char *rule_separator = strstr(buffer, ":-");
 
     if (rule_separator) { // It's a rule
@@ -109,20 +112,46 @@ Clause* parse_clause_string(const char *clause_string) {
         char *head_str = trim_whitespace(buffer);
         char *body_str = trim_whitespace(rule_separator + 2);
 
-        // Remove trailing dot from body string if present
-        size_t body_len = strlen(body_str);
-        if (body_len > 0 && body_str[body_len - 1] == '.') {
-            body_str[body_len - 1] = '\0';
-        }
-
         Predicate *head = parse_predicate_string(head_str, false);
         if (!head) return NULL;
 
         // Parse body predicates
         PredicateList *body = create_predicatelist(0);
-        char *token = strtok(body_str, ",");
-        while (token != NULL) {
-            Predicate *body_pred = parse_predicate_string(trim_whitespace(token), true);
+        char *current_pos = body_str;
+        int paren_depth = 0;
+
+        while (*current_pos != '\0') {
+            char *pred_start = current_pos;
+            char *comma_pos = NULL;
+            bool found_comma = false;
+
+            // Find the next comma that is not inside parentheses
+            char *temp_pos = current_pos;
+            while (*temp_pos != '\0') {
+                if (*temp_pos == '(') {
+                    paren_depth++;
+                } else if (*temp_pos == ')') {
+                    paren_depth--;
+                } else if (*temp_pos == ',' && paren_depth == 0) {
+                    comma_pos = temp_pos;
+                    found_comma = true;
+                    break;
+                }
+                temp_pos++;
+            }
+
+            char pred_buffer[256];
+            if (found_comma) {
+                strncpy(pred_buffer, pred_start, comma_pos - pred_start);
+                pred_buffer[comma_pos - pred_start] = '\0';
+                current_pos = comma_pos + 1;
+            } else {
+                strncpy(pred_buffer, pred_start, sizeof(pred_buffer) - 1);
+                pred_buffer[sizeof(pred_buffer) - 1] = '\0';
+                current_pos = pred_start + strlen(pred_start); // Move to end
+            }
+
+            Predicate *body_pred = parse_predicate_string(trim_whitespace(pred_buffer), true);
             if (!body_pred) {
                 free_predicate(head);
                 free_predicatelist(body);
@@ -137,22 +166,17 @@ Clause* parse_clause_string(const char *clause_string) {
                 exit(EXIT_FAILURE);
             }
             body->predicates[body->count - 1] = body_pred;
-            token = strtok(NULL, ",");
+
+            // Trim leading whitespace for the next predicate
+            while (*current_pos != '\0' && isspace((unsigned char)*current_pos)) {
+                current_pos++;
+            }
         }
 
         Rule *rule = create_rule(head, body);
         return create_clause(RULE, rule);
 
     } else { // It's a fact
-        // Check for trailing dot for facts
-        size_t fact_len = strlen(buffer);
-        if (fact_len > 0 && buffer[fact_len - 1] == '.') {
-            buffer[fact_len - 1] = '\0';
-        } else {
-            fprintf(stderr, "Parse error: Missing '.' at end of fact: %s\n", clause_string);
-            return NULL;
-        }
-
         Predicate *fact_pred = parse_predicate_string(buffer, false);
         if (!fact_pred) return NULL;
         return create_clause(FACT, fact_pred);
