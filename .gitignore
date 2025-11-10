@@ -50,3 +50,5 @@ Thumbs.db
 
 # Go mod/sum local overrides
 go.sum.local
+
+research/** 
