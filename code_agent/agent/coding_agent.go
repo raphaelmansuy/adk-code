@@ -212,8 +212,8 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 			applyPatchTool,
 			previewReplaceTool,
 			editLinesTool,
-			searchReplaceTool,   // NEW: Cline-inspired SEARCH/REPLACE blocks
-			executeProgramTool,  // NEW: Direct program execution without shell
+			searchReplaceTool,  // NEW: Cline-inspired SEARCH/REPLACE blocks
+			executeProgramTool, // NEW: Direct program execution without shell
 		},
 		GenerateContentConfig: &genai.GenerateContentConfig{
 			Temperature: genai.Ptr(float32(0.7)),

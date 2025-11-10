@@ -118,14 +118,14 @@ func NewWriteFileTool() (tool.Tool, error) {
 		if info, err := os.Stat(input.Path); err == nil {
 			currentSize := info.Size()
 			newSize := int64(len(input.Content))
-			
+
 			// Detect dangerous size reduction (>90% reduction, file >1KB)
 			if currentSize > 1000 && newSize < currentSize/10 {
 				allowSizeReduce := false
 				if input.AllowSizeReduce != nil {
 					allowSizeReduce = *input.AllowSizeReduce
 				}
-				
+
 				if !allowSizeReduce {
 					return WriteFileOutput{
 						Success: false,
@@ -139,7 +139,7 @@ func NewWriteFileTool() (tool.Tool, error) {
 				}
 			}
 		}
-		
+
 		// Default to creating directories
 		createDirs := true
 		if input.CreateDirs != nil {

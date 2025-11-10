@@ -36,16 +36,16 @@ func TestValidateFilePath_ValidPath(t *testing.T) {
 	os.WriteFile(tmpFile, []byte("test"), 0644)
 
 	tests := []struct {
-		name       string
-		basePath   string
-		filePath   string
+		name         string
+		basePath     string
+		filePath     string
 		requireExist bool
-		shouldErr  bool
+		shouldErr    bool
 	}{
 		{"Valid file without base", "", tmpFile, true, false},
 		{"Valid file with base", tmpDir, tmpFile, true, false},
-		{"Non-existent file without require", "", tmpFile+"_notexist", false, false},
-		{"Non-existent file with require", tmpDir, tmpFile+"_notexist", true, true},
+		{"Non-existent file without require", "", tmpFile + "_notexist", false, false},
+		{"Non-existent file with require", tmpDir, tmpFile + "_notexist", true, true},
 	}
 
 	for _, tt := range tests {
@@ -323,10 +323,10 @@ func TestApplyPatch_SimplAddition(t *testing.T) {
 
 func TestErrorCreation(t *testing.T) {
 	tests := []struct {
-		name     string
-		fn       func() error
-		code     ErrorCode
-		hasHint  bool
+		name    string
+		fn      func() error
+		code    ErrorCode
+		hasHint bool
 	}{
 		{"FileNotFound", func() error { return FileNotFoundError("/test/path") }, ErrorCodeFileNotFound, true},
 		{"PermissionDenied", func() error { return PermissionDeniedError("/test/path") }, ErrorCodePermissionDenied, true},

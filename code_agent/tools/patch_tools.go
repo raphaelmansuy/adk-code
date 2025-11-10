@@ -40,13 +40,13 @@ type ApplyPatchOutput struct {
 
 // PatchHunk represents a single hunk in a unified diff
 type PatchHunk struct {
-	OrigStart      int      // Starting line in original file
-	OrigCount      int      // Number of lines in original
-	NewStart       int      // Starting line in new file
-	NewCount       int      // Number of lines in new
-	Lines          []string // Hunk lines (with +/- prefixes)
-	ContextBefore  []string // Context lines before the hunk
-	ContextAfter   []string // Context lines after the hunk
+	OrigStart     int      // Starting line in original file
+	OrigCount     int      // Number of lines in original
+	NewStart      int      // Starting line in new file
+	NewCount      int      // Number of lines in new
+	Lines         []string // Hunk lines (with +/- prefixes)
+	ContextBefore []string // Context lines before the hunk
+	ContextAfter  []string // Context lines after the hunk
 }
 
 // ParseUnifiedDiff parses a unified diff format patch
