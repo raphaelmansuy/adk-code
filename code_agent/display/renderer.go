@@ -3,6 +3,7 @@ package display
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -235,6 +236,35 @@ func (r *Renderer) RenderToolCall(toolName string, args map[string]any) string {
 	return "\n" + header + "\n"
 }
 
+// truncatePath smartly truncates long file paths for display.
+// Shows filename + parent directory for long paths, preserving important context.
+// Examples:
+//   /very/long/path/to/project/src/main.go -> .../src/main.go
+//   ./main.go -> ./main.go
+func (r *Renderer) truncatePath(path string, maxLength int) string {
+	if len(path) <= maxLength {
+		return path
+	}
+
+	// Try to show filename + parent directory
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+	parent := filepath.Base(dir)
+
+	shortened := filepath.Join("...", parent, base)
+	if len(shortened) <= maxLength {
+		return shortened
+	}
+
+	// If still too long, just show filename with ellipsis
+	if len(base) <= maxLength-4 {
+		return ".../" + base
+	}
+
+	// Last resort: truncate the filename itself
+	return "..." + base[len(base)-(maxLength-3):]
+}
+
 // getToolHeader generates a contextual header for tool calls.
 func (r *Renderer) getToolHeader(toolName string, args map[string]any) string {
 	// Create a subtle tool icon
@@ -242,36 +272,40 @@ func (r *Renderer) getToolHeader(toolName string, args map[string]any) string {
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
 		toolIcon = "→"
 	}
-	
+
 	iconStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"})
-	
+
 	toolStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("39")).  // Blue
+		Foreground(lipgloss.Color("39")). // Blue
 		Bold(false)
-	
+
 	switch toolName {
 	case "read_file":
 		if path, ok := args["path"].(string); ok {
-			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Reading") + " " + r.Dim(path)
+			displayPath := r.truncatePath(path, 60)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Reading") + " " + r.Dim(displayPath)
 		}
 		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Reading file")
 
 	case "write_file":
 		if path, ok := args["path"].(string); ok {
-			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Writing") + " " + r.Dim(path)
+			displayPath := r.truncatePath(path, 60)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Writing") + " " + r.Dim(displayPath)
 		}
 		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Writing file")
 
 	case "replace_in_file", "search_replace":
 		if path, ok := args["path"].(string); ok {
-			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Editing") + " " + r.Dim(path)
+			displayPath := r.truncatePath(path, 60)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Editing") + " " + r.Dim(displayPath)
 		}
 		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Editing file")
 
 	case "list_directory":
 		if path, ok := args["path"].(string); ok {
-			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Listing") + " " + r.Dim(path)
+			displayPath := r.truncatePath(path, 60)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Listing") + " " + r.Dim(displayPath)
 		}
 		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Listing files")
 
@@ -304,16 +338,16 @@ func (r *Renderer) RenderToolResult(toolName string, result map[string]any) stri
 			Bold(false)
 		return "  " + errorStyle.Render("✗ "+errStr) + "\n"
 	}
-	
+
 	// Subtle success indicator
 	checkmark := "✓"
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
 		checkmark = "OK"
 	}
-	
+
 	dimStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"})
-	
+
 	return dimStyle.Render("  "+checkmark) + "\n"
 }
 
@@ -322,11 +356,11 @@ func (r *Renderer) RenderAgentThinking() string {
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
 		return "\n"
 	}
-	
+
 	thinkingStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"}).
 		Italic(true)
-	
+
 	return "\n" + thinkingStyle.Render("...") + "\n"
 }
 
@@ -335,21 +369,65 @@ func (r *Renderer) RenderAgentResponse(text string) string {
 	// Agent responses are typically markdown
 	rendered := r.RenderMarkdown(text)
 	
-	// Add subtle indentation for better readability
+	// Add subtle left border and indentation for better readability
 	if r.outputFormat != OutputFormatPlain && IsTTY() {
+		borderStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "254", Dark: "236"})
+		
 		lines := strings.Split(rendered, "\n")
-		var indentedLines []string
-		for _, line := range lines {
+		var styledLines []string
+		for i, line := range lines {
 			if line != "" {
-				indentedLines = append(indentedLines, "  "+line)
+				// Add subtle border character and indentation
+				border := borderStyle.Render("│")
+				styledLines = append(styledLines, border+" "+line)
 			} else {
-				indentedLines = append(indentedLines, line)
+				// Empty lines get just the border
+				if i < len(lines)-1 { // Don't add border to trailing empty lines
+					styledLines = append(styledLines, borderStyle.Render("│"))
+				} else {
+					styledLines = append(styledLines, line)
+				}
 			}
 		}
-		rendered = strings.Join(indentedLines, "\n")
+		rendered = strings.Join(styledLines, "\n")
 	}
 	
 	return rendered + "\n"
+}
+
+// RenderWarning renders a warning message with subtle styling.
+func (r *Renderer) RenderWarning(message string) string {
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "Warning: " + message + "\n"
+	}
+
+	warningStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("3")). // Yellow
+		Bold(false)
+
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"})
+
+	icon := "⚠"
+	return "\n" + warningStyle.Render(icon+" Warning") + ": " + dimStyle.Render(message) + "\n"
+}
+
+// RenderInfo renders an informational message with subtle styling.
+func (r *Renderer) RenderInfo(message string) string {
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "Info: " + message + "\n"
+	}
+
+	infoStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")). // Blue
+		Bold(false)
+
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"})
+
+	icon := "ℹ"
+	return "\n" + infoStyle.Render(icon+" Info") + ": " + dimStyle.Render(message) + "\n"
 }
 
 // RenderError renders an error message.
@@ -364,18 +442,28 @@ func (r *Renderer) RenderTaskComplete() string {
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
 		return "\nDone.\n\n"
 	}
-	
+
+	// Add subtle success indicator before separator
+	successStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("2")). // Green
+		Bold(false)
+
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"})
+
+	checkmark := successStyle.Render("✓") + " " + dimStyle.Render("Complete")
+
 	// Use a shorter, centered separator
 	width := GetTerminalWidth()
 	if width > 100 {
 		width = 100 // Cap at 100 chars
 	}
-	
+
 	separatorStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "252", Dark: "240"})
-	
+
 	separator := separatorStyle.Render(strings.Repeat("─", width))
-	return "\n" + separator + "\n\n"
+	return "\n" + checkmark + "\n" + separator + "\n\n"
 }
 
 // RenderTaskFailed renders the task failure message.
@@ -383,7 +471,7 @@ func (r *Renderer) RenderTaskFailed() string {
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
 		return "\nFailed.\n\n"
 	}
-	
+
 	return "\n" + r.ErrorX("Task failed") + "\n\n"
 }
 
