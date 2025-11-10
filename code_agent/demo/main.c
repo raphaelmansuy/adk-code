@@ -53,16 +53,20 @@ int main(int argc, char *argv[]) {
         char *input_ptr = line;
         input_ptr = skip_whitespace(input_ptr);
 
+        if (*input_ptr == '\0') { // Skip empty lines or lines with only whitespace
+            continue;
+        }
+
         if (strncmp(input_ptr, "?-", 2) == 0) {
             // This is a query
             input_ptr += 2; // Skip "?-"
             Term *query_term = parse_term(&input_ptr);
              input_ptr = skip_whitespace(input_ptr);
             if (query_term && *input_ptr == '.') {
-                if (!resolve_query(kb, query_term)) {
-                    printf("No.\n");
-                    fflush(stdout);
-                }
+                int solution_count = 0;
+                resolve_query(kb, query_term, &solution_count);
+                // resolve_query now handles printing "No." if solution_count is 0
+                // No need for an explicit check here
                 free_term(query_term);
             } else {
                 fprintf(stderr, "Error: Invalid query syntax.\n");

@@ -13,7 +13,7 @@ Substitution *copy_substitution(Substitution *original) {
 }
 
 // Recursive resolution function for backward chaining
-bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, int *var_counter) {
+void resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, int *var_counter, int *solution_count) {
     if (num_goals == 0) {
         // All goals satisfied, a solution is found
         printf("Yes. ");
@@ -38,12 +38,12 @@ bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, 
             printf("No direct bindings.");
         }
         printf("\n");
-        return true; // Indicate that a solution was found
+        (*solution_count)++; // Increment solution count
+        return;
     }
 
     Term *current_goal = goals[0];
-    bool solution_found_in_branch = false;
-
+    // Iterate through all clauses in the knowledge base to find a match for the current_goal
     for (int i = 0; i < kb->count; ++i) {
         Clause *clause = kb->clauses[i];
 
@@ -59,27 +59,26 @@ bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, 
             }
         }
 
-        // Copy the current substitution for backtracking
-        Substitution *local_sub = copy_substitution(sub);
+        // Mark the current state of the substitution for backtracking
+        int sub_mark = mark_substitution(sub);
 
-        if (unify(current_goal, fresh_clause->head, local_sub)) {
+        if (unify(current_goal, fresh_clause->head, sub)) {
             // Unification successful, now build the next set of goals
             int next_num_goals = (fresh_clause->body_len) + (num_goals - 1);
             Term **next_goals = (Term **)calloc(next_num_goals, sizeof(Term *));
 
             // Add the body of the fresh clause to the front of the goals
             for (int j = 0; j < fresh_clause->body_len; ++j) {
-                next_goals[j] = apply_substitution(fresh_clause->body[j], local_sub);
+                next_goals[j] = apply_substitution(fresh_clause->body[j], sub);
             }
             // Add the remaining goals
             for (int j = 1; j < num_goals; ++j) {
-                next_goals[fresh_clause->body_len + (j - 1)] = apply_substitution(goals[j], local_sub);
+                next_goals[fresh_clause->body_len + (j - 1)] = apply_substitution(goals[j], sub);
             }
 
             // Recursive call
-            if (resolve(kb, next_goals, next_num_goals, local_sub, var_counter)) {
-                solution_found_in_branch = true;
-            }
+            resolve(kb, next_goals, next_num_goals, sub, var_counter, solution_count);
+            // Continue exploring other branches, don't stop after the first solution
 
             // Free next_goals terms (they were copied by apply_substitution)
             for (int j = 0; j < next_num_goals; ++j) {
@@ -87,8 +86,10 @@ bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, 
             }
             free(next_goals);
         }
+        // Restore substitution for the next clause attempt
+        restore_substitution(sub, sub_mark);
 
-        // Clean up fresh clause and local substitution
+        // Clean up fresh clause
         free_term(fresh_clause->head);
         if (fresh_clause->body) {
             for (int j = 0; j < fresh_clause->body_len; ++j) {
@@ -97,14 +98,11 @@ bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, 
             free(fresh_clause->body);
         }
         free(fresh_clause);
-        free_substitution(local_sub);
     }
-    return solution_found_in_branch;
 }
 
-
 // Entry point for resolving a query
-bool resolve_query(KnowledgeBase *kb, Term *query_term) {
+void resolve_query(KnowledgeBase *kb, Term *query_term, int *solution_count) {
     Substitution *initial_sub = create_substitution();
     int var_counter = 0;
     Term *goals[1];
@@ -116,12 +114,13 @@ bool resolve_query(KnowledgeBase *kb, Term *query_term) {
     }
     printf("\n");
 
-    bool found_solution = resolve(kb, goals, 1, initial_sub, &var_counter);
+    *solution_count = 0; // Initialize solution count for this query
+    resolve(kb, goals, 1, initial_sub, &var_counter, solution_count);
 
-    if (!found_solution) {
+    if (*solution_count == 0) {
         printf("No.\n");
     }
 
     free_substitution(initial_sub);
-    return found_solution;
+    // No explicit return needed for void function
 }

@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 // Function prototypes for inference engine
-bool resolve_query(KnowledgeBase *kb, Term *query_term);
-bool resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, int *var_counter);
+void resolve_query(KnowledgeBase *kb, Term *query_term, int *solution_count);
+void resolve(KnowledgeBase *kb, Term **goals, int num_goals, Substitution *sub, int *var_counter, int *solution_count);
 
 #endif // INFERENCE_H

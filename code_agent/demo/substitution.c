@@ -27,7 +27,10 @@ Term *apply_substitution(Term *term, Substitution *sub) {
     if (term->type == VARIABLE) {
         for (int i = 0; i < sub->count; ++i) {
             if (strcmp(term->name, sub->pairs[i].var_name) == 0) {
-                return copy_term(sub->pairs[i].term);
+                // Found a substitution for this variable.
+                // Recursively apply substitution to the term it's bound to.
+                Term *substituted_term = apply_substitution(sub->pairs[i].term, sub);
+                return substituted_term;
             }
         }
     }
@@ -50,4 +53,18 @@ void free_substitution(Substitution *sub) {
     }
     free(sub->pairs);
     free(sub);
+}
+
+// Mark the current state of the substitution list for backtracking
+int mark_substitution(Substitution *sub) {
+    return sub->count;
+}
+
+// Restore the substitution list to a previously marked state
+void restore_substitution(Substitution *sub, int mark) {
+    for (int i = sub->count - 1; i >= mark; --i) {
+        free(sub->pairs[i].var_name);
+        free_term(sub->pairs[i].term);
+    }
+    sub->count = mark;
 }
