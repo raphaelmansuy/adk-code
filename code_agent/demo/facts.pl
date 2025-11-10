@@ -15,3 +15,5 @@ female(pam).
 female(liz).
 female(ann).
 female(pat).
+
+grandparent(X, Y) :- parent(X, Z), parent(Z, Y).

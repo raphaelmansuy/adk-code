@@ -20,12 +20,27 @@ typedef struct Predicate {
     int arity; // Number of arguments
 } Predicate;
 
-// Represents a Prolog clause (fact or rule)
-// For simplicity, we'll only handle facts initially
-typedef struct Clause {
+// Represents a list of predicates (for rule bodies)
+typedef struct PredicateList {
+    Predicate **predicates;
+    int count;
+} PredicateList;
+
+// Represents a Prolog rule
+typedef struct Rule {
     Predicate *head;
-    // Predicate **body; // For rules, not implemented yet
-    // int body_len;
+    PredicateList *body;
+} Rule;
+
+// Represents a Prolog clause (fact or rule)
+enum ClauseType { FACT, RULE };
+
+typedef struct Clause {
+    enum ClauseType type;
+    union {
+        Predicate *fact; // For facts
+        Rule *rule;      // For rules
+    } content;
 } Clause;
 
 // Represents a variable binding in a substitution
@@ -58,5 +73,6 @@ Substitution* create_substitution();
 void free_substitution(Substitution *sub);
 void add_binding(Substitution *sub, const char *var_name, Term *term);
 Term* get_binding(Substitution *sub, const char *var_name);
+Substitution* copy_substitution(Substitution *original_sub);
 
 #endif // PROLOG_DATA_H

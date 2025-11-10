@@ -38,38 +38,32 @@ Predicate *create_predicate_from_terms(const char *name, ...) {
 // Function to add default facts to the database
 void add_default_facts() {
     // parent(john, jim).
-    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jim"), NULL)));
+    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jim"), NULL)));
 
     // parent(john, jane).
-    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jane"), NULL)));
+    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jane"), NULL)));
 
     // parent(mary, john).
-    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "mary"), create_term(ATOM, "john"), NULL)));
+    add_clause(create_clause(FACT, create_predicate_from_terms("parent", create_term(ATOM, "mary"), create_term(ATOM, "john"), NULL)));
 
     // male(john).
-    add_clause(create_clause(create_predicate_from_terms("male", create_term(ATOM, "john"), NULL)));
+    add_clause(create_clause(FACT, create_predicate_from_terms("male", create_term(ATOM, "john"), NULL)));
 
     // female(mary).
-    add_clause(create_clause(create_predicate_from_terms("female", create_term(ATOM, "mary"), NULL)));
-}
-
-// Helper function to run a query and free the predicate
-void run_query_and_free(Predicate *query_predicate) {
-    query(query_predicate);
-    free_predicate(query_predicate);
+    add_clause(create_clause(FACT, create_predicate_from_terms("female", create_term(ATOM, "mary"), NULL)));
 }
 
 int main(int argc, char *argv[]) {
     printf("--- Simple Prolog Interpreter (C) ---\n");
 
     if (argc > 1) {
-        printf("Loading facts from file: %s\n", argv[1]);
-        if (!load_facts_from_file(argv[1])) {
-            fprintf(stderr, "Failed to load facts from %s. Exiting.\n", argv[1]);
+        printf("Loading clauses from file: %s\n", argv[1]);
+        if (!load_clauses_from_file(argv[1])) {
+            fprintf(stderr, "Failed to load clauses from %s. Exiting.\n", argv[1]);
             free_database();
             return EXIT_FAILURE;
         }
-        printf("Loaded %d facts from %s.\n", db_size, argv[1]);
+        printf("Loaded %d clauses from %s.\n", db_size, argv[1]);
     } else {
         printf("Loading default facts.\n");
         // Add some facts
@@ -93,10 +87,10 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        Predicate *query_predicate = parse_query_string(query_buffer);
-        if (query_predicate) {
-            query(query_predicate);
-            free_predicate(query_predicate);
+        PredicateList *query_goals = parse_query_string(query_buffer);
+        if (query_goals) {
+            query(query_goals);
+            free_predicatelist(query_goals);
         } else {
             fprintf(stderr, "Invalid query. Please try again.\n");
         }

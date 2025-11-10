@@ -9,9 +9,14 @@ int db_size = 0;
 void add_clause(Clause *clause) {
     if (db_size < MAX_CLAUSES) {
         database[db_size++] = clause;
-        printf("Fact added: %s(", clause->head->name);
-        for (int i = 0; i < clause->head->arity; i++) {
-            printf("%s%s", clause->head->args[i]->name, (i == clause->head->arity - 1) ? "" : ", ");
+        if (clause->type == FACT) {
+            printf("Fact added: %s(", clause->content.fact->name);
+        } else { // RULE
+            printf("Rule added: %s(", clause->content.rule->head->name);
+        }
+        Predicate *display_pred = (clause->type == FACT) ? clause->content.fact : clause->content.rule->head;
+        for (int i = 0; i < display_pred->arity; i++) {
+            printf("%s%s", display_pred->args[i]->name, (i == display_pred->arity - 1) ? "" : ", ");
         }
         printf(").\n");
     } else {
