@@ -2,7 +2,7 @@
 
 **Date:** November 10, 2025  
 **Branch:** feature/superior-cli-display  
-**Commits:** 3 (Phase 1 Foundation + 2 Enhancement commits)
+**Commits:** 5 (Phase 1 Foundation + 4 Enhancement commits)
 
 ---
 
@@ -268,11 +268,87 @@ What would you like me to help you with?
 
 ---
 
+## 🎨 Enhancement Phase 3: Visual Refinements
+
+**Commit:** 900cadc - "feat: enhance CLI display with visual refinements"
+
+### New Features Added
+
+1. **Left Border for Agent Responses** ✅
+   - Subtle vertical border (│) on agent responses
+   - Adaptive colors (Light: 254, Dark: 236)
+   - Creates magazine-like column effect
+   - Better visual distinction from tool output
+   - Implementation: `RenderAgentResponse()` now adds left border to each line
+
+2. **Smart Path Truncation** ✅
+   - Intelligently shortens long file paths
+   - Shows filename + parent directory
+   - Example: `/very/long/path/to/project/src/main.go` → `.../src/main.go`
+   - Applied to all file operation tools (read, write, edit, list)
+   - Implementation: `truncatePath()` helper with 60-char max length
+
+3. **Warning & Info Message Styling** ✅
+   - New `RenderWarning()` method with ⚠ icon
+   - New `RenderInfo()` method with ℹ icon
+   - Subtle yellow for warnings, blue for info
+   - Consistent styling with rest of UI
+   - Can be used for API key notices and other messages
+
+4. **Enhanced Task Completion** ✅
+   - Added "✓ Complete" indicator before separator
+   - Green checkmark with dimmed text
+   - More satisfying completion feedback
+   - Maintains elegant separator line
+
+### Visual Impact
+
+**Before Enhancement Phase 3:**
+```
+◆ Reading /Users/raphaelmansuy/Github/03-working/adk_training_go/code_agent/display/renderer.go
+
+Agent response appears here
+
+────────────────────────────────────────────────────────────────────────
+```
+
+**After Enhancement Phase 3:**
+```
+◆ Reading .../display/renderer.go
+
+│ Agent response appears here
+│ with subtle left border
+│ for better visual separation
+
+✓ Complete
+────────────────────────────────────────────────────────────────────────
+```
+
+### Benefits
+
+- **Better Visual Hierarchy:** Left border clearly separates agent thinking from tool execution
+- **Cleaner Paths:** Long paths don't wrap or clutter the display
+- **Professional Feedback:** Warning/info messages match overall design language
+- **Satisfying Completion:** Clear visual confirmation when tasks finish
+- **Magazine Quality:** Border creates sophisticated column-like layout
+
+### Metrics
+
+- Lines added: ~109
+- Lines removed: ~24
+- Net change: +85 lines
+- Methods added: 3 (RenderWarning, RenderInfo, truncatePath)
+- Code quality: All functions well-documented with examples
+
+---
+
 ## 📝 Commit History
 
 1. **c4e0c33** - Phase 1 Foundation (918 lines)
 2. **60de007** - Makefile addition
-3. **8b40078** - Enhanced CLI rendering (current)
+3. **8b40078** - Enhanced CLI rendering (minimalist redesign)
+4. **8c652c0** - Documentation summary
+5. **900cadc** - Visual refinements (current)
 
 ---
 
