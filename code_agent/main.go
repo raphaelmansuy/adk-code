@@ -245,11 +245,13 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 			// Use enhanced result parser for structured output
 			parsedResult := toolResultParser.ParseToolResult(part.FunctionResponse.Name, result)
 			if parsedResult != "" {
+				// Show parsed result
+				fmt.Print("\n")
 				fmt.Print(parsedResult)
 				fmt.Print("\n")
 			}
 
-			// Show basic result indicator
+			// Show basic result indicator (compact version)
 			output := renderer.RenderToolResult(part.FunctionResponse.Name, result)
 			fmt.Print(output)
 		}

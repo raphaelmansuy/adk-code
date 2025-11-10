@@ -51,13 +51,20 @@ func (trp *ToolResultParser) formatError(errMsg string) string {
 func (trp *ToolResultParser) parseListDirectory(result map[string]any) string {
 	var output strings.Builder
 
-	// Extract entries
-	entriesRaw, ok := result["entries"].([]any)
-	if !ok {
-		entriesRaw, ok = result["items"].([]any)
-	}
-	if !ok {
-		return trp.parseGeneric(result)
+	// Extract entries - try multiple field names
+	var entriesRaw []any
+	var ok bool
+	
+	// Try "files" first (used by our tools)
+	if entriesRaw, ok = result["files"].([]any); !ok {
+		// Try "entries"
+		if entriesRaw, ok = result["entries"].([]any); !ok {
+			// Try "items"
+			if entriesRaw, ok = result["items"].([]any); !ok {
+				// Return empty if no recognized field
+				return ""
+			}
+		}
 	}
 
 	output.WriteString(fmt.Sprintf("📁 Found %d items:\n\n", len(entriesRaw)))
@@ -164,8 +171,6 @@ func (trp *ToolResultParser) parseSearchResults(result map[string]any) string {
 
 // parseCommandOutput formats command execution output
 func (trp *ToolResultParser) parseCommandOutput(result map[string]any) string {
-	var output strings.Builder
-
 	// Extract exit code
 	exitCode := 0
 	if code, ok := result["exit_code"].(float64); ok {
@@ -179,25 +184,39 @@ func (trp *ToolResultParser) parseCommandOutput(result map[string]any) string {
 	stderr, _ := result["stderr"].(string)
 	combinedOutput, _ := result["output"].(string)
 
-	// Show exit status
-	if exitCode == 0 {
-		output.WriteString("✅ Command completed successfully\n\n")
-	} else {
+	// If there's no output to show, return empty (let the success indicator handle it)
+	if combinedOutput == "" && stdout == "" && stderr == "" {
+		return ""
+	}
+
+	var output strings.Builder
+
+	// Show exit status only if there was an error
+	if exitCode != 0 {
 		output.WriteString(fmt.Sprintf("❌ Command failed with exit code %d\n\n", exitCode))
 	}
 
-	// Show output
+	// Show output concisely
 	if combinedOutput != "" {
-		output.WriteString("**Output:**\n")
-		output.WriteString(fmt.Sprintf("```\n%s\n```\n", strings.TrimSpace(combinedOutput)))
+		trimmed := strings.TrimSpace(combinedOutput)
+		if trimmed != "" {
+			output.WriteString(fmt.Sprintf("```\n%s\n```", trimmed))
+		}
 	} else {
 		if stdout != "" {
-			output.WriteString("**stdout:**\n")
-			output.WriteString(fmt.Sprintf("```\n%s\n```\n", strings.TrimSpace(stdout)))
+			trimmed := strings.TrimSpace(stdout)
+			if trimmed != "" {
+				output.WriteString(fmt.Sprintf("```\n%s\n```", trimmed))
+			}
 		}
 		if stderr != "" {
-			output.WriteString("**stderr:**\n")
-			output.WriteString(fmt.Sprintf("```\n%s\n```\n", strings.TrimSpace(stderr)))
+			trimmed := strings.TrimSpace(stderr)
+			if trimmed != "" {
+				if stdout != "" {
+					output.WriteString("\n\n**stderr:**\n")
+				}
+				output.WriteString(fmt.Sprintf("```\n%s\n```", trimmed))
+			}
 		}
 	}
 
@@ -221,7 +240,20 @@ func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
 	lines := strings.Count(content, "\n") + 1
 	bytes := len(content)
 
-	return fmt.Sprintf("📄 Read %d lines (%d bytes)", lines, bytes)
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("📄 Read %d lines (%d bytes)\n\n", lines, bytes))
+	output.WriteString("```\n")
+	output.WriteString(content)
+	output.WriteString("\n```")
+
+	result_str := output.String()
+	if trp.mdRenderer != nil {
+		rendered, err := trp.mdRenderer.Render(result_str)
+		if err == nil {
+			return rendered
+		}
+	}
+	return result_str
 }
 
 // parseWriteFile formats write file results

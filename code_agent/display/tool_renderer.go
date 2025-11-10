@@ -28,7 +28,11 @@ func (tr *ToolRenderer) RenderToolApproval(toolName string, args map[string]any)
 
 	var output strings.Builder
 	output.WriteString("\n")
-	output.WriteString(tr.renderer.RenderMarkdown(header))
+	// Add a subtle bullet point and render as styled text (not markdown)
+	output.WriteString("  ")
+	output.WriteString(tr.renderer.Yellow("▸"))
+	output.WriteString(" ")
+	output.WriteString(header)
 	output.WriteString("\n")
 
 	if preview != "" {
@@ -45,13 +49,18 @@ func (tr *ToolRenderer) RenderToolExecution(toolName string, args map[string]any
 
 	var output strings.Builder
 	output.WriteString("\n")
-	output.WriteString(tr.renderer.RenderMarkdown(header))
+	// Add a subtle bullet point and render as styled text (not markdown)
+	output.WriteString("  ")
+	output.WriteString(tr.renderer.Blue("▸"))
+	output.WriteString(" ")
+	output.WriteString(header)
 	output.WriteString("\n")
 
 	return output.String()
 }
 
 // generateToolHeader generates a contextual header based on the tool and verb tense
+// Returns plain text that will be styled by the renderer
 func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any, verbTense string) string {
 	var action string
 	var path string
@@ -69,9 +78,9 @@ func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any,
 			action = "is reading"
 		}
 		if path != "" {
-			return fmt.Sprintf("### Agent %s `%s`", action, path)
+			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
 		}
-		return fmt.Sprintf("### Agent %s file", action)
+		return fmt.Sprintf("Agent %s file", action)
 
 	case "write_file":
 		if verbTense == "wants to" {
@@ -80,9 +89,9 @@ func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any,
 			action = "is writing"
 		}
 		if path != "" {
-			return fmt.Sprintf("### Agent %s `%s`", action, path)
+			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
 		}
-		return fmt.Sprintf("### Agent %s file", action)
+		return fmt.Sprintf("Agent %s file", action)
 
 	case "replace_in_file", "search_replace":
 		if verbTense == "wants to" {
@@ -91,9 +100,9 @@ func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any,
 			action = "is editing"
 		}
 		if path != "" {
-			return fmt.Sprintf("### Agent %s `%s`", action, path)
+			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
 		}
-		return fmt.Sprintf("### Agent %s file", action)
+		return fmt.Sprintf("Agent %s file", action)
 
 	case "list_directory":
 		if verbTense == "wants to" {
@@ -102,45 +111,45 @@ func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any,
 			action = "is listing files in"
 		}
 		if path != "" {
-			return fmt.Sprintf("### Agent %s `%s`", action, path)
+			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
 		}
-		return fmt.Sprintf("### Agent %s directory", action)
+		return fmt.Sprintf("Agent %s directory", action)
 
 	case "execute_command", "execute_program":
 		if command, ok := args["command"].(string); ok {
 			if verbTense == "wants to" {
-				return fmt.Sprintf("### Agent wants to run `%s`", command)
+				return fmt.Sprintf("Agent wants to run %s", tr.renderer.Cyan("`"+command+"`"))
 			}
-			return fmt.Sprintf("### Agent is running `%s`", command)
+			return fmt.Sprintf("Agent is running %s", tr.renderer.Cyan("`"+command+"`"))
 		}
 		if program, ok := args["program"].(string); ok {
 			if verbTense == "wants to" {
-				return fmt.Sprintf("### Agent wants to run `%s`", program)
+				return fmt.Sprintf("Agent wants to run %s", tr.renderer.Cyan("`"+program+"`"))
 			}
-			return fmt.Sprintf("### Agent is running `%s`", program)
+			return fmt.Sprintf("Agent is running %s", tr.renderer.Cyan("`"+program+"`"))
 		}
 		if verbTense == "wants to" {
-			return "### Agent wants to run command"
+			return "Agent wants to run command"
 		}
-		return "### Agent is running command"
+		return "Agent is running command"
 
 	case "grep_search", "search_files":
 		if pattern, ok := args["pattern"].(string); ok {
 			if verbTense == "wants to" {
-				return fmt.Sprintf("### Agent wants to search for `%s`", pattern)
+				return fmt.Sprintf("Agent wants to search for %s", tr.renderer.Cyan("`"+pattern+"`"))
 			}
-			return fmt.Sprintf("### Agent is searching for `%s`", pattern)
+			return fmt.Sprintf("Agent is searching for %s", tr.renderer.Cyan("`"+pattern+"`"))
 		}
 		if verbTense == "wants to" {
-			return "### Agent wants to search files"
+			return "Agent wants to search files"
 		}
-		return "### Agent is searching files"
+		return "Agent is searching files"
 
 	default:
 		if verbTense == "wants to" {
-			return fmt.Sprintf("### Agent wants to use `%s`", toolName)
+			return fmt.Sprintf("Agent wants to use %s", tr.renderer.Cyan("`"+toolName+"`"))
 		}
-		return fmt.Sprintf("### Agent is using `%s`", toolName)
+		return fmt.Sprintf("Agent is using %s", tr.renderer.Cyan("`"+toolName+"`"))
 	}
 }
 
