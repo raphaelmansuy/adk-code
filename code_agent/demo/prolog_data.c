@@ -5,6 +5,12 @@
 
 // --- Memory Management and Constructors ---
 
+/**
+ * @brief Creates a new Term object.
+ * @param type The type of the term (ATOM or VARIABLE).
+ * @param name The name of the term.
+ * @return A pointer to the newly created Term, or exits on allocation failure.
+ */
 Term* create_term(enum TermType type, const char *name) {
     Term *term = (Term*)malloc(sizeof(Term));
     if (!term) {
@@ -21,18 +27,33 @@ Term* create_term(enum TermType type, const char *name) {
     return term;
 }
 
+/**
+ * @brief Frees a Term object and its associated memory.
+ * @param term A pointer to the Term to free. If NULL, does nothing.
+ */
 void free_term(Term *term) {
     if (!term) return;
     free(term->name);
     free(term);
 }
 
+/**
+ * @brief Creates a deep copy of a Term object.
+ * @param original_term A pointer to the Term to copy. Can be NULL.
+ * @return A pointer to the new, copied Term, or NULL if original_term is NULL.
+ */
 Term* copy_term(Term *original_term) {
     if (!original_term) return NULL;
     Term *new_term = create_term(original_term->type, original_term->name);
     return new_term;
 }
 
+/**
+ * @brief Creates a new Predicate object.
+ * @param name The name of the predicate.
+ * @param arity The number of arguments the predicate takes.
+ * @return A pointer to the newly created Predicate, or exits on allocation failure.
+ */
 Predicate* create_predicate(const char *name, int arity) {
     Predicate *pred = (Predicate*)malloc(sizeof(Predicate));
     if (!pred) {
@@ -56,6 +77,10 @@ Predicate* create_predicate(const char *name, int arity) {
     return pred;
 }
 
+/**
+ * @brief Frees a Predicate object and its associated memory, including its arguments.
+ * @param pred A pointer to the Predicate to free. If NULL, does nothing.
+ */
 void free_predicate(Predicate *pred) {
     if (!pred) return;
     free(pred->name);
@@ -68,6 +93,11 @@ void free_predicate(Predicate *pred) {
     free(pred);
 }
 
+/**
+ * @brief Creates a deep copy of a Predicate object.
+ * @param original_pred A pointer to the Predicate to copy. Can be NULL.
+ * @return A pointer to the new, copied Predicate, or NULL if original_pred is NULL.
+ */
 Predicate* copy_predicate(Predicate *original_pred) {
     if (!original_pred) return NULL;
     Predicate *new_pred = create_predicate(original_pred->name, original_pred->arity);
@@ -77,6 +107,11 @@ Predicate* copy_predicate(Predicate *original_pred) {
     return new_pred;
 }
 
+/**
+ * @brief Creates a new Clause object.
+ * @param head A pointer to the head predicate of the clause.
+ * @return A pointer to the newly created Clause, or exits on allocation failure.
+ */
 Clause* create_clause(Predicate *head) {
     Clause *clause = (Clause*)malloc(sizeof(Clause));
     if (!clause) {
@@ -87,12 +122,20 @@ Clause* create_clause(Predicate *head) {
     return clause;
 }
 
+/**
+ * @brief Frees a Clause object and its associated memory.
+ * @param clause A pointer to the Clause to free. If NULL, does nothing.
+ */
 void free_clause(Clause *clause) {
     if (!clause) return;
     free_predicate(clause->head);
     free(clause);
 }
 
+/**
+ * @brief Creates a new Substitution object.
+ * @return A pointer to the newly created Substitution, or exits on allocation failure.
+ */
 Substitution* create_substitution() {
     Substitution *sub = (Substitution*)malloc(sizeof(Substitution));
     if (!sub) {
@@ -103,6 +146,12 @@ Substitution* create_substitution() {
     return sub;
 }
 
+/**
+ * @brief Frees a Substitution object and its associated memory.
+ *        Note: It frees the variable names in bindings but not the terms,
+ *        as terms are not owned by the substitution to prevent double-freeing.
+ * @param sub A pointer to the Substitution to free. If NULL, does nothing.
+ */
 void free_substitution(Substitution *sub) {
     if (!sub) return;
     for (int i = 0; i < sub->size; i++) {
@@ -113,6 +162,12 @@ void free_substitution(Substitution *sub) {
     free(sub);
 }
 
+/**
+ * @brief Adds a new binding to a Substitution.
+ * @param sub A pointer to the Substitution to add the binding to.
+ * @param var_name The name of the variable to bind.
+ * @param term A pointer to the Term to bind the variable to.
+ */
 void add_binding(Substitution *sub, const char *var_name, Term *term) {
     if (!sub) return;
     if (sub->size < MAX_BINDINGS) {
@@ -128,6 +183,12 @@ void add_binding(Substitution *sub, const char *var_name, Term *term) {
     }
 }
 
+/**
+ * @brief Retrieves the Term bound to a given variable name in a Substitution.
+ * @param sub A pointer to the Substitution to search.
+ * @param var_name The name of the variable to look up.
+ * @return A pointer to the bound Term, or NULL if no binding is found.
+ */
 Term* get_binding(Substitution *sub, const char *var_name) {
     if (!sub) return NULL;
     for (int i = 0; i < sub->size; i++) {

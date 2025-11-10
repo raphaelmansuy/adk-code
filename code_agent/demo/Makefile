@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS = -Wall -Wextra -std=c99 -g -fPIC
 
 SRCS = prolog_data.c prolog_db.c prolog_unify.c prolog_query.c prolog_parser.c main.c
 OBJS = $(SRCS:.c=.o)
@@ -16,4 +16,6 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf $(OBJS) $(TARGET)
+
+rebuild: clean all

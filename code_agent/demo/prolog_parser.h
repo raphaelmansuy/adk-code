@@ -7,6 +7,10 @@
 // Returns NULL on parsing error.
 Predicate* parse_fact_string(const char *fact_string);
 
+// Function to parse a query string into a Predicate structure.
+// Returns NULL on parsing error.
+Predicate* parse_query_string(const char *query_string);
+
 // Function to read facts from a file and add them to the database
 // Returns true on success, false on error.
 bool load_facts_from_file(const char *filepath);

@@ -179,7 +179,7 @@ func printEvent(renderer *display.Renderer, event *session.Event) {
 			fmt.Print(output)
 		}
 
-		// Handle function calls
+		// Handle function calls - show what tool is being executed
 		if part.FunctionCall != nil {
 			args := make(map[string]any)
 			for k, v := range part.FunctionCall.Args {
@@ -187,9 +187,14 @@ func printEvent(renderer *display.Renderer, event *session.Event) {
 			}
 			output := renderer.RenderToolCall(part.FunctionCall.Name, args)
 			fmt.Print(output)
+			
+			// Show explicit "executing" message for clarity
+			if display.IsTTY() {
+				fmt.Print(renderer.RenderAgentWorking("Executing"))
+			}
 		}
 
-		// Handle function responses
+		// Handle function responses - show the result
 		if part.FunctionResponse != nil {
 			result := make(map[string]any)
 			if part.FunctionResponse.Response != nil {
@@ -199,6 +204,11 @@ func printEvent(renderer *display.Renderer, event *session.Event) {
 			}
 			output := renderer.RenderToolResult(part.FunctionResponse.Name, result)
 			fmt.Print(output)
+			
+			// Show "analyzing" message after tool result
+			if display.IsTTY() {
+				fmt.Print(renderer.RenderAgentWorking("Analyzing result"))
+			}
 		}
 	}
 }

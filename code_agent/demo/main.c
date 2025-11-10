@@ -5,6 +5,59 @@
 #include "prolog_db.h"
 #include "prolog_query.h"
 #include "prolog_parser.h"
+#include <stdarg.h>
+
+// Helper function to create a predicate from a list of terms
+Predicate *create_predicate_from_terms(const char *name, ...) {
+    Predicate *p = create_predicate(name, 0); // Start with 0 arity
+    va_list args;
+    va_start(args, name);
+    Term *term;
+    int arity = 0;
+    while ((term = va_arg(args, Term *)) != NULL) {
+        arity++;
+        Term **new_args = realloc(p->args, arity * sizeof(Term *));
+        if (new_args == NULL) {
+            perror("Failed to reallocate memory for predicate arguments");
+            // Free already allocated terms before exiting
+            for (int i = 0; i < arity - 1; i++) {
+                free_term(p->args[i]); // Assuming free_term exists
+            }
+            free_predicate(p); // Free the predicate itself
+            va_end(args);
+            exit(EXIT_FAILURE);
+        }
+        p->args = new_args;
+        p->args[arity - 1] = term;
+    }
+    va_end(args);
+    p->arity = arity;
+    return p;
+}
+
+// Function to add default facts to the database
+void add_default_facts() {
+    // parent(john, jim).
+    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jim"), NULL)));
+
+    // parent(john, jane).
+    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "john"), create_term(ATOM, "jane"), NULL)));
+
+    // parent(mary, john).
+    add_clause(create_clause(create_predicate_from_terms("parent", create_term(ATOM, "mary"), create_term(ATOM, "john"), NULL)));
+
+    // male(john).
+    add_clause(create_clause(create_predicate_from_terms("male", create_term(ATOM, "john"), NULL)));
+
+    // female(mary).
+    add_clause(create_clause(create_predicate_from_terms("female", create_term(ATOM, "mary"), NULL)));
+}
+
+// Helper function to run a query and free the predicate
+void run_query_and_free(Predicate *query_predicate) {
+    query(query_predicate);
+    free_predicate(query_predicate);
+}
 
 int main(int argc, char *argv[]) {
     printf("--- Simple Prolog Interpreter (C) ---\n");
@@ -20,69 +73,34 @@ int main(int argc, char *argv[]) {
     } else {
         printf("Loading default facts.\n");
         // Add some facts
-        // parent(john, jim).
-        Predicate *p1 = create_predicate("parent", 2);
-        p1->args[0] = create_term(ATOM, "john");
-        p1->args[1] = create_term(ATOM, "jim");
-        add_clause(create_clause(p1));
-
-        // parent(john, jane).
-        Predicate *p_jane = create_predicate("parent", 2);
-        p_jane->args[0] = create_term(ATOM, "john");
-        p_jane->args[1] = create_term(ATOM, "jane");
-        add_clause(create_clause(p_jane));
-
-        // parent(mary, john).
-        Predicate *p2 = create_predicate("parent", 2);
-        p2->args[0] = create_term(ATOM, "mary");
-        p2->args[1] = create_term(ATOM, "john");
-        add_clause(create_clause(p2));
-
-        // male(john).
-        Predicate *m1 = create_predicate("male", 1);
-        m1->args[0] = create_term(ATOM, "john");
-        add_clause(create_clause(m1));
-
-        // female(mary).
-        Predicate *f1 = create_predicate("female", 1);
-        f1->args[0] = create_term(ATOM, "mary");
-        add_clause(create_clause(f1));
+        add_default_facts();
     }
 
-    printf("\n--- Queries ---\n");
+    printf("\n--- Interactive Query Mode ---\n");
+    printf("Type 'exit.' to quit.\n");
 
-    // Query: parent(pam, bob)?
-    Predicate *q1 = create_predicate("parent", 2);
-    q1->args[0] = create_term(ATOM, "pam");
-    q1->args[1] = create_term(ATOM, "bob");
-    query(q1);
-    free_predicate(q1);
+    char query_buffer[256];
+    while (1) {
+        printf("?- ");
+        if (fgets(query_buffer, sizeof(query_buffer), stdin) == NULL) {
+            break; // EOF or error
+        }
 
-    // Query: parent(bob, X)?
-    Predicate *q2 = create_predicate("parent", 2);
-    q2->args[0] = create_term(ATOM, "bob");
-    q2->args[1] = create_term(VARIABLE, "X");
-    query(q2);
-    free_predicate(q2);
+        // Remove trailing newline character if present
+        query_buffer[strcspn(query_buffer, "\n")] = 0;
 
-    // Query: male(tom)?
-    Predicate *q3 = create_predicate("male", 1);
-    q3->args[0] = create_term(ATOM, "tom");
-    query(q3);
-    free_predicate(q3);
+        if (strcmp(query_buffer, "exit.") == 0 || strcmp(query_buffer, "exit") == 0) {
+            break;
+        }
 
-    // Query: female(X)?
-    Predicate *q4 = create_predicate("female", 1);
-    q4->args[0] = create_term(VARIABLE, "X");
-    query(q4);
-    free_predicate(q4);
-
-    // Query: parent(Y, ann)?
-    Predicate *q5 = create_predicate("parent", 2);
-    q5->args[0] = create_term(VARIABLE, "Y");
-    q5->args[1] = create_term(ATOM, "ann");
-    query(q5);
-    free_predicate(q5);
+        Predicate *query_predicate = parse_query_string(query_buffer);
+        if (query_predicate) {
+            query(query_predicate);
+            free_predicate(query_predicate);
+        } else {
+            fprintf(stderr, "Invalid query. Please try again.\n");
+        }
+    }
 
     // Clean up database (free memory)
     free_database();

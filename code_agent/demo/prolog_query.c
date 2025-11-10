@@ -14,8 +14,7 @@ void print_substitution(Substitution *sub) {
         if (sub->bindings[i].term->type == ATOM) {
             printf("%s\n", sub->bindings[i].term->name);
         } else { // VARIABLE
-            // This case is more complex in a full interpreter (e.g., X = Y)
-            printf("%s (variable, not fully resolved here)\n", sub->bindings[i].term->name);
+            printf("%s\n", sub->bindings[i].term->name); // Print the name of the bound variable
         }
     }
 }

@@ -330,7 +330,7 @@ func (r *Renderer) getToolHeader(toolName string, args map[string]any) string {
 	}
 }
 
-// RenderToolResult renders a tool result.
+// RenderToolResult renders a tool result with contextual information.
 func (r *Renderer) RenderToolResult(toolName string, result map[string]any) string {
 	// Check for errors
 	if errStr, ok := result["error"].(string); ok && errStr != "" {
@@ -349,20 +349,91 @@ func (r *Renderer) RenderToolResult(toolName string, result map[string]any) stri
 	dimStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"})
 
-	return dimStyle.Render("  "+checkmark) + "\n"
+	successStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("2")) // Green
+
+	// Add contextual success message based on tool type
+	var message string
+	switch toolName {
+	case "read_file":
+		if content, ok := result["content"].(string); ok {
+			lines := len(strings.Split(content, "\n"))
+			message = dimStyle.Render(fmt.Sprintf("  %s Read %d lines", successStyle.Render(checkmark), lines))
+		} else {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Read complete")
+		}
+	case "write_file":
+		if path, ok := result["path"].(string); ok {
+			displayPath := r.truncatePath(path, 50)
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Wrote " + displayPath)
+		} else {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Write complete")
+		}
+	case "replace_in_file", "search_replace":
+		message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Edit applied")
+	case "list_directory":
+		if items, ok := result["items"].([]any); ok {
+			message = dimStyle.Render(fmt.Sprintf("  %s Found %d items", successStyle.Render(checkmark), len(items)))
+		} else {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " List complete")
+		}
+	case "execute_command", "execute_program":
+		if exitCode, ok := result["exit_code"].(int); ok && exitCode == 0 {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Command successful")
+		} else if exitCode, ok := result["exit_code"].(float64); ok && exitCode == 0 {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Command successful")
+		} else {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Command complete")
+		}
+	case "grep_search":
+		if matches, ok := result["matches"].([]any); ok {
+			message = dimStyle.Render(fmt.Sprintf("  %s Found %d matches", successStyle.Render(checkmark), len(matches)))
+		} else {
+			message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Search complete")
+		}
+	default:
+		message = dimStyle.Render("  " + successStyle.Render(checkmark) + " Complete")
+	}
+
+	return message + "\n"
 }
 
 // RenderAgentThinking renders the "agent is thinking" message.
 func (r *Renderer) RenderAgentThinking() string {
 	if r.outputFormat == OutputFormatPlain || !IsTTY() {
-		return "\n"
+		return "\nThinking...\n"
 	}
 
 	thinkingStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"}).
 		Italic(true)
 
-	return "\n" + thinkingStyle.Render("...") + "\n"
+	iconStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")) // Blue
+
+	icon := "◉"
+	message := iconStyle.Render(icon) + " " + thinkingStyle.Render("Thinking...")
+
+	return "\n" + message + "\n"
+}
+
+// RenderAgentWorking renders an explicit "working" message for when the model is processing.
+func (r *Renderer) RenderAgentWorking(action string) string {
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return fmt.Sprintf("\n%s...\n", action)
+	}
+
+	workingStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"}).
+		Italic(true)
+
+	iconStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")) // Blue
+
+	icon := "◉"
+	message := iconStyle.Render(icon) + " " + workingStyle.Render(action+"...")
+
+	return "\n" + message + "\n"
 }
 
 // RenderAgentResponse renders an agent's text response.
