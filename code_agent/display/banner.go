@@ -176,20 +176,25 @@ func (br *BannerRenderer) RenderCompletionBanner(success bool, duration string, 
 
 // RenderWelcome renders a welcome message with usage hints.
 func (br *BannerRenderer) RenderWelcome() string {
-	markdown := `
-## Welcome to code_agent!
+	if br.renderer.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "\nReady! Type your request or 'exit' to quit.\n\n"
+	}
 
-I'm an AI coding assistant powered by Google's Gemini model. I can help you with:
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"})
 
-- 📝 Reading and writing files
-- 🔍 Searching your codebase
-- ⚡ Running terminal commands
-- 🔧 Making code edits
-- 💡 Answering coding questions
+	promptStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")). // Blue
+		Bold(true)
 
-**Type your request and press Enter to get started!**
-`
-	return br.renderer.RenderMarkdown(markdown) + "\n"
+	var lines []string
+	lines = append(lines, dimStyle.Render("Ready to assist with your coding tasks."))
+	lines = append(lines, dimStyle.Render("Type 'exit' or press Ctrl+C to quit."))
+	lines = append(lines, "")
+	lines = append(lines, promptStyle.Render("What would you like me to help you with?"))
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
 }
 
 // RenderError renders an error banner.

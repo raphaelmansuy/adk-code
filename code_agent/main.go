@@ -98,13 +98,17 @@ func main() {
 		log.Fatalf("Failed to create session: %v", err)
 	}
 
+	// Show welcome message
+	welcome := bannerRenderer.RenderWelcome()
+	fmt.Print(welcome)
+
 	// Interactive loop
 	scanner := bufio.NewScanner(os.Stdin)
-	prompt := renderer.RenderMarkdown("### Enter your coding task (or 'exit' to quit)")
-	fmt.Println(prompt)
 
 	for {
-		fmt.Print(renderer.Green("╰─❯ "))
+		// Show prompt
+		promptText := renderer.Bold("❯") + " "
+		fmt.Print(renderer.Cyan(promptText))
 
 		if !scanner.Scan() {
 			break
@@ -156,9 +160,6 @@ func main() {
 			failure := renderer.RenderTaskFailed()
 			fmt.Print(failure)
 		}
-
-		nextPrompt := renderer.RenderMarkdown("### Next task?")
-		fmt.Println(nextPrompt)
 	}
 
 	if err := scanner.Err(); err != nil {

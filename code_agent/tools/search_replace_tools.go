@@ -169,7 +169,7 @@ func ApplySearchReplaceBlocks(content string, blocks []SearchReplaceBlock) (stri
 	for blockNum, block := range blocks {
 		// Try exact match first
 		matchIdx := findExactMatch(result, block.SearchContent, currentOffset)
-		
+
 		// Fall back to line-trimmed match if exact fails
 		if matchIdx == -1 {
 			matchIdx = lineTrimmedMatch(result, block.SearchContent, currentOffset)
@@ -185,7 +185,7 @@ func ApplySearchReplaceBlocks(content string, blocks []SearchReplaceBlock) (stri
 
 		// Adjust for current offset
 		absoluteMatchIdx := currentOffset + matchIdx
-		
+
 		// Apply replacement
 		before := result[:absoluteMatchIdx]
 		after := result[absoluteMatchIdx+len(block.SearchContent):]

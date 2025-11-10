@@ -48,14 +48,14 @@ func NewRenderer(outputFormat string) (*Renderer, error) {
 	}
 
 	// Initialize lipgloss styles (will respect the global color profile)
-	r.dimStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))           // Bright black (gray)
-	r.greenStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))         // Green
-	r.redStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))           // Red
-	r.yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))        // Yellow
-	r.blueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))         // Bright blue
-	r.cyanStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))          // Cyan
-	r.whiteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))         // White
-	r.boldStyle = lipgloss.NewStyle().Bold(true)                               // Bold
+	r.dimStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))                // Bright black (gray)
+	r.greenStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))              // Green
+	r.redStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))                // Red
+	r.yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))             // Yellow
+	r.blueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))              // Bright blue
+	r.cyanStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))               // Cyan
+	r.whiteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))              // White
+	r.boldStyle = lipgloss.NewStyle().Bold(true)                                    // Bold
 	r.successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true) // Green + Bold
 
 	return r, nil
@@ -229,79 +229,126 @@ func shortenPath(path string, maxLen int) string {
 
 // RenderToolCall renders a tool call with contextual formatting.
 func (r *Renderer) RenderToolCall(toolName string, args map[string]any) string {
-	var output strings.Builder
-
 	// Create contextual header based on tool
 	header := r.getToolHeader(toolName, args)
-	rendered := r.RenderMarkdown(header)
-	output.WriteString("\n")
-	output.WriteString(rendered)
-	output.WriteString("\n")
-
-	return output.String()
+	// Add spacing before tool call for better readability
+	return "\n" + header + "\n"
 }
 
 // getToolHeader generates a contextual header for tool calls.
 func (r *Renderer) getToolHeader(toolName string, args map[string]any) string {
+	// Create a subtle tool icon
+	toolIcon := "◆"
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		toolIcon = "→"
+	}
+	
+	iconStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"})
+	
+	toolStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).  // Blue
+		Bold(false)
+	
 	switch toolName {
 	case "read_file":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("### Agent is reading `%s`", path)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Reading") + " " + r.Dim(path)
 		}
-		return "### Agent is reading a file"
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Reading file")
 
 	case "write_file":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("### Agent is writing `%s`", path)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Writing") + " " + r.Dim(path)
 		}
-		return "### Agent is writing a file"
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Writing file")
 
-	case "replace_in_file":
+	case "replace_in_file", "search_replace":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("### Agent is editing `%s`", path)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Editing") + " " + r.Dim(path)
 		}
-		return "### Agent is editing a file"
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Editing file")
 
 	case "list_directory":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("### Agent is listing files in `%s`", path)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Listing") + " " + r.Dim(path)
 		}
-		return "### Agent is listing files"
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Listing files")
 
-	case "execute_command":
+	case "execute_command", "execute_program":
 		if command, ok := args["command"].(string); ok {
-			return fmt.Sprintf("### Agent is running command\n\n```shell\n%s\n```", command)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Running") + " " + r.Dim("`"+command+"`")
 		}
-		return "### Agent is running a command"
+		if program, ok := args["program"].(string); ok {
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Running") + " " + r.Dim("`"+program+"`")
+		}
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Running command")
 
 	case "grep_search":
 		if pattern, ok := args["pattern"].(string); ok {
-			return fmt.Sprintf("### Agent is searching for `%s`", pattern)
+			return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Searching for") + " " + r.Dim("`"+pattern+"`")
 		}
-		return "### Agent is searching files"
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render("Searching files")
 
 	default:
-		return fmt.Sprintf("### Agent is using tool: %s", toolName)
+		return iconStyle.Render(toolIcon) + " " + toolStyle.Render(toolName)
 	}
 }
 
 // RenderToolResult renders a tool result.
 func (r *Renderer) RenderToolResult(toolName string, result map[string]any) string {
-	// For now, just indicate success
-	return r.Dim("  ✓ Completed\n")
+	// Check for errors
+	if errStr, ok := result["error"].(string); ok && errStr != "" {
+		errorStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("1")). // Red
+			Bold(false)
+		return "  " + errorStyle.Render("✗ "+errStr) + "\n"
+	}
+	
+	// Subtle success indicator
+	checkmark := "✓"
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		checkmark = "OK"
+	}
+	
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"})
+	
+	return dimStyle.Render("  "+checkmark) + "\n"
 }
 
 // RenderAgentThinking renders the "agent is thinking" message.
 func (r *Renderer) RenderAgentThinking() string {
-	header := "### Agent is thinking"
-	rendered := r.RenderMarkdown(header)
-	return "\n" + rendered + "\n\n"
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "\n"
+	}
+	
+	thinkingStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "245"}).
+		Italic(true)
+	
+	return "\n" + thinkingStyle.Render("...") + "\n"
 }
 
 // RenderAgentResponse renders an agent's text response.
 func (r *Renderer) RenderAgentResponse(text string) string {
 	// Agent responses are typically markdown
 	rendered := r.RenderMarkdown(text)
+	
+	// Add subtle indentation for better readability
+	if r.outputFormat != OutputFormatPlain && IsTTY() {
+		lines := strings.Split(rendered, "\n")
+		var indentedLines []string
+		for _, line := range lines {
+			if line != "" {
+				indentedLines = append(indentedLines, "  "+line)
+			} else {
+				indentedLines = append(indentedLines, line)
+			}
+		}
+		rendered = strings.Join(indentedLines, "\n")
+	}
+	
 	return rendered + "\n"
 }
 
@@ -314,11 +361,29 @@ func (r *Renderer) RenderError(err error) string {
 
 // RenderTaskComplete renders the task completion message.
 func (r *Renderer) RenderTaskComplete() string {
-	return "\n" + r.SuccessCheckmark("Task completed") + "\n\n"
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "\nDone.\n\n"
+	}
+	
+	// Use a shorter, centered separator
+	width := GetTerminalWidth()
+	if width > 100 {
+		width = 100 // Cap at 100 chars
+	}
+	
+	separatorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "252", Dark: "240"})
+	
+	separator := separatorStyle.Render(strings.Repeat("─", width))
+	return "\n" + separator + "\n\n"
 }
 
 // RenderTaskFailed renders the task failure message.
 func (r *Renderer) RenderTaskFailed() string {
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		return "\nFailed.\n\n"
+	}
+	
 	return "\n" + r.ErrorX("Task failed") + "\n\n"
 }
 
