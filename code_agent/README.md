@@ -1,148 +1,81 @@
-# Code Agent 🤖
+# `demo` Directory
 
-An AI-powered coding assistant CLI built with Google ADK Go, similar to Claude Code or Gemini Code CLI.
+The `demo` directory within the `code_agent` project contains a self-contained C language implementation of a Prolog-like inference engine. This serves as a complex, real-world example for demonstrating the capabilities of the `code_agent` in understanding, navigating, modifying, and debugging codebases.
 
-## Features
+## Project Structure
 
-- **File Operations**: Read, write, and modify files with intelligent code editing
-- **Terminal Execution**: Run commands, tests, and build tools
-- **Code Search**: Search for patterns and files across your codebase
-- **Iterative Problem Solving**: The agent works through problems step-by-step until completion
-- **Interactive CLI**: Beautiful command-line interface with color-coded output
+The C project is organized into several modules, each handling a specific aspect of the inference engine:
 
-## Tools Available
+```
+.
+├── main.c              # Main entry point, orchestrates the inference engine
+├── parser.c/h          # Parses input into internal data structures
+├── term.c/h            # Represents logical terms (variables, constants, functions)
+├── clause.c/h          # Represents logical clauses (head and body literals)
+├── knowledge_base.c/h  # Stores and manages facts and rules
+├── substitution.c/h    # Handles variable substitutions
+├── unification.c/h     # Implements the unification algorithm
+└── inference.c/h       # Core inference engine (resolution, backtracking)
+```
 
-The agent has access to the following tools:
+*   **`main.c`**: The primary entry point, orchestrates the overall inference process.
+*   **`parser.c` / `parser.h`**: Responsible for parsing input queries and knowledge base entries into an internal representation.
+*   **`term.c` / `term.h`**: Defines the data structures and operations for logical terms (variables, constants, functions).
+*   **`clause.c` / `clause.h`**: Manages the representation and manipulation of logical clauses.
+*   **`knowledge_base.c` / `knowledge_base.h`**: Handles the storage and retrieval of facts and rules (the knowledge base).
+*   **`substitution.c` / `substitution.h`**: Manages variable substitutions during unification and inference.
+*   **`unification.c` / `unification.h`**: Implements the unification algorithm, a core component for matching terms and clauses.
+*   **`inference.c` / `inference.h`**: Implements the core inference mechanisms, likely including resolution and backtracking.
 
-- **read_file**: Read file contents to understand code
-- **write_file**: Create new files or overwrite existing ones
-- **replace_in_file**: Make precise edits by replacing text
-- **list_directory**: Explore project structure
-- **search_files**: Find files by pattern (e.g., *.go, test_*.py)
-- **execute_command**: Run shell commands (tests, builds, installations)
-- **grep_search**: Search for text patterns in files
+## Inference Process Overview
 
-## Prerequisites
+The `prolog` engine processes queries by interacting with the knowledge base through a series of steps involving parsing, unification, and inference.
 
-- Go 1.24 or later
-- Google API Key with Gemini access
+```
++---------------+      +----------------+      +------------------+
+| Input Query   |----->| Parser         |----->| Internal Query   |
+| (e.g., father(X,Y)?) | (parser.c/h)   |      | Representation   |
++---------------+      +----------------+      +------------------+
+                                |
+                                V
++---------------------+      +----------------+      +---------------------+
+| Knowledge Base      |<-----| Inference      |<-----| Unification Engine  |
+| (knowledge_base.c/h)|      | (inference.c/h)|      | (unification.c/h)   |
+| (Facts & Rules)     |      | (Resolution,   |      | (Matches terms,     |
++---------------------+      |  Backtracking) |      |  generates subs.)   |
+                                ^                |      +---------------------+
+                                |                V
++---------------------+      +----------------+
+| Substitution Engine |<-----| Goal/Subgoal   |
+| (substitution.c/h)  |      | Management     |
+| (Applies bindings)  |      +----------------+
++---------------------+
+```
 
-## Installation
+## Building and Running
 
-1. Clone this repository:
+The directory includes a `Makefile` to simplify the compilation process. The primary executable generated is `prolog`.
+
+To build the project:
 ```bash
-cd code_agent
+make -C demo
 ```
 
-2. Set up your Google API key:
+To run the `prolog` executable (assuming you are in the root `code_agent` directory):
 ```bash
-export GOOGLE_API_KEY="your-api-key-here"
+./demo/prolog < input.txt
 ```
 
-3. Install dependencies:
-```bash
-go mod tidy
-```
+Various `input_*.txt` files are provided for testing different scenarios, such as `input.txt`, `input_unification.txt`, `test_multi_arg.txt`, and `test_occurs_check.txt`.
 
-4. Build the application:
-```bash
-go build -o code-agent
-```
+## Purpose within `code_agent`
 
-## Usage
+This `demo` project is intentionally complex enough to pose realistic challenges for an automated code agent. It allows for:
 
-Run the coding agent:
+*   **File System Navigation**: Exploring a multi-file C project.
+*   **Code Understanding**: Analyzing C code, data structures, and algorithms.
+*   **Debugging**: Identifying and fixing logical errors or performance issues.
+*   **Feature Implementation**: Adding new features or modifying existing logic within the inference engine.
+*   **Testing**: Running the `prolog` executable with various inputs to verify changes.
 
-```bash
-./code-agent
-```
-
-Or run directly with go:
-
-```bash
-go run main.go
-```
-
-### Example Interactions
-
-**Example 1: Create a new Go function**
-```
-You: Create a function to calculate fibonacci numbers in a new file called fibonacci.go
-
-Agent: [Reads project structure, creates file with implementation, runs tests]
-```
-
-**Example 2: Fix a bug**
-```
-You: Find and fix the off-by-one error in sort.go
-
-Agent: [Reads the file, identifies the issue, makes the fix, runs tests to verify]
-```
-
-**Example 3: Add tests**
-```
-You: Add unit tests for the user authentication module
-
-Agent: [Examines existing code, creates comprehensive tests, runs them]
-```
-
-## Architecture
-
-```
-code_agent/
-├── main.go                 # CLI entry point with interactive loop
-├── agent/
-│   └── coding_agent.go     # Agent configuration and system prompt
-├── tools/
-│   ├── file_tools.go       # File operation tools
-│   └── terminal_tools.go   # Terminal execution tools
-└── go.mod                  # Go module definition
-```
-
-## How It Works
-
-1. **User Input**: You describe what you want to accomplish
-2. **Planning**: The agent analyzes the request and plans its approach
-3. **Tool Execution**: The agent uses tools to read files, write code, run commands
-4. **Iteration**: If something doesn't work, the agent analyzes errors and tries again
-5. **Verification**: The agent tests its changes to ensure they work correctly
-
-## System Prompt
-
-The agent is guided by a comprehensive system prompt that instructs it to:
-
-- Understand the codebase before making changes
-- Make targeted, precise edits
-- Test changes frequently
-- Handle errors gracefully
-- Work autonomously until tasks are complete
-
-## Built With
-
-- [Google ADK Go](https://github.com/google/adk-go) - Agent Development Kit
-- [Gemini](https://ai.google.dev/) - Google's generative AI model
-- Go standard library for file and terminal operations
-
-## Comparison to Other Tools
-
-| Feature | Code Agent | Claude Code | Gemini Code CLI |
-|---------|-----------|-------------|-----------------|
-| File Operations | ✅ | ✅ | ✅ |
-| Command Execution | ✅ | ✅ | ✅ |
-| Iterative Solving | ✅ | ✅ | ✅ |
-| Open Source | ✅ | ❌ | ❌ |
-| Customizable | ✅ | ❌ | ❌ |
-
-## Contributing
-
-Contributions are welcome! This is a demonstration project showing how to build sophisticated coding agents with Google ADK Go.
-
-## License
-
-Apache 2.0 License
-
-## Acknowledgments
-
-- Built with Google ADK Go
-- Inspired by Claude Code and Gemini Code CLI
-- Powered by Gemini 2.0 Flash
+By working with this demo, the `code_agent` can showcase its ability to interact with and modify a non-trivial codebase.
