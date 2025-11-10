@@ -19,6 +19,7 @@ import (
 
 	codingagent "code_agent/agent"
 	"code_agent/display"
+	"code_agent/tracking"
 )
 
 const version = "1.0.0"
@@ -106,6 +107,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create session: %v", err)
 	}
+
+	// Initialize token tracking
+	sessionTokens := tracking.NewSessionTokens()
 
 	// Show welcome message
 	welcome := bannerRenderer.RenderWelcome()
@@ -195,6 +199,13 @@ func main() {
 			continue
 		}
 
+		// Token usage reporting command
+		if input == ".tokens" || input == "tokens" || input == "token usage" {
+			summary := sessionTokens.GetSummary()
+			fmt.Print(tracking.FormatSessionSummary(summary))
+			continue
+		}
+
 		// Create user message
 		userMsg := &genai.Content{
 			Role: genai.RoleUser,
@@ -210,6 +221,7 @@ func main() {
 		hasError := false
 		var activeToolName string
 		toolRunning := false
+		requestID := fmt.Sprintf("req_%d", sessionTokens.GetSummary().RequestCount+1)
 
 		for event, err := range agentRunner.Run(ctx, userID, sessionID, userMsg, agent.RunConfig{
 			StreamingMode: agent.StreamingModeNone,
@@ -223,7 +235,7 @@ func main() {
 			}
 
 			if event != nil {
-				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning)
+				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning, sessionTokens, requestID)
 			}
 		}
 
@@ -244,10 +256,31 @@ func main() {
 }
 
 func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.StreamingDisplay,
-	event *session.Event, spinner *display.Spinner, activeToolName *string, toolRunning *bool) {
+	event *session.Event, spinner *display.Spinner, activeToolName *string, toolRunning *bool,
+	sessionTokens *tracking.SessionTokens, requestID string) {
 
 	if event.Content == nil || len(event.Content.Parts) == 0 {
 		return
+	}
+
+	// Record token metrics if available and update spinner with metrics
+	if event.UsageMetadata != nil {
+		sessionTokens.RecordMetrics(event.UsageMetadata, requestID)
+		// Create token metrics for spinner display
+		metric := &tracking.TokenMetrics{
+			PromptTokens:   event.UsageMetadata.PromptTokenCount,
+			CachedTokens:   event.UsageMetadata.CachedContentTokenCount,
+			ResponseTokens: event.UsageMetadata.CandidatesTokenCount,
+			ThoughtTokens:  event.UsageMetadata.ThoughtsTokenCount,
+			ToolUseTokens:  event.UsageMetadata.ToolUsePromptTokenCount,
+			TotalTokens:    event.UsageMetadata.TotalTokenCount,
+		}
+		// Update spinner with metrics if it's actively running
+		if *toolRunning {
+			spinner.UpdateWithMetrics("Processing", metric)
+		} else {
+			spinner.UpdateWithMetrics("Agent is thinking", metric)
+		}
 	}
 
 	// Create tool renderer with enhanced features

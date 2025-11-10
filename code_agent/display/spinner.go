@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"code_agent/tracking"
 )
 
 // SpinnerStyle defines the animation style for a spinner
@@ -40,6 +42,7 @@ type Spinner struct {
 	mu       sync.Mutex
 	style    SpinnerStyle
 	message  string
+	metrics  *tracking.TokenMetrics
 	active   bool
 	stopped  bool
 	stopCh   chan struct{}
@@ -121,6 +124,15 @@ func (s *Spinner) Update(message string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.message = message
+	s.metrics = nil
+}
+
+// UpdateWithMetrics updates the spinner message and token metrics
+func (s *Spinner) UpdateWithMetrics(message string, metrics *tracking.TokenMetrics) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.message = message
+	s.metrics = metrics
 }
 
 // animate runs the spinner animation loop
@@ -135,26 +147,56 @@ func (s *Spinner) animate() {
 	for {
 		select {
 		case <-s.stopCh:
-			// Clear the line
-			fmt.Print("\r\033[K")
+			// Print final state with metrics if available before clearing
+			s.mu.Lock()
+			message := s.message
+			metrics := s.metrics
+			s.mu.Unlock()
+
+			if metrics != nil && metrics.TotalTokens > 0 {
+				metricsStr := tracking.FormatTokenMetrics(*metrics)
+				if s.renderer != nil {
+					fmt.Print("\r" + s.renderer.Cyan(s.style.Frames[frame%len(s.style.Frames)]) + " " +
+						s.renderer.Dim(message) + "  " + s.renderer.Dim(metricsStr) + "\n")
+				} else {
+					fmt.Printf("\r%s %s  %s\n", s.style.Frames[frame%len(s.style.Frames)], message, metricsStr)
+				}
+			} else {
+				// No metrics, just clear
+				fmt.Print("\r\033[K")
+			}
 			return
 
 		case <-ticker.C:
 			s.mu.Lock()
 			message := s.message
+			metrics := s.metrics
 			s.mu.Unlock()
 
 			// Render current frame
 			spinChar := s.style.Frames[frame%len(s.style.Frames)]
 
-			// Use renderer colors if available
+			// Build output with metrics if available
 			var output string
-			if s.renderer != nil {
-				output = fmt.Sprintf("\r%s %s",
-					s.renderer.Cyan(spinChar),
-					s.renderer.Dim(message))
+			if metrics != nil && metrics.TotalTokens > 0 {
+				metricsStr := tracking.FormatTokenMetrics(*metrics)
+				if s.renderer != nil {
+					output = fmt.Sprintf("\r%s %s  %s",
+						s.renderer.Cyan(spinChar),
+						s.renderer.Dim(message),
+						s.renderer.Dim(metricsStr))
+				} else {
+					output = fmt.Sprintf("\r%s %s  %s", spinChar, message, metricsStr)
+				}
 			} else {
-				output = fmt.Sprintf("\r%s %s", spinChar, message)
+				// No metrics, just show message
+				if s.renderer != nil {
+					output = fmt.Sprintf("\r%s %s",
+						s.renderer.Cyan(spinChar),
+						s.renderer.Dim(message))
+				} else {
+					output = fmt.Sprintf("\r%s %s", spinChar, message)
+				}
 			}
 
 			fmt.Print(output)
