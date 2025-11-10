@@ -239,8 +239,9 @@ func (r *Renderer) RenderToolCall(toolName string, args map[string]any) string {
 // truncatePath smartly truncates long file paths for display.
 // Shows filename + parent directory for long paths, preserving important context.
 // Examples:
-//   /very/long/path/to/project/src/main.go -> .../src/main.go
-//   ./main.go -> ./main.go
+//
+//	/very/long/path/to/project/src/main.go -> .../src/main.go
+//	./main.go -> ./main.go
 func (r *Renderer) truncatePath(path string, maxLength int) string {
 	if len(path) <= maxLength {
 		return path
@@ -368,12 +369,12 @@ func (r *Renderer) RenderAgentThinking() string {
 func (r *Renderer) RenderAgentResponse(text string) string {
 	// Agent responses are typically markdown
 	rendered := r.RenderMarkdown(text)
-	
+
 	// Add subtle left border and indentation for better readability
 	if r.outputFormat != OutputFormatPlain && IsTTY() {
 		borderStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "254", Dark: "236"})
-		
+
 		lines := strings.Split(rendered, "\n")
 		var styledLines []string
 		for i, line := range lines {
@@ -392,7 +393,7 @@ func (r *Renderer) RenderAgentResponse(text string) string {
 		}
 		rendered = strings.Join(styledLines, "\n")
 	}
-	
+
 	return rendered + "\n"
 }
 
