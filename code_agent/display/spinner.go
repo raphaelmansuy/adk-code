@@ -74,11 +74,12 @@ func (s *Spinner) Start() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Don't start if already active or stopped
-	if s.active || s.stopped {
+	// Don't start if already active
+	if s.active {
 		return
 	}
 
+	// Reset stopped flag to allow restart
 	s.active = true
 	s.stopped = false
 

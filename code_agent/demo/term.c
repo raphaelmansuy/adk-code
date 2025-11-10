@@ -33,6 +33,26 @@ Term *copy_term(Term *original) {
     return new_term;
 }
 
+// Prints a term recursively
+void print_term(Term *term) {
+    if (!term) {
+        printf("NULL");
+        return;
+    }
+
+    printf("%s", term->name);
+    if (term->type == COMPOUND && term->arity > 0) {
+        printf("(");
+        for (int i = 0; i < term->arity; ++i) {
+            print_term(term->args[i]);
+            if (i < term->arity - 1) {
+                printf(", ");
+            }
+        }
+        printf(")");
+    }
+}
+
 
 void free_term(Term *term) {
     if (!term) return;
@@ -44,4 +64,30 @@ void free_term(Term *term) {
         free(term->args);
     }
     free(term);
+}
+
+// Deep copy a term and rename its variables with unique names
+Term *rename_variables(Term *original, int *var_counter) {
+    if (!original) return NULL;
+
+    Term *new_term = (Term *)malloc(sizeof(Term));
+    new_term->type = original->type;
+    new_term->arity = original->arity;
+    new_term->args = NULL;
+
+    if (original->type == VARIABLE) {
+        char var_name[256];
+        snprintf(var_name, sizeof(var_name), "_G%d", (*var_counter)++);
+        new_term->name = strdup(var_name);
+    } else {
+        new_term->name = strdup(original->name);
+    }
+
+    if (original->type == COMPOUND && original->arity > 0) {
+        new_term->args = (Term **)calloc(original->arity, sizeof(Term *));
+        for (int i = 0; i < original->arity; ++i) {
+            new_term->args[i] = rename_variables(original->args[i], var_counter);
+        }
+    }
+    return new_term;
 }

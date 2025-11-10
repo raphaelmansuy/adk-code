@@ -23,5 +23,7 @@ Term *create_term(TermType type, const char *name);
 Term *create_compound_term(const char *name, int arity);
 Term *copy_term(Term *original);
 void free_term(Term *term);
+Term *rename_variables(Term *term, int *var_counter);
+void print_term(Term *term);
 
 #endif // TERM_H

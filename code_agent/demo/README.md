@@ -1,6 +1,6 @@
 # ☕️ Prolog Interpreter Demo
 
-Welcome to the Prolog Interpreter Demo! This project showcases a basic Prolog-like inference engine implemented in C. It's designed to be modular, extensible, and easy to understand.
+Welcome to the Prolog Interpreter Demo! This project showcases a basic Prolog-like inference engine implemented in C. Prolog is a declarative logic programming language, where programs are expressed in terms of facts and rules, and computation proceeds by asking queries against this knowledge base. This C implementation is designed to be modular, extensible, and easy to understand, serving as a robust example for the `code_agent` to interact with.
 
 ## ✨ Features
 
@@ -14,7 +14,7 @@ Welcome to the Prolog Interpreter Demo! This project showcases a basic Prolog-li
 - **Interactive Mode**: Interact with the interpreter directly.
 - **File Input**: Load facts and queries from a file.
 - **Modular Design**: Code is split into logical units for clarity and maintainability.
-- **Outstanding Makefile UX**: Easy build, run, test, and clean operations with colorized output.
+- **Enhanced Makefile**: Provides convenient build, run, test, and clean operations with colorized output for improved user experience.
 
 ## 🏗️ Project Structure (ASCII Diagram)
 
@@ -23,70 +23,82 @@ The project is organized into modular components, making it easier to navigate a
 ```text
 .
 ├── Makefile
-├── main.c
-├── term.h
-├── term.c
-├── clause.h
-├── clause.c
-├── knowledge_base.h
-├── knowledge_base.c
-├── substitution.h
-├── substitution.c
-├── parser.h
-├── parser.c
-├── unification.h
-├── unification.c
-├── inference.h
-├── inference.c
-├── input.txt
-└── input_unification.txt
+├── main.c              # Main application logic
+├── parser.h            # Header for parsing functions
+├── parser.c            # Source for parsing input
+├── term.h              # Header for term data structures
+├── term.c              # Source for term manipulation
+├── clause.h            # Header for clause data structures
+├── clause.c            # Source for clause manipulation
+├── knowledge_base.h    # Header for knowledge base management
+├── knowledge_base.c    # Source for knowledge base operations
+├── substitution.h      # Header for substitution data structures
+├── substitution.c      # Source for substitution operations
+├── unification.h       # Header for unification algorithm
+├── unification.c       # Source for unification logic
+├── inference.h         # Header for inference engine
+├── inference.c         # Source for inference logic
+├── input.txt           # Example input file for facts and queries
+└── input_unification.txt # Example input file for unification tests
 ```
 
-## 🚀 How It Works (Mermaid Flowchart)
+## 🚀 How It Works (ASCII Flowchart)
 
 The following diagram illustrates the high-level flow of how the Prolog interpreter processes input and resolves queries.
 
-```mermaid
-graph TD
-    A[Start] --> B(Input: Fact or Query);
-
-    B -- Fact --> C{Parse Fact};
-    C --> D[Add Fact to Knowledge Base];
-    D --> E(Ready for next input);
-
-    B -- Query --> F{Parse Query};
-    F --> G(Resolve Query);
-
-    G -- Iterate KB Clauses --> H{Copy Clause & Create Substitution};
-    H --> I{Unify Query Term with Clause Head};
-
-    I -- Unification Success --> J{Occurs Check};
-    J -- Occurs Check Pass --> K[Apply Substitution & Report Solution];
-    J -- Occurs Check Fail --> L[Fail Unification];
-
-    I -- Unification Fail --> L;
-
-    K --> E;
-    L --> E;
-
-    E --> M{More Input?};
-    M -- Yes --> B;
-    M -- No --> N[End];
-
-    style A fill:#D8BFD8,stroke:#9370DB,stroke-width:2px;
-    style B fill:#E6E6FA,stroke:#8A2BE2,stroke-width:2px;
-    style C fill:#F0F8FF,stroke:#6A5ACD,stroke-width:2px;
-    style D fill:#F0FFF0,stroke:#2E8B57,stroke-width:2px;
-    style E fill:#FFFACD,stroke:#DAA520,stroke-width:2px;
-    style F fill:#F0F8FF,stroke:#6A5ACD,stroke-width:2px;
-    style G fill:#E0FFFF,stroke:#4682B4,stroke-width:2px;
-    style H fill:#F5FFFA,stroke:#3CB371,stroke-width:2px;
-    style I fill:#FFFAF0,stroke:#D2B48C,stroke-width:2px;
-    style J fill:#F8F8FF,stroke:#B0C4DE,stroke-width:2px;
-    style K fill:#F0FFF0,stroke:#2E8B57,stroke-width:2px;
-    style L fill:#FFC0CB,stroke:#DC143C,stroke-width:2px;
-    style M fill:#E6E6FA,stroke:#8A2BE2,stroke-width:2px;
-    style N fill:#D8BFD8,stroke:#9370DB,stroke-width:2px;
+```text
++----------+     +--------+     +---------+
+|  Start   |--->|  Input |--->|  Parse  |
+|          |     | (Fact/ |     | (parser)|
+|          |     | Query) |     |         |
++----------+     +--------+     +----+----+
+                                     |
+             +-----------------------+----------------------+
+             |                                              |
+             V (Fact)                                       V (Query)
+      +------------+                                 +------------+
+      | Add Fact   |                                 | Resolve    |
+      | to KB      |                                 | Query      |
+      | (kb_base)  |                                 | (inference)|
+      +------------+                                 +-----+------+
+             |                                              |
+             V                                              V
++-----------------------+                         +---------------------+
+| Ready for Next Input  |                         | Iterate KB Clauses  |
++-----------------------+                         | (inference)         |
+             ^                                   +----------+----------+
+             |                                              |
+             +----------------------------------------------+
+             |                                              V
+             |                                   +---------------------+
+             |                                   | Copy Clause &       |
+             |                                   | Create Substitution |
+             |                                   +----------+----------+
+             |                                              |
+             |                                              V
+             |                                   +---------------------+
+             |                                   | Unify Query Term    |
+             |                                   | with Clause Head    |
+             |                                   | (unification)       |
+             |                                   +----------+----------+
+             |                                              |
+             |                    +-------------------------+-------------------------+
+             |                    |                                                   |
+             |                    V (Success)                                       V (Fail)
+             |             +----------+----------+                         +--------------------+
+             |             | Occurs Check        |                         | Backtrack /        |
+             |             +----------+----------+                         | Next Clause        |
+             |                    |                                         +--------------------+
+             |                    V (Pass)                                       ^
+             |             +----------+----------+                                   |
+             |             | Apply Substitution  |-----------------------------------+
+             |             | & Report Solution   |
+             |             | (substitution)      |
+             |             +---------------------+
+             |                    |
+             +--------------------+------------------------------------------+
+                                  V
+                                (Loop or End)
 ```
 
 ## 🛠️ Building the Project
@@ -147,16 +159,6 @@ make test
 ```
 
 This will demonstrate basic fact assertion and query resolution, including unification with variables and occurs check.
-
-## 🎨 Color Palette (Conceptual)
-
-While direct control over Markdown rendering colors is limited, the intended aesthetic for code blocks and diagrams is a professional and pleasant pastel theme:
-
-- **Backgrounds**: Soft, light pastels (e.g., `Lavender`, `AliceBlue`, `MintCream`).
-- **Text/Lines**: Contrasting darker, muted tones (e.g., `SlateBlue`, `DarkGreen`, `CadetBlue`).
-- **Highlights/Accents**: Slightly brighter pastels for emphasis (e.g., `LightCoral`, `LightSkyBlue`).
-
-The Mermaid diagram above uses inline styling to approximate this conceptual color palette.
 
 ## 🔮 Future Enhancements
 

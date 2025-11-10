@@ -19,38 +19,44 @@ bool occurs_check(const char *var_name, Term *term) {
     return false;
 }
 
+// Helper to dereference a term: returns the term a variable is bound to, or the term itself
+Term *dereference(Term *term, Substitution *sub) {
+    if (!term || term->type != VARIABLE) {
+        return term;
+    }
+    for (int i = 0; i < sub->count; ++i) {
+        if (strcmp(term->name, sub->pairs[i].var_name) == 0) {
+            return dereference(sub->pairs[i].term, sub);
+        }
+    }
+    return term;
+}
+
 bool unify(Term *t1, Term *t2, Substitution *sub) {
+    // Dereference terms to their most concrete form
+    t1 = dereference(t1, sub);
+    t2 = dereference(t2, sub);
+
     // Cases for unification
     if (!t1 || !t2) return false; // Should not happen with well-formed terms
 
     if (t1->type == VARIABLE) {
-        // Apply existing substitutions to t1
-        for (int i = 0; i < sub->count; ++i) {
-            if (strcmp(t1->name, sub->pairs[i].var_name) == 0) {
-                return unify(sub->pairs[i].term, t2, sub);
-            }
+        if (strcmp(t1->name, t2->name) == 0 && t2->type == VARIABLE) {
+            return true; // Same variable
         }
-        // Occurs check: if t1 occurs in t2, cannot unify
         if (occurs_check(t1->name, t2)) {
-            return false;
+            return false; // Occurs check fails
         }
-        // t1 is a fresh variable, add t1 = t2 to substitution
         add_sub_pair(sub, t1->name, t2);
         return true;
     }
 
     if (t2->type == VARIABLE) {
-        // Apply existing substitutions to t2
-        for (int i = 0; i < sub->count; ++i) {
-            if (strcmp(t2->name, sub->pairs[i].var_name) == 0) {
-                return unify(t1, sub->pairs[i].term, sub);
-            }
-        }
-        // Occurs check: if t2 occurs in t1, cannot unify
+        // No need for occurs check on t2->name in t1 if t1 is an ATOM or COMPOUND
+        // If t1 is a VARIABLE, it's handled by the previous if block
         if (occurs_check(t2->name, t1)) {
-            return false;
+            return false; // Occurs check fails
         }
-        // t2 is a fresh variable, add t2 = t1 to substitution
         add_sub_pair(sub, t2->name, t1);
         return true;
     }
