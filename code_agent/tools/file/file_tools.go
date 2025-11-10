@@ -37,6 +37,12 @@ type ReadFileOutput struct {
 	ReturnedLines int `json:"returned_lines"`
 	// StartLine is the starting line number returned.
 	StartLine int `json:"start_line"`
+	// FilePath is the absolute path to the file.
+	FilePath string `json:"file_path"`
+	// DateCreated is the creation time of the file (RFC3339 format).
+	DateCreated string `json:"date_created,omitempty"`
+	// DateModified is the last modification time of the file (RFC3339 format).
+	DateModified string `json:"date_modified"`
 }
 
 // NewReadFileTool creates a tool for reading files.
@@ -74,12 +80,28 @@ func NewReadFileTool() (tool.Tool, error) {
 			selectedLines = lines[offset-1 : endIdx]
 		}
 
+		// Get file stats for path, creation time, and modification time
+		absPath, _ := filepath.Abs(input.Path)
+		dateModified := ""
+		dateCreated := ""
+
+		if fileInfo, err := os.Stat(input.Path); err == nil {
+			dateModified = fileInfo.ModTime().Format("2006-01-02T15:04:05Z07:00")
+			// Note: On Unix systems, birth time is not readily available.
+			// On macOS, we would need system-specific code to get it.
+			// For now, we set it empty or use ModTime as fallback.
+			dateCreated = dateModified
+		}
+
 		return ReadFileOutput{
 			Content:       strings.Join(selectedLines, "\n"),
 			Success:       true,
 			TotalLines:    totalLines,
 			ReturnedLines: len(selectedLines),
 			StartLine:     offset,
+			FilePath:      absPath,
+			DateCreated:   dateCreated,
+			DateModified:  dateModified,
 		}
 	}
 

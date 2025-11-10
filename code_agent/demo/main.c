@@ -11,6 +11,10 @@
 #include "unification.h"
 #include "inference.h"
 
+// Function prototypes for better modularity
+void process_query_input(KnowledgeBase *kb, char *input_line);
+void process_clause_input(KnowledgeBase *kb, char *input_line, bool interactive_mode);
+
 int main(int argc, char *argv[]) {
     KnowledgeBase *kb = create_knowledge_base();
     char line[256]; // Buffer for input line
@@ -58,35 +62,10 @@ int main(int argc, char *argv[]) {
         }
 
         if (strncmp(input_ptr, "?-", 2) == 0) {
-            // This is a query
-            input_ptr += 2; // Skip "?-"
-            Term *query_term = parse_term(&input_ptr);
-             input_ptr = skip_whitespace(input_ptr);
-            if (query_term && *input_ptr == '.') {
-                int solution_count = 0;
-                resolve_query(kb, query_term, &solution_count);
-                // resolve_query now handles printing "No." if solution_count is 0
-                // No need for an explicit check here
-                free_term(query_term);
-            } else {
-                fprintf(stderr, "Error: Invalid query syntax.\n");
-                fflush(stderr);
-                 if (query_term) free_term(query_term);
-            }
+            process_query_input(kb, input_ptr + 2);
 
         } else {
-            // Assume it's a clause (fact or rule) to be added
-            Clause *clause = parse_clause(&input_ptr);
-            if (clause) {
-                add_clause(kb, clause);
-                if (interactive_mode) {
-                    printf("Clause added.\n");
-                    fflush(stdout); // Flush clause added message
-                }
-            } else {
-                fprintf(stderr, "Error: Invalid clause syntax: %s\n", line);
-                fflush(stderr);
-            }
+            process_clause_input(kb, input_ptr, interactive_mode);
         }
     }
 
@@ -96,4 +75,34 @@ int main(int argc, char *argv[]) {
 
     free_knowledge_base(kb);
     return 0;
+}
+
+void process_query_input(KnowledgeBase *kb, char *input_ptr) {
+    Term *query_term = parse_term(&input_ptr);
+    input_ptr = skip_whitespace(input_ptr);
+    if (query_term && *input_ptr == '.') {
+        int solution_count = 0;
+        resolve_query(kb, query_term, &solution_count);
+        free_term(query_term);
+    } else {
+        fprintf(stderr, "Error: Invalid query syntax.\n");
+        fflush(stderr);
+        if (query_term) free_term(query_term);
+    }
+}
+
+void process_clause_input(KnowledgeBase *kb, char *input_ptr, bool interactive_mode) {
+    Clause *clause = parse_clause(&input_ptr);
+    if (clause) {
+        // It's good practice to check the return of add_clause if it returns a status
+        // For now, assuming it always succeeds or handles errors internally
+        add_clause(kb, clause);
+        if (interactive_mode) {
+            printf("Clause added.\n");
+            fflush(stdout);
+        }
+    } else {
+        fprintf(stderr, "Error: Invalid clause syntax: %s\n", input_ptr);
+        fflush(stderr);
+    }
 }

@@ -23,7 +23,7 @@ char *parse_name(char *input, char **name_out) {
     }
     int len = input - start;
     if (len == 0) {
-        return start; // No name parsed, return original input pointer
+        return NULL; // No name parsed, return NULL to indicate failure
     }
     *name_out = (char *)malloc(len + 1);
     if (!*name_out) {
@@ -42,7 +42,14 @@ Term *parse_term(char **input) {
     char *name;
 
     char *next_char_after_name = parse_name(*input, &name);
-    if (!name) return NULL;
+    if (!next_char_after_name) { // parse_name returns NULL on parsing failure (e.g., empty name)
+        return NULL;
+    }
+    if (!name) { // parse_name sets name_out to NULL on memory allocation failure
+        // This case should ideally be covered by next_char_after_name check now if parse_name returns NULL
+        // for len == 0, but good to keep for malloc failure.
+        return NULL; 
+    }
 
     *input = next_char_after_name;
     *input = skip_whitespace(*input);
