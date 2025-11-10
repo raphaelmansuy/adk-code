@@ -71,16 +71,16 @@ int main(int argc, char *argv[]) {
             }
 
         } else {
-            // Assume it's a fact to be added
-            Clause *fact = parse_fact(&input_ptr);
-            if (fact) {
-                add_clause(kb, fact);
+            // Assume it's a clause (fact or rule) to be added
+            Clause *clause = parse_clause(&input_ptr);
+            if (clause) {
+                add_clause(kb, clause);
                 if (interactive_mode) {
-                    printf("Fact added.\n");
-                    fflush(stdout); // Flush fact added message
+                    printf("Clause added.\n");
+                    fflush(stdout); // Flush clause added message
                 }
             } else {
-                fprintf(stderr, "Error: Invalid fact syntax: %s\n", line);
+                fprintf(stderr, "Error: Invalid clause syntax: %s\n", line);
                 fflush(stderr);
             }
         }

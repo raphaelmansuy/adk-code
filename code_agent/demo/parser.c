@@ -16,12 +16,20 @@ char *skip_whitespace(char *str) {
 }
 
 char *parse_name(char *input, char **name_out) {
+    *name_out = NULL; // Initialize to NULL
     char *start = input;
     while (*input && ((input == start && isalpha(*input)) || isalnum(*input) || *input == '_')) {
         input++;
     }
     int len = input - start;
+    if (len == 0) {
+        return start; // No name parsed, return original input pointer
+    }
     *name_out = (char *)malloc(len + 1);
+    if (!*name_out) {
+        fprintf(stderr, "Memory allocation failed for name.\n");
+        return NULL; // Indicate critical error
+    }
     strncpy(*name_out, start, len);
     (*name_out)[len] = '\0';
     return input;
@@ -118,20 +126,73 @@ Term *parse_term(char **input) {
     }
 }
 
-Clause *parse_fact(char **input) {
+Clause *parse_clause(char **input) {
     *input = skip_whitespace(*input);
     if (!**input) return NULL;
 
     Term *head = parse_term(input);
     if (!head) return NULL;
 
+    Term **body_goals = NULL;
+    int num_body_goals = 0;
+    int capacity = 2; // Initial capacity for body goals
+
     *input = skip_whitespace(*input);
-    if (**input != '.') {
-        fprintf(stderr, "Error: Expected '.' at end of fact at %s\n", *input);
+
+    if (strncmp(*input, ":-", 2) == 0) {
+        *input += 2; // Consume ":-"
+        body_goals = (Term **)malloc(capacity * sizeof(Term *));
+        if (!body_goals) {
+            fprintf(stderr, "Memory allocation failed for clause body.\n");
+            free_term(head);
+            return NULL;
+        }
+
+        while (true) {
+            *input = skip_whitespace(*input);
+            Term *goal = parse_term(input);
+            if (!goal) {
+                fprintf(stderr, "Error: Expected term in clause body at %s\n", *input);
+                for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
+                free(body_goals);
+                free_term(head);
+                return NULL;
+            }
+
+            if (num_body_goals == capacity) {
+                capacity *= 2;
+                body_goals = (Term **)realloc(body_goals, capacity * sizeof(Term *));
+                if (!body_goals) {
+                    fprintf(stderr, "Memory re-allocation failed for clause body.\n");
+                    for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
+                    free(body_goals);
+                    free_term(head);
+                    return NULL;
+                }
+            }
+            body_goals[num_body_goals++] = goal;
+
+            *input = skip_whitespace(*input);
+            if (**input == '.') {
+                break; // End of clause
+            } else if (**input == ',') {
+                (*input)++; // Consume ',', more goals to follow
+            } else {
+                fprintf(stderr, "Error: Expected ',' or '.' after goal in clause body at %s\n", *input);
+                for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
+                free(body_goals);
+                free_term(head);
+                return NULL;
+            }
+        }
+    } else if (**input != '.') {
+        fprintf(stderr, "Error: Expected ':-' or '.' after head in clause at %s\n", *input);
         free_term(head);
         return NULL;
     }
+    
     (*input)++; // Consume '.'
 
-    return create_clause(head, NULL, 0); // No body for facts
+    // If no body was parsed, it's a fact, so body_goals remains NULL and num_body_goals is 0
+    return create_clause(head, body_goals, num_body_goals);
 }

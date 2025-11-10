@@ -177,7 +177,7 @@ func (br *BannerRenderer) RenderCompletionBanner(success bool, duration string, 
 // RenderWelcome renders a welcome message with usage hints.
 func (br *BannerRenderer) RenderWelcome() string {
 	if br.renderer.outputFormat == OutputFormatPlain || !IsTTY() {
-		return "\nReady! Type your request or 'exit' to quit.\n\n"
+		return "\nReady! Type your request or 'help' for commands, 'exit' to quit.\n\n"
 	}
 
 	dimStyle := lipgloss.NewStyle().
@@ -187,9 +187,13 @@ func (br *BannerRenderer) RenderWelcome() string {
 		Foreground(lipgloss.Color("39")). // Blue
 		Bold(true)
 
+	cmdStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("86")). // Cyan/Green
+		Bold(true)
+
 	var lines []string
 	lines = append(lines, dimStyle.Render("Ready to assist with your coding tasks."))
-	lines = append(lines, dimStyle.Render("Type 'exit' or press Ctrl+C to quit."))
+	lines = append(lines, dimStyle.Render("Type "+cmdStyle.Render("'help'")+dimStyle.Render(" for commands or ")+cmdStyle.Render("'exit'")+dimStyle.Render(" to quit.")))
 	lines = append(lines, "")
 	lines = append(lines, promptStyle.Render("What would you like me to help you with?"))
 	lines = append(lines, "")

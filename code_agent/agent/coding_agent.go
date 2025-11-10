@@ -20,7 +20,6 @@ import (
 // Use the enhanced system prompt from enhanced_prompt.go
 var SystemPrompt = EnhancedSystemPrompt
 
-
 // Config holds the configuration for creating the coding agent.
 type Config struct {
 	// Model is the LLM to use for the agent.
@@ -211,7 +210,7 @@ In multi-workspace mode, you can use @workspace:path syntax to explicitly target
 			executeCommandTool,
 			grepSearchTool,
 			applyPatchTool,
-			applyV4APatchTool,  // NEW: V4A semantic patch format
+			applyV4APatchTool, // NEW: V4A semantic patch format
 			previewReplaceTool,
 			editLinesTool,
 			searchReplaceTool,  // NEW: Cline-inspired SEARCH/REPLACE blocks
