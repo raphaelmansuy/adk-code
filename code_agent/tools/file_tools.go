@@ -15,6 +15,10 @@ import (
 type ReadFileInput struct {
 	// Path is the absolute or relative path to the file to read.
 	Path string `json:"path" jsonschema:"Path to the file to read"`
+	// Offset is the starting line number (1-indexed, optional).
+	Offset *int `json:"offset,omitempty" jsonschema:"Start line number (1-indexed, default: 1)"`
+	// Limit is the maximum number of lines to read (optional, 0 = all).
+	Limit *int `json:"limit,omitempty" jsonschema:"Number of lines to read (default: all)"`
 }
 
 // ReadFileOutput defines the output of reading a file.
@@ -25,6 +29,12 @@ type ReadFileOutput struct {
 	Success bool `json:"success"`
 	// Error contains error message if the operation failed.
 	Error string `json:"error,omitempty"`
+	// TotalLines is the total number of lines in the file.
+	TotalLines int `json:"total_lines"`
+	// ReturnedLines is the number of lines returned.
+	ReturnedLines int `json:"returned_lines"`
+	// StartLine is the starting line number returned.
+	StartLine int `json:"start_line"`
 }
 
 // NewReadFileTool creates a tool for reading files.
@@ -37,15 +47,43 @@ func NewReadFileTool() (tool.Tool, error) {
 				Error:   fmt.Sprintf("Failed to read file: %v", err),
 			}
 		}
+
+		lines := strings.Split(string(content), "\n")
+		totalLines := len(lines)
+
+		// Handle offsets and limits
+		offset := 1
+		if input.Offset != nil && *input.Offset > 1 {
+			offset = *input.Offset
+		}
+
+		limit := totalLines
+		if input.Limit != nil && *input.Limit > 0 {
+			limit = *input.Limit
+		}
+
+		endIdx := offset + limit - 1
+		if endIdx > totalLines {
+			endIdx = totalLines
+		}
+
+		var selectedLines []string
+		if offset <= totalLines {
+			selectedLines = lines[offset-1 : endIdx]
+		}
+
 		return ReadFileOutput{
-			Content: string(content),
-			Success: true,
+			Content:       strings.Join(selectedLines, "\n"),
+			Success:       true,
+			TotalLines:    totalLines,
+			ReturnedLines: len(selectedLines),
+			StartLine:     offset,
 		}
 	}
 
 	return functiontool.New(functiontool.Config{
 		Name:        "read_file",
-		Description: "Reads the content of a file from the filesystem. Use this to examine code, configuration files, or any text files.",
+		Description: "Reads the content of a file from the filesystem with optional line range support. Use this to examine code, configuration files, or any text files.",
 	}, handler)
 }
 
@@ -57,6 +95,10 @@ type WriteFileInput struct {
 	Content string `json:"content" jsonschema:"Content to write to the file"`
 	// CreateDirs indicates whether to create parent directories if they don't exist.
 	CreateDirs *bool `json:"create_dirs,omitempty" jsonschema:"Create parent directories if they don't exist (default: true)"`
+	// Atomic indicates whether to use atomic write (default: true)
+	Atomic *bool `json:"atomic,omitempty" jsonschema:"Use atomic write for safety (default: true)"`
+	// AllowSizeReduce allows writing much smaller content than the current file size (default: false)
+	AllowSizeReduce *bool `json:"allow_size_reduce,omitempty" jsonschema:"Allow writing content that is <10% of current file size (default: false)"`
 }
 
 // WriteFileOutput defines the output of writing a file.
@@ -72,6 +114,32 @@ type WriteFileOutput struct {
 // NewWriteFileTool creates a tool for writing files.
 func NewWriteFileTool() (tool.Tool, error) {
 	handler := func(ctx tool.Context, input WriteFileInput) WriteFileOutput {
+		// SAFEGUARD: Check for suspicious size reduction
+		if info, err := os.Stat(input.Path); err == nil {
+			currentSize := info.Size()
+			newSize := int64(len(input.Content))
+			
+			// Detect dangerous size reduction (>90% reduction, file >1KB)
+			if currentSize > 1000 && newSize < currentSize/10 {
+				allowSizeReduce := false
+				if input.AllowSizeReduce != nil {
+					allowSizeReduce = *input.AllowSizeReduce
+				}
+				
+				if !allowSizeReduce {
+					return WriteFileOutput{
+						Success: false,
+						Error: fmt.Sprintf(
+							"SAFETY CHECK FAILED: Refusing to reduce file size from %d to %d bytes (%.1f%% reduction).\n"+
+								"This might be accidental data loss. If this is intentional, set allow_size_reduce=true.\n"+
+								"TIP: Use read_file first to verify you have the complete content, or use edit_lines for targeted changes.",
+							currentSize, newSize, float64(currentSize-newSize)/float64(currentSize)*100,
+						),
+					}
+				}
+			}
+		}
+		
 		// Default to creating directories
 		createDirs := true
 		if input.CreateDirs != nil {
@@ -87,7 +155,19 @@ func NewWriteFileTool() (tool.Tool, error) {
 			}
 		}
 
-		err := os.WriteFile(input.Path, []byte(input.Content), 0644)
+		// Default to using atomic write
+		useAtomic := true
+		if input.Atomic != nil {
+			useAtomic = *input.Atomic
+		}
+
+		var err error
+		if useAtomic {
+			err = AtomicWrite(input.Path, []byte(input.Content), 0644)
+		} else {
+			err = os.WriteFile(input.Path, []byte(input.Content), 0644)
+		}
+
 		if err != nil {
 			return WriteFileOutput{
 				Success: false,
@@ -103,7 +183,7 @@ func NewWriteFileTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "write_file",
-		Description: "Writes content to a file. Creates the file if it doesn't exist, or overwrites it if it does. Automatically creates parent directories.",
+		Description: "Writes content to a file with atomic write support and size validation for safety. Creates the file if it doesn't exist, or overwrites it if it does. Automatically creates parent directories. Prevents accidental data loss by rejecting writes that reduce file size by >90% (override with allow_size_reduce=true).",
 	}, handler)
 }
 
@@ -115,6 +195,8 @@ type ReplaceInFileInput struct {
 	OldText string `json:"old_text" jsonschema:"Text to find and replace (must match exactly)"`
 	// NewText is the text to replace with.
 	NewText string `json:"new_text" jsonschema:"Text to replace with"`
+	// MaxReplacements is the maximum number of replacements to make (optional, 0 = unlimited)
+	MaxReplacements *int `json:"max_replacements,omitempty" jsonschema:"Maximum number of replacements (default: unlimited)"`
 }
 
 // ReplaceInFileOutput defines the output of replacing text in a file.
@@ -132,6 +214,18 @@ type ReplaceInFileOutput struct {
 // NewReplaceInFileTool creates a tool for replacing text in files.
 func NewReplaceInFileTool() (tool.Tool, error) {
 	handler := func(ctx tool.Context, input ReplaceInFileInput) ReplaceInFileOutput {
+		// SAFEGUARD: Reject dangerous empty replacements
+		if input.NewText == "" {
+			return ReplaceInFileOutput{
+				Success: false,
+				Error: "Refusing to replace with empty text (would delete lines). " +
+					"Use edit_lines tool with mode='delete' for intentional deletions, or ensure new_text is not empty.",
+			}
+		}
+
+		// SAFEGUARD: Normalize whitespace in old_text for better matching
+		normalizedOldText := normalizeText(input.OldText)
+
 		content, err := os.ReadFile(input.Path)
 		if err != nil {
 			return ReplaceInFileOutput{
@@ -141,15 +235,38 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 		}
 
 		originalContent := string(content)
-		if !strings.Contains(originalContent, input.OldText) {
+		if !strings.Contains(originalContent, normalizedOldText) && !strings.Contains(originalContent, input.OldText) {
 			return ReplaceInFileOutput{
 				Success: false,
-				Error:   fmt.Sprintf("Text to replace not found in file. Make sure the old_text matches exactly."),
+				Error: "Text to replace not found in file. Make sure the old_text matches exactly. " +
+					"Note: whitespace (spaces, tabs, newlines) must match exactly.",
 			}
 		}
 
-		newContent := strings.ReplaceAll(originalContent, input.OldText, input.NewText)
-		replacementCount := strings.Count(originalContent, input.OldText)
+		newContent := strings.ReplaceAll(originalContent, normalizedOldText, input.NewText)
+		if newContent == originalContent {
+			// Try with original text if normalized didn't work
+			newContent = strings.ReplaceAll(originalContent, input.OldText, input.NewText)
+		}
+		replacementCount := strings.Count(originalContent, normalizedOldText)
+		if replacementCount == 0 {
+			replacementCount = strings.Count(originalContent, input.OldText)
+		}
+
+		// SAFEGUARD: Validate replacement count against max_replacements
+		if input.MaxReplacements != nil && *input.MaxReplacements > 0 {
+			if replacementCount > *input.MaxReplacements {
+				return ReplaceInFileOutput{
+					Success: false,
+					Error: fmt.Sprintf(
+						"Too many replacements would occur (%d found, max %d allowed). "+
+							"Refusing to apply. Use preview_replace_in_file first to inspect changes.",
+						replacementCount,
+						*input.MaxReplacements,
+					),
+				}
+			}
+		}
 
 		err = os.WriteFile(input.Path, []byte(newContent), 0644)
 		if err != nil {
@@ -168,8 +285,17 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "replace_in_file",
-		Description: "Finds and replaces text in a file. The old_text must match exactly (including whitespace). Useful for making targeted edits to existing files.",
+		Description: "Finds and replaces text in a file with safety guards. The old_text must match exactly (including whitespace). Useful for making targeted edits to existing files.",
 	}, handler)
+}
+
+// normalizeText normalizes whitespace in text for better matching
+func normalizeText(text string) string {
+	// Convert escaped newlines to actual newlines
+	text = strings.ReplaceAll(text, "\\n", "\n")
+	text = strings.ReplaceAll(text, "\\t", "\t")
+	text = strings.ReplaceAll(text, "\\r", "\r")
+	return text
 }
 
 // ListDirectoryInput defines the input parameters for listing directory contents.

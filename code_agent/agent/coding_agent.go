@@ -14,15 +14,21 @@ import (
 	"code_agent/tools"
 )
 
-// SystemPrompt is the comprehensive system prompt for the coding agent.
-const SystemPrompt = `You are an expert AI coding assistant, similar to Claude Code or Gemini Code CLI. Your purpose is to help users with coding tasks by reading files, writing code, executing commands, and iteratively solving problems.
+// Use the enhanced system prompt from enhanced_prompt.go
+var SystemPrompt = EnhancedSystemPrompt
+
+// Legacy prompt (kept for reference, not used)
+const LegacySystemPrompt = `You are an expert AI coding assistant, similar to Claude Code or Gemini Code CLI. Your purpose is to help users with coding tasks by reading files, writing code, executing commands, and iteratively solving problems.
 
 ## Core Capabilities
 
 You have access to the following tools:
-- **read_file**: Read file contents to understand code
-- **write_file**: Create new files or overwrite existing ones
-- **replace_in_file**: Make precise edits by replacing text (must match exactly)
+- **read_file**: Read file contents to understand code (supports optional line ranges for large files)
+- **write_file**: Create new files or overwrite existing ones (uses atomic writes for safety)
+- **replace_in_file**: Make precise edits by replacing text (must match exactly, includes safeguards)
+- **edit_lines**: Edit files by line number (replace, insert, or delete specific lines - for structural changes)
+- **apply_patch**: Apply unified diff patches to files (more robust than string replacement, supports dry-run)
+- **preview_replace_in_file**: Preview changes before applying a replace operation
 - **list_directory**: Explore project structure
 - **search_files**: Find files by pattern (e.g., *.go, test_*.py)
 - **execute_command**: Run shell commands (tests, builds, installations)
@@ -157,6 +163,32 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		return nil, fmt.Errorf("failed to create grep_search tool: %w", err)
 	}
 
+	applyPatchTool, err := tools.NewApplyPatchTool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create apply_patch tool: %w", err)
+	}
+
+	previewReplaceTool, err := tools.NewPreviewReplaceTool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create preview_replace_in_file tool: %w", err)
+	}
+
+	editLinesTool, err := tools.NewEditLinesTool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create edit_lines tool: %w", err)
+	}
+
+	// NEW TOOLS: Cline-inspired improvements
+	searchReplaceTool, err := tools.NewSearchReplaceTool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search_replace tool: %w", err)
+	}
+
+	executeProgramTool, err := tools.NewExecuteProgramTool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create execute_program tool: %w", err)
+	}
+
 	// Create instruction with working directory context
 	instruction := SystemPrompt
 	if cfg.WorkingDirectory != "" {
@@ -177,6 +209,11 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 			searchFilesTool,
 			executeCommandTool,
 			grepSearchTool,
+			applyPatchTool,
+			previewReplaceTool,
+			editLinesTool,
+			searchReplaceTool,   // NEW: Cline-inspired SEARCH/REPLACE blocks
+			executeProgramTool,  // NEW: Direct program execution without shell
 		},
 		GenerateContentConfig: &genai.GenerateContentConfig{
 			Temperature: genai.Ptr(float32(0.7)),

@@ -129,6 +129,96 @@ type GrepSearchOutput struct {
 	Error string `json:"error,omitempty"`
 }
 
+// ExecuteProgramInput defines input for executing a program with structured arguments
+type ExecuteProgramInput struct {
+	// Program is the path to the executable or program name
+	Program string `json:"program" jsonschema:"Path to executable or program name (e.g., './demo/calculate', 'gcc', 'python')"`
+	// Args is the array of arguments to pass to the program
+	Args []string `json:"args" jsonschema:"Array of arguments (no shell quoting needed, e.g., ['5 + 3'], ['-o', 'output', 'input.c'])"`
+	// WorkingDir is the working directory (optional)
+	WorkingDir string `json:"working_dir,omitempty" jsonschema:"Working directory for the program (optional)"`
+	// Timeout is the maximum time in seconds (default: 30)
+	Timeout *int `json:"timeout,omitempty" jsonschema:"Maximum time in seconds to wait (default: 30)"`
+}
+
+// ExecuteProgramOutput defines output of program execution
+type ExecuteProgramOutput struct {
+	Stdout   string `json:"stdout"`
+	Stderr   string `json:"stderr"`
+	ExitCode int    `json:"exit_code"`
+	Success  bool   `json:"success"`
+	Error    string `json:"error,omitempty"`
+}
+
+// NewExecuteProgramTool creates a tool for executing programs with structured arguments
+func NewExecuteProgramTool() (tool.Tool, error) {
+	handler := func(ctx tool.Context, input ExecuteProgramInput) ExecuteProgramOutput {
+		if input.Program == "" {
+			return ExecuteProgramOutput{
+				Success: false,
+				Error:   "Program path is required",
+			}
+		}
+
+		timeoutSecs := 30
+		if input.Timeout != nil {
+			timeoutSecs = *input.Timeout
+		}
+		timeout := time.Duration(timeoutSecs) * time.Second
+
+		cmdCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		// Pass args directly to exec.Command - no shell interpretation!
+		cmd := exec.CommandContext(cmdCtx, input.Program, input.Args...)
+		if input.WorkingDir != "" {
+			cmd.Dir = input.WorkingDir
+		}
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := cmd.Run()
+
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			} else {
+				return ExecuteProgramOutput{
+					Success: false,
+					Error:   fmt.Sprintf("Failed to execute program: %v", err),
+				}
+			}
+		}
+
+		return ExecuteProgramOutput{
+			Stdout:   stdout.String(),
+			Stderr:   stderr.String(),
+			ExitCode: exitCode,
+			Success:  exitCode == 0,
+		}
+	}
+
+	return functiontool.New(functiontool.Config{
+		Name: "execute_program",
+		Description: `Execute a program with structured arguments (no shell quoting issues). 
+Use this tool when running programs that take arguments, especially arguments with spaces or special characters.
+
+When to use execute_program vs execute_command:
+- execute_program: For running programs with arguments (e.g., ./calculate "5 + 3", gcc -o output input.c)
+- execute_command: For shell commands with pipes/redirects (e.g., ls -la | grep test, echo "hello" > file.txt)
+
+Arguments are passed directly to the program WITHOUT shell interpretation, so you don't need to worry about quoting.
+
+Examples:
+- Program: "./demo/calculate", Args: ["5 + 3"]  → ./demo/calculate receives "5 + 3" as argv[1]
+- Program: "gcc", Args: ["-o", "output", "input.c"]  → clean argv array
+- Program: "python", Args: ["script.py", "--verbose", "file name with spaces.txt"]  → works perfectly`,
+	}, handler)
+}
+
 // NewGrepSearchTool creates a tool for searching text in files (similar to grep).
 func NewGrepSearchTool() (tool.Tool, error) {
 	handler := func(ctx tool.Context, input GrepSearchInput) GrepSearchOutput {
