@@ -58,6 +58,9 @@ type CLIConfig struct {
 	VertexAILocation string // For Vertex AI
 	// Model selection
 	Model string // Specific model ID (e.g., "gemini-2.5-flash", "gemini-1.5-pro")
+	// Thinking configuration
+	EnableThinking bool  // Enable model thinking/reasoning output
+	ThinkingBudget int32 // Token budget for thinking
 }
 
 // ParseCLIFlags parses command-line arguments and returns config and remaining args
@@ -80,6 +83,10 @@ func ParseCLIFlags() (CLIConfig, []string) {
 	apiKey := flag.String("api-key", os.Getenv("GOOGLE_API_KEY"), "API key for Gemini (default: GOOGLE_API_KEY env var)")
 	vertexAIProject := flag.String("project", os.Getenv("GOOGLE_CLOUD_PROJECT"), "GCP Project ID for Vertex AI (default: GOOGLE_CLOUD_PROJECT env var)")
 	vertexAILocation := flag.String("location", os.Getenv("GOOGLE_CLOUD_LOCATION"), "GCP Location for Vertex AI (default: GOOGLE_CLOUD_LOCATION env var)")
+
+	// Thinking configuration flags
+	enableThinking := flag.Bool("enable-thinking", true, "Enable model thinking/reasoning output (default: true)")
+	thinkingBudget := flag.Int("thinking-budget", 1024, "Token budget for thinking when enabled (default: 1024)")
 
 	flag.Parse()
 
@@ -110,6 +117,8 @@ func ParseCLIFlags() (CLIConfig, []string) {
 		VertexAIProject:   *vertexAIProject,
 		VertexAILocation:  *vertexAILocation,
 		Model:             *model,
+		EnableThinking:    *enableThinking,
+		ThinkingBudget:    int32(*thinkingBudget),
 	}, flag.Args()
 }
 
@@ -249,6 +258,14 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Dim("./code-agent --model gemini/flash")+" (shorthand)")
 	lines = append(lines, "   • "+renderer.Dim("./code-agent --model vertexai/1.5-pro"))
 	lines = append(lines, "   Use "+renderer.Cyan("'/providers'")+" command to see all available options")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("🧠 Thinking Configuration:"))
+	lines = append(lines, "   Control the model's reasoning/thinking output:")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --enable-thinking=true")+" (enabled by default)")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --enable-thinking=false")+" (disable thinking)")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --thinking-budget 2048")+" (set token budget)")
+	lines = append(lines, "   Thinking helps with debugging and transparency at a small token cost")
 	lines = append(lines, "")
 
 	lines = append(lines, renderer.Bold("📚 Session Management (CLI commands):"))

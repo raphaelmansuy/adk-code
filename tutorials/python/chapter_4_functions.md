@@ -1,20 +1,3 @@
-### Best Practices for Documenting Functions
-- Always write a docstring for every function, explaining its purpose and parameters.
-- Use type hints for parameters and return types to improve code readability.
-
-### Higher-Order Functions
-Higher-order functions can take other functions as arguments or return them. For example:
-
-```python
-def apply_function(func, value):
-### Common Errors in Function Usage
-- Ensure that the parameters passed to functions match the expected types and quantities.
-- Watch out for mutable default arguments, which can lead to unexpected behavior.
-    return func(value)
-
-result = apply_function(lambda x: x**2, 5)
-print(result)  # Output: 25
-```
 # Chapter 4: Functions
 
 ## What are Functions?
@@ -319,7 +302,78 @@ print(pairs)
 # Output: [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
 ```
 
+### Higher-Order Functions (Advanced Concept)
+
+Higher-order functions are functions that can take one or more functions as arguments, or return a function as their result. This is a powerful concept in functional programming paradigms and allows for more flexible and reusable code. You've already seen an example of this with `sorted()` and `lambda` functions, where `sorted()` takes a `key` argument that can be a function.
+
+```python
+def apply_operation(func, x, y):
+    """Applies a given function to two values."""
+    return func(x, y)
+
+# Define simple functions
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+
+# Use apply_operation with different functions
+result_add = apply_operation(add, 10, 5)
+print(f"Applying add: {result_add}") # Output: 15
+
+result_subtract = apply_operation(subtract, 10, 5)
+print(f"Applying subtract (lambda): {result_subtract}") # Output: 5
+
+# Using a lambda function with a higher-order function
+result_multiply = apply_operation(lambda a, b: a * b, 10, 5)
+print(f"Applying multiply (lambda): {result_multiply}") # Output: 50
+```
+
 In the final chapter, we will cover file input/output and error handling, essential skills for building robust applications.
+
+## Best Practices and Common Pitfalls with Functions
+
+To write clean, maintainable, and robust functions, consider these best practices and common pitfalls:
+
+### Best Practices
+
+1.  **Meaningful Names:** Always choose descriptive names for your functions and parameters that clearly indicate their purpose. (e.g., `calculate_area` instead of `ca`).
+2.  **Single Responsibility Principle (SRP):** Each function should do one thing and do it well. Avoid functions that try to accomplish too many unrelated tasks.
+3.  **Docstrings:** Write clear and concise docstrings for every function. Docstrings explain what the function does, its arguments, and what it returns. Use triple quotes (`"""Docstring"""`).
+4.  **Type Hinting:** Use type hints for function parameters and return types (`def greet(name: str) -> None:`). This improves readability, helps IDEs provide better suggestions, and allows static analysis tools to catch errors early.
+5.  **Keep Functions Small:** Aim for functions that are relatively short. If a function becomes too long or complex, it's often a sign that it can be broken down into smaller, more focused functions.
+6.  **Avoid Global Variables (where possible):** Relying heavily on global variables can make code harder to understand and debug. Pass necessary data as arguments instead. If modification of a global variable is truly needed, use the `global` keyword.
+
+### Common Pitfalls
+
+1.  **Incorrect Argument Passing:**
+    *   **Missing arguments:** Calling a function without providing all required positional arguments will result in a `TypeError`.
+    *   **Extra arguments:** Providing too many arguments will also result in a `TypeError`.
+    *   **Incorrect types:** While Python doesn't enforce types at runtime (without explicit checks), passing arguments of unexpected types can lead to runtime errors or incorrect behavior. Type hints help mitigate this.
+2.  **Mutable Default Arguments:** Be very cautious when using mutable objects (like lists or dictionaries) as default parameter values. They are created only once when the function is defined, not on each call, which can lead to unexpected shared state across function calls.
+    ```python
+def add_to_list(item, my_list=[]): # DANGER! my_list is created once
+        my_list.append(item)
+        return my_list
+
+    print(add_to_list(1))    # Output: [1]
+    print(add_to_list(2))    # Output: [1, 2] - Unexpected!
+    print(add_to_list(3, [])) # Output: [3] - This works as expected
+    ```
+    **Solution:** Use `None` as a default and create the mutable object inside the function if `None` is passed.
+    ```python
+def add_to_list_safe(item, my_list=None):
+        if my_list is None:
+            my_list = []
+        my_list.append(item)
+        return my_list
+
+    print(add_to_list_safe(1)) # Output: [1]
+    print(add_to_list_safe(2)) # Output: [2] - Correct behavior
+    ```
+3.  **Forgetting `return`:** If a function performs a calculation but doesn't `return` a value, it will implicitly return `None`. Always explicitly `return` the value you intend to send back.
+4.  **Scope Misunderstanding:** Confusing local and global variables, especially when trying to modify a global variable without using the `global` keyword.
 
 ## Key Takeaways
 *   Functions are reusable blocks of code that perform specific tasks.
@@ -332,7 +386,7 @@ In the final chapter, we will cover file input/output and error handling, essent
 *   Type hints improve code readability and help with static analysis.
 *   Lambda functions are small, anonymous functions suitable for simple, single expressions.
 
-## Exercise 4: Simple Math Operations
+## Exercise 1: Simple Math Operations
 
 Create a Python script that defines the following functions:
 

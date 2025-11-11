@@ -24,6 +24,10 @@ type Config struct {
 	WorkingDirectory string
 	// EnableMultiWorkspace enables multi-workspace support (feature flag)
 	EnableMultiWorkspace bool
+	// EnableThinking enables the model's thinking/reasoning output (default: true)
+	EnableThinking bool
+	// ThinkingBudget sets the token budget for thinking (only used if EnableThinking is true)
+	ThinkingBudget int32
 }
 
 // GetProjectRoot traverses to find the project root,
@@ -172,16 +176,27 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 
 	instruction := BuildEnhancedPromptWithContext(registry, promptCtx)
 
+	// Build GenerateContentConfig with optional thinking support
+	generateConfig := &genai.GenerateContentConfig{
+		Temperature: genai.Ptr(float32(0.7)),
+	}
+
+	// Add thinking config if enabled
+	if cfg.EnableThinking {
+		generateConfig.ThinkingConfig = &genai.ThinkingConfig{
+			IncludeThoughts: true,
+			ThinkingBudget:  genai.Ptr(cfg.ThinkingBudget),
+		}
+	}
+
 	// Create the coding agent with dynamically registered tools
 	codingAgent, err := llmagent.New(llmagent.Config{
-		Name:        "coding_agent",
-		Model:       cfg.Model,
-		Description: "An expert coding assistant that can read, write, and modify code, execute commands, and solve programming tasks.",
-		Instruction: instruction,
-		Tools:       registeredTools, // Use tools from registry
-		GenerateContentConfig: &genai.GenerateContentConfig{
-			Temperature: genai.Ptr(float32(0.7)),
-		},
+		Name:                  "coding_agent",
+		Model:                 cfg.Model,
+		Description:           "An expert coding assistant that can read, write, and modify code, execute commands, and solve programming tasks.",
+		Instruction:           instruction,
+		Tools:                 registeredTools, // Use tools from registry
+		GenerateContentConfig: generateConfig,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create coding agent: %w", err)

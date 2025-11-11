@@ -1,17 +1,7 @@
-### Common Pitfalls with Data Types
-- **String Manipulation**: Strings are immutable in Python. When trying to change a character in a string, it will raise a TypeError.
-- **Type Casting**: Be cautious when converting strings to integers or floats. Ensure that the string represents a valid number to avoid ValueError.
-
-### Practice Exercises
-1. Declare a variable for your favorite color and print it.
-2. Create variables for different data types (string, integer, float, boolean) and print their types using the `type()` function.
 # Chapter 2: Variables and Data Types
 
 ## What are Variables?
 In programming, a variable is a named storage location that holds a value. Think of it as a container where you can store different types of information. In Python, you don't need to explicitly declare the type of a variable; Python infers it based on the value you assign.
-### Additional Practice Exercises
-3. Create a list of your top 5 favorite movies and print it.
-4. Use list comprehension to generate a list of squares from 0 to 9 and print the result.
 
 ## Declaring and Assigning Variables
 You assign a value to a variable using the `=` operator. Python is dynamically typed, meaning you can reassign a variable to a new value of a different type.
@@ -211,7 +201,7 @@ Python has several built-in data types to handle various kinds of data.
 ### 4. Mapping Type (Key-Value Pairs)
 *   **dict (Dictionary):** A mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
 
-    **Note on Order:** While historically considered unordered, since Python 3.7, dictionaries are **ordered**, meaning they retain the insertion order of items. This is a guaranteed feature of the language.
+    **Note on Order:** Since Python 3.7, dictionaries are **ordered**, meaning they retain the insertion order of items. You can rely on this behavior.
     ```python
     # Example: Storing user preferences
     user_profile = {"username": "johndoe", "email": "john@example.com", "is_premium": False}
@@ -436,7 +426,21 @@ Understanding common pitfalls can save a lot of debugging time. Here are a few t
 *   The `type()` function checks a variable's data type, and functions like `int()`, `float()`, `str()` can convert between types.
 *   F-strings provide an efficient and readable way to format strings.
 
-## Exercise 2: Student Profile
+## Exercises
+
+### Exercise 1: Personal Greeting
+Declare a variable for your favorite color and print it.
+
+### Exercise 2: Data Type Exploration
+Create variables for different data types (string, integer, float, boolean) and print their types using the `type()` function.
+
+### Exercise 3: Movie List
+Create a list of your top 5 favorite movies and print it.
+
+### Exercise 4: Squares with List Comprehension
+Use list comprehension to generate a list of squares from 0 to 9 and print the result.
+
+### Exercise 5: Student Profile
 
 Create variables to store the following information for a student:
 *   Student's name (string)
@@ -459,3 +463,7 @@ Grades: {'Math': 'A', 'Science': 'B'}
 ```
 
 **Hint:** Remember to use appropriate data types for each piece of information and f-strings for printing.
+
+## Common Pitfalls with Data Types
+- **String Manipulation**: Strings are immutable in Python. When trying to change a character in a string, it will raise a TypeError.
+- **Type Casting**: Be cautious when converting strings to integers or floats. Ensure that the string represents a valid number to avoid ValueError.

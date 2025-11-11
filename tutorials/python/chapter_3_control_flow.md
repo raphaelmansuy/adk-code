@@ -1,21 +1,3 @@
-### List Comprehensions
-List comprehensions provide a concise way to create lists. They consist of brackets containing an expression followed by a `for` clause:
-
-```python
-squares = [x**2 for x in range(10)]  # Generates a list of squares from 0 to 9
-print(squares)  # Output: [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
-```
-### Real-World Applications
-Control flow statements are used in various applications, such as:
-- Decision-making processes in applications (e.g., user authentication).
-- Data analysis workflows to filter and analyze datasets based on conditions.
-- Game development for character movement and decision-making.
-- Web development to handle user interactions and backend logic.
-
-### Real-World Applications
-Control flow statements are used in various applications, such as:
-- Decision-making processes in applications (e.g., user authentication).
-- Data analysis workflows to filter and analyze datasets based on conditions.
 # Chapter 3: Control Flow
 
 Control flow statements determine the order in which the instructions in a program are executed. Python provides several constructs for this, primarily `if/else` statements for conditional execution and `for`/`while` loops for repetitive tasks.
@@ -401,7 +383,7 @@ else:
     print("This will NOT be printed.")
 ```
 
-## 3. Loop Control Statements
+## 4. Loop Control Statements
 
 ### `break` Statement
 The `break` statement terminates the current loop and resumes execution at the statement immediately following the loop.
@@ -443,6 +425,16 @@ else:
 
 In the next chapter, we will learn about functions, which allow you to organize your code into reusable blocks.
 
+## Real-World Applications of Control Flow
+
+Control flow statements are fundamental to almost every program and are used in various applications, such as:
+
+*   **Decision-making processes in applications:** For example, user authentication (checking username/password), determining user permissions, or applying business logic based on input.
+*   **Data analysis workflows:** Filtering datasets based on specific conditions, processing data records one by one, or performing aggregations.
+*   **Game development:** Controlling character movement, enemy AI behavior, game state transitions, and scoring systems.
+*   **Web development:** Handling user interactions (e.g., form submissions), routing requests to different functions, and managing database operations.
+*   **Automation scripts:** Repeating tasks, checking for specific file conditions, or executing commands based on system state.
+
 ## Key Takeaways
 *   Control flow statements (`if`, `elif`, `else`, `for`, `while`) determine the execution order of your program.
 *   `if`, `elif`, `else` are used for conditional execution based on conditions.
@@ -454,7 +446,7 @@ In the next chapter, we will learn about functions, which allow you to organize 
 *   Python uses indentation to define code blocks.
 *   (Advanced) `for` and `while` loops can have an `else` block that executes if the loop completes normally.
 
-## Exercise 3: Simple Calculator
+## Exercise 1: Simple Calculator
 
 Write a Python program that simulates a very basic calculator. It should:
 1.  Take two numbers as input from the user.

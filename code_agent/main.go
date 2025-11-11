@@ -203,6 +203,8 @@ func main() {
 	codingAgent, err := codingagent.NewCodingAgent(ctx, codingagent.Config{
 		Model:            llmModel,
 		WorkingDirectory: workingDir,
+		EnableThinking:   cliConfig.EnableThinking,
+		ThinkingBudget:   cliConfig.ThinkingBudget,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create coding agent: %v", err)
