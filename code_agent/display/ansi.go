@@ -19,6 +19,12 @@ func GetTerminalWidth() int {
 	return getTerminalWidthOr(80)
 }
 
+// GetTerminalHeight returns the current terminal height in rows.
+// Returns the fallback height if unable to determine the actual height.
+func GetTerminalHeight() int {
+	return getTerminalHeightOr(24)
+}
+
 // getTerminalWidthOr returns the terminal width or the provided fallback.
 // It first tries term.GetSize, then falls back to $COLUMNS if set.
 func getTerminalWidthOr(fallback int) int {
@@ -27,6 +33,20 @@ func getTerminalWidthOr(fallback int) int {
 	}
 	if cols := os.Getenv("COLUMNS"); cols != "" {
 		if n, err := strconv.Atoi(cols); err == nil && n > 0 {
+			return n
+		}
+	}
+	return fallback
+}
+
+// getTerminalHeightOr returns the terminal height or the provided fallback.
+// It first tries term.GetSize, then falls back to $LINES if set.
+func getTerminalHeightOr(fallback int) int {
+	if _, h, err := term.GetSize(int(os.Stdout.Fd())); err == nil && h > 0 {
+		return h
+	}
+	if lines := os.Getenv("LINES"); lines != "" {
+		if n, err := strconv.Atoi(lines); err == nil && n > 0 {
 			return n
 		}
 	}
