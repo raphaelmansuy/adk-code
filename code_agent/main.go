@@ -216,7 +216,9 @@ func main() {
 		}
 		fmt.Printf("✨ Created new session: %s\n\n", cliConfig.SessionName)
 	} else {
-		fmt.Printf("📖 Resumed session: %s (%d events)\n\n", cliConfig.SessionName, sess.Events().Len())
+		// Use enhanced session resume header with event count and tokens
+		resumeInfo := bannerRenderer.RenderSessionResumeInfo(cliConfig.SessionName, sess.Events().Len(), 0)
+		fmt.Print(resumeInfo)
 	}
 
 	// Create runner with persistent session service
@@ -232,6 +234,9 @@ func main() {
 
 	// Initialize token tracking
 	sessionTokens := tracking.NewSessionTokens()
+
+	// Track last operation status for prompt indicator
+	lastOperationSuccess := false
 
 	// Show welcome message
 	welcome := bannerRenderer.RenderWelcome()
@@ -310,6 +315,9 @@ func main() {
 		spinner := display.NewSpinner(renderer, "Agent is thinking")
 		spinner.Start()
 
+		// Create event timeline for this request
+		timeline := display.NewEventTimeline()
+
 		hasError := false
 		var activeToolName string
 		toolRunning := false
@@ -338,7 +346,7 @@ func main() {
 			}
 
 			if event != nil {
-				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning, sessionTokens, requestID)
+				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning, sessionTokens, requestID, timeline)
 			}
 		}
 
@@ -347,9 +355,42 @@ func main() {
 			spinner.StopWithSuccess("Task completed")
 			completion := renderer.RenderTaskComplete()
 			fmt.Print(completion)
+			lastOperationSuccess = true
 		} else {
 			failure := renderer.RenderTaskFailed()
 			fmt.Print(failure)
+			lastOperationSuccess = false
+		}
+
+		// Display event timeline if there were operations
+		if timeline.GetEventCount() > 0 {
+			fmt.Printf("%s\n", timeline.RenderTimeline())
+
+			// Show progress indicator if multiple operations were performed
+			if timeline.GetEventCount() > 1 {
+				fmt.Printf("%s\n", timeline.RenderProgress())
+			}
+		}
+
+		// Display token metrics for this request
+		summary := sessionTokens.GetSummary()
+		if summary.TotalTokens > 0 {
+			metrics := renderer.RenderTokenMetrics(
+				summary.TotalPromptTokens,
+				summary.TotalCachedTokens,
+				summary.TotalResponseTokens,
+				summary.TotalTokens,
+			)
+			if metrics != "" {
+				fmt.Printf("%s\n", metrics)
+			}
+		}
+
+		// Update prompt based on last operation status
+		if lastOperationSuccess {
+			l.SetPrompt(renderer.Green("✓ ") + renderer.Cyan(renderer.Bold("❯")+" "))
+		} else {
+			l.SetPrompt(renderer.Cyan(renderer.Bold("❯") + " "))
 		}
 	}
 }

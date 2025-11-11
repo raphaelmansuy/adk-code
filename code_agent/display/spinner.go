@@ -14,6 +14,16 @@ type SpinnerStyle struct {
 	Speed  time.Duration
 }
 
+// SpinnerMode defines the operational mode of the spinner
+type SpinnerMode string
+
+// Spinner modes
+const (
+	SpinnerModeTool     SpinnerMode = "tool"
+	SpinnerModeThinking SpinnerMode = "thinking"
+	SpinnerModeProgress SpinnerMode = "progress"
+)
+
 // Predefined spinner styles
 var (
 	SpinnerDots = SpinnerStyle{
@@ -35,6 +45,12 @@ var (
 		Frames: []string{"◐", "◓", "◑", "◒"},
 		Speed:  120 * time.Millisecond,
 	}
+
+	// Thinking mode uses slower animation to convey deliberation
+	SpinnerThinking = SpinnerStyle{
+		Frames: []string{"◜", "◠", "◝", "◞", "◡", "◟"},
+		Speed:  150 * time.Millisecond, // Slower than default
+	}
 )
 
 // Spinner provides animated progress indication
@@ -48,6 +64,7 @@ type Spinner struct {
 	stopCh   chan struct{}
 	doneCh   chan struct{}
 	renderer *Renderer
+	mode     SpinnerMode
 }
 
 // NewSpinner creates a new spinner
@@ -58,6 +75,7 @@ func NewSpinner(renderer *Renderer, message string) *Spinner {
 		renderer: renderer,
 		stopCh:   make(chan struct{}),
 		doneCh:   make(chan struct{}),
+		mode:     SpinnerModeTool,
 	}
 }
 
@@ -69,6 +87,24 @@ func NewSpinnerWithStyle(renderer *Renderer, message string, style SpinnerStyle)
 		renderer: renderer,
 		stopCh:   make(chan struct{}),
 		doneCh:   make(chan struct{}),
+		mode:     SpinnerModeTool,
+	}
+}
+
+// SetMode sets the spinner mode (tool, thinking, or progress)
+func (s *Spinner) SetMode(mode SpinnerMode) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mode = mode
+
+	// Update style based on mode
+	switch mode {
+	case SpinnerModeThinking:
+		s.style = SpinnerThinking
+	case SpinnerModeProgress:
+		s.style = SpinnerDots // Could be different in future
+	default:
+		s.style = SpinnerDots
 	}
 }
 
@@ -151,12 +187,19 @@ func (s *Spinner) animate() {
 			s.mu.Lock()
 			message := s.message
 			metrics := s.metrics
+			mode := s.mode
 			s.mu.Unlock()
 
 			if metrics != nil && metrics.TotalTokens > 0 {
 				metricsStr := tracking.FormatTokenMetrics(*metrics)
 				if s.renderer != nil {
-					fmt.Print("\r" + s.renderer.Cyan(s.style.Frames[frame%len(s.style.Frames)]) + " " +
+					var coloredSpinChar string
+					if mode == SpinnerModeThinking {
+						coloredSpinChar = s.renderer.Yellow(s.style.Frames[frame%len(s.style.Frames)])
+					} else {
+						coloredSpinChar = s.renderer.Cyan(s.style.Frames[frame%len(s.style.Frames)])
+					}
+					fmt.Print("\r" + coloredSpinChar + " " +
 						s.renderer.Dim(message) + "  " + s.renderer.Dim(metricsStr) + "\n")
 				} else {
 					fmt.Printf("\r%s %s  %s\n", s.style.Frames[frame%len(s.style.Frames)], message, metricsStr)
@@ -171,6 +214,7 @@ func (s *Spinner) animate() {
 			s.mu.Lock()
 			message := s.message
 			metrics := s.metrics
+			mode := s.mode
 			s.mu.Unlock()
 
 			// Render current frame
@@ -181,8 +225,15 @@ func (s *Spinner) animate() {
 			if metrics != nil && metrics.TotalTokens > 0 {
 				metricsStr := tracking.FormatTokenMetrics(*metrics)
 				if s.renderer != nil {
+					// Color based on mode
+					var coloredSpinChar string
+					if mode == SpinnerModeThinking {
+						coloredSpinChar = s.renderer.Yellow(spinChar)
+					} else {
+						coloredSpinChar = s.renderer.Cyan(spinChar)
+					}
 					output = fmt.Sprintf("\r%s %s  %s",
-						s.renderer.Cyan(spinChar),
+						coloredSpinChar,
 						s.renderer.Dim(message),
 						s.renderer.Dim(metricsStr))
 				} else {
@@ -191,8 +242,15 @@ func (s *Spinner) animate() {
 			} else {
 				// No metrics, just show message
 				if s.renderer != nil {
+					// Color based on mode
+					var coloredSpinChar string
+					if mode == SpinnerModeThinking {
+						coloredSpinChar = s.renderer.Yellow(spinChar)
+					} else {
+						coloredSpinChar = s.renderer.Cyan(spinChar)
+					}
 					output = fmt.Sprintf("\r%s %s",
-						s.renderer.Cyan(spinChar),
+						coloredSpinChar,
 						s.renderer.Dim(message))
 				} else {
 					output = fmt.Sprintf("\r%s %s", spinChar, message)

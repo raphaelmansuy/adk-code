@@ -201,6 +201,27 @@ func (br *BannerRenderer) RenderWelcome() string {
 	return strings.Join(lines, "\n")
 }
 
+// RenderSessionResumeInfo renders session context when resuming a session.
+func (br *BannerRenderer) RenderSessionResumeInfo(sessionName string, eventCount int, tokensUsed int64) string {
+	if br.renderer.outputFormat == OutputFormatPlain || !IsTTY() {
+		return fmt.Sprintf("\n📖 Resumed session: %q (%d events, %d tokens used)\n\n", sessionName, eventCount, tokensUsed)
+	}
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).
+		Bold(true)
+
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "248", Dark: "238"})
+
+	var lines []string
+	lines = append(lines, titleStyle.Render("📖 Resumed session: "+sessionName))
+	lines = append(lines, dimStyle.Render(fmt.Sprintf("Events: %d | Tokens: %d", eventCount, tokensUsed)))
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n") + "\n"
+}
+
 // RenderError renders an error banner.
 func (br *BannerRenderer) RenderError(title, message string) string {
 	if br.renderer.outputFormat == OutputFormatPlain || !IsTTY() {

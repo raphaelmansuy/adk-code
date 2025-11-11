@@ -15,7 +15,7 @@ import (
 // printEventEnhanced processes and displays agent events
 func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.StreamingDisplay,
 	event *session.Event, spinner *display.Spinner, activeToolName *string, toolRunning *bool,
-	sessionTokens *tracking.SessionTokens, requestID string) {
+	sessionTokens *tracking.SessionTokens, requestID string, timeline *display.EventTimeline) {
 
 	if event.Content == nil || len(event.Content.Parts) == 0 {
 		return
@@ -69,11 +69,14 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 					strings.Contains(strings.ToLower(text), "considering")
 
 				if isThinking {
-					// Update spinner message instead of stopping
-					spinner.Update("Analyzing your request")
+					// Update spinner message with thinking indicator and set thinking mode
+					spinner.SetMode(display.SpinnerModeThinking)
+					spinner.Update(display.EventTypeIcon(display.EventTypeThinking) + " Agent is thinking")
+					spinner.Start()
 				} else {
-					// Render the actual text content
-					output := renderer.RenderPartContent(part)
+					// Render the actual text content with result indicator
+					prefix := display.EventTypeIcon(display.EventTypeResult) + " "
+					output := prefix + renderer.RenderPartContent(part)
 					fmt.Print(output)
 				}
 			}
@@ -86,6 +89,9 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 
 			*activeToolName = part.FunctionCall.Name
 			*toolRunning = true
+
+			// Track in timeline
+			timeline.AppendEvent(part.FunctionCall.Name, "executing")
 
 			args := make(map[string]any)
 			for k, v := range part.FunctionCall.Args {
@@ -108,6 +114,9 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 			spinner.Stop()
 			*toolRunning = false
 
+			// Update timeline status to completed
+			timeline.UpdateLastEventStatus("completed")
+
 			result := make(map[string]any)
 			if part.FunctionResponse.Response != nil {
 				for k, v := range part.FunctionResponse.Response {
@@ -115,11 +124,14 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 				}
 			}
 
+			// Show success indicator for tool completion
+			successIcon := display.EventTypeIcon(display.EventTypeSuccess)
+			fmt.Printf("\n%s Tool completed: %s\n", successIcon, part.FunctionResponse.Name)
+
 			// Use enhanced result parser for structured output
 			parsedResult := toolResultParser.ParseToolResult(part.FunctionResponse.Name, result)
 			if parsedResult != "" {
 				// Show parsed result
-				fmt.Print("\n")
 				fmt.Print(parsedResult)
 				fmt.Print("\n")
 			}
@@ -138,62 +150,64 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 
 // getToolSpinnerMessage returns a context-aware spinner message for tool execution
 func getToolSpinnerMessage(toolName string, args map[string]any) string {
+	icon := display.EventTypeIcon(display.EventTypeExecuting)
+
 	switch toolName {
 	case "read_file":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Reading %s", filepath.Base(path))
+			return fmt.Sprintf("%s Reading %s", icon, filepath.Base(path))
 		}
-		return "Reading file"
+		return fmt.Sprintf("%s Reading file", icon)
 	case "write_file":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Writing %s", filepath.Base(path))
+			return fmt.Sprintf("%s Writing %s", icon, filepath.Base(path))
 		}
-		return "Writing file"
+		return fmt.Sprintf("%s Writing file", icon)
 	case "search_replace", "replace_in_file":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Editing %s", filepath.Base(path))
+			return fmt.Sprintf("%s Editing %s", icon, filepath.Base(path))
 		}
-		return "Editing file"
+		return fmt.Sprintf("%s Editing file", icon)
 	case "edit_lines":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Modifying %s", filepath.Base(path))
+			return fmt.Sprintf("%s Modifying %s", icon, filepath.Base(path))
 		}
-		return "Modifying file"
+		return fmt.Sprintf("%s Modifying file", icon)
 	case "apply_patch", "apply_v4a_patch":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Applying patch to %s", filepath.Base(path))
+			return fmt.Sprintf("%s Applying patch to %s", icon, filepath.Base(path))
 		}
-		return "Applying patch"
+		return fmt.Sprintf("%s Applying patch", icon)
 	case "list_directory", "list_files":
 		if path, ok := args["path"].(string); ok {
-			return fmt.Sprintf("Listing %s", filepath.Base(path))
+			return fmt.Sprintf("%s Listing %s", icon, filepath.Base(path))
 		}
-		return "Listing directory"
+		return fmt.Sprintf("%s Listing directory", icon)
 	case "search_files":
 		if pattern, ok := args["pattern"].(string); ok {
-			return fmt.Sprintf("Searching for %s", pattern)
+			return fmt.Sprintf("%s Searching for %s", icon, pattern)
 		}
-		return "Searching files"
+		return fmt.Sprintf("%s Searching files", icon)
 	case "grep_search":
 		if pattern, ok := args["pattern"].(string); ok {
-			return fmt.Sprintf("Searching for '%s'", pattern)
+			return fmt.Sprintf("%s Searching for '%s'", icon, pattern)
 		}
-		return "Searching code"
+		return fmt.Sprintf("%s Searching code", icon)
 	case "execute_command":
 		if command, ok := args["command"].(string); ok {
 			// Truncate long commands
 			if len(command) > 40 {
 				command = command[:37] + "..."
 			}
-			return fmt.Sprintf("Running: %s", command)
+			return fmt.Sprintf("%s Running: %s", icon, command)
 		}
-		return "Running command"
+		return fmt.Sprintf("%s Running command", icon)
 	case "execute_program":
 		if program, ok := args["program"].(string); ok {
-			return fmt.Sprintf("Executing %s", filepath.Base(program))
+			return fmt.Sprintf("%s Executing %s", icon, filepath.Base(program))
 		}
-		return "Executing program"
+		return fmt.Sprintf("%s Executing program", icon)
 	default:
-		return fmt.Sprintf("Running %s", toolName)
+		return fmt.Sprintf("%s Running %s", icon, toolName)
 	}
 }
