@@ -62,8 +62,6 @@ Python has several built-in data types to handle various kinds of data.
     pi = 3.14
     temperature = 98.6
     ```
-*   **complex (Complex Numbers):** Numbers with a real and imaginary part (e.g., `3 + 4j`). These are typically used in specialized mathematical and scientific applications.
-
 ### 2. Boolean Type
 *   **bool:** Represents truth values. It can only be `True` or `False`.
     ```python
@@ -115,7 +113,7 @@ Python has several built-in data types to handle various kinds of data.
     ```
 
 ### 4. Mapping Type (Key-Value Pairs)
-*   **dict (Dictionary):** An ordered (since Python 3.7, meaning insertion order is preserved), mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
+*   **dict (Dictionary):** A mutable collection of key-value pairs. While historically considered unordered, since Python 3.7, dictionaries are **ordered**, meaning they retain the insertion order of items. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
     ```python
     person = {"name": "Bob", "age": 25, "city": "London"}
     scores = {"math": 90, "science": 85}
@@ -131,13 +129,18 @@ Python has several built-in data types to handle various kinds of data.
     ```python
     unique_numbers = {1, 2, 3, 3, 4} # duplicates are automatically removed
     print(unique_numbers) # Output: {1, 2, 3, 4} (the order of elements is not guaranteed)
-    print(3 in unique_numbers) # Output: True (checking membership)
+    print(3 in unique_numbers) # Output: True (checking for membership is very efficient with sets)
     
-    set_a = {1, 2, 3}
-    set_b = {3, 4, 5}
-    print(set_a.union(set_b)) # Output: {1, 2, 3, 4, 5}
+    # Demonstrating common set operations
+    set_a = {1, 2, 3, 4}
+    set_b = {3, 4, 5, 6}
+    print(f"Set A: {set_a}")
+    print(f"Set B: {set_b}")
+    print(f"Union (A | B): {set_a.union(set_b)}")          # Elements in A or B or both
+    print(f"Intersection (A & B): {set_a.intersection(set_b)}") # Elements common to A and B
+    print(f"Difference (A - B): {set_a.difference(set_b)}")   # Elements in A but not in B
     ```
-*   **frozenset:** An **immutable** version of a set. Once created, you cannot add or remove elements. Frozensets can be used as keys in dictionaries or as elements in other sets, which regular (mutable) sets cannot.
+*   **frozenset:** An **immutable** version of a set. Once created, you cannot add or remove elements. Frozensets can be used as keys in dictionaries or as elements in other sets, which regular (mutable) sets cannot.not.
     ```python
     immutable_set = frozenset([1, 2, 3])
     print(immutable_set) # Output: frozenset({1, 2, 3})

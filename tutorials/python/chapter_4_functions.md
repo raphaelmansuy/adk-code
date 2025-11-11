@@ -169,8 +169,8 @@ print(full_name)
 
 ## Scope of Variables
 
-*   **Local Scope:** Variables defined inside a function are local to that function and cannot be accessed from outside.
-    ```python
+*   `*args` collects all extra positional arguments into a tuple. Use it when your function needs to accept an arbitrary number of positional arguments (e.g., a `sum` function that can sum any number of items).
+*   `**kwargs` collects all extra keyword arguments into a dictionary. Use it when your function needs to accept an arbitrary number of keyword arguments (e.g., passing configuration options like `print_info(name="Alice", age=30)`).
     def my_function():
         local_var = 10
         print(local_var)

@@ -43,7 +43,7 @@ if age >= 18:
     print("You are an adult.")
 ```
 
-**Important:** Python uses indentation (whitespace at the beginning of a line) to define code blocks. This is crucial and different from many other languages that use curly braces `{}`.
+
 
 ### `if-else` Statement
 The `if-else` statement executes one block of code if the condition is true and another block if the condition is false.
@@ -57,11 +57,32 @@ else:
     print("You are a minor.")
 ```
 
-Here's a flowchart representation of an `if-else` statement:
-
 ```
         +-------------------+
         | Start             |
+        +--------+----------+
+                 |
+                 V
+        +-------------------+
+        | Condition (age >= 18)? |
+        +---------+---------+
+        |   True  |  False  |
+        +---------+---------+
+            |           |
+            V           V
+    +-----------+   +-----------+
+    | Print("Adult")|   | Print("Minor")|
+    +-----------+   +-----------+
+            |           |
+            +-----+-----+
+                  |
+                  V
+        +-------------------+
+        | End               |
+        +-------------------+
+```
+
+Here's a flowchart representation of an `if-else` statement:
         +--------+----------+
                  |
                  V

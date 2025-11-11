@@ -63,6 +63,8 @@ print(f"Joined path: {full_path}")
 # Extracting parts of a path
 print(f"Basename: {os.path.basename(full_path)}") # Output: report.txt
 print(f"Dirname: {os.path.dirname(full_path)}")   # Output: my_data
+print(f"Split path: {os.path.split(full_path)}") # Output: ('my_data', 'report.txt')
+print(f"Absolute path: {os.path.abspath(full_path)}") # Output: /path/to/current_dir/my_data/report.txt
 
 # Checking if a path exists
 if os.path.exists(full_path):
