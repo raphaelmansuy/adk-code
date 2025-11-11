@@ -49,6 +49,15 @@ Here's a conceptual diagram of a function:
 *   **Parentheses `()`:** Can contain parameters (inputs) to the function.
 *   **Colon `:`:** Marks the end of the function header.
 *   **Docstring (optional but recommended):** A string literal used to document the purpose of the function. It's enclosed in triple quotes (`"""Docstring goes here"""`) and should immediately follow the function header. Docstrings are crucial for code documentation and can be accessed using `help(function_name)` or `function_name.__doc__`.
+
+    ```python
+    def example_function():
+        """This is an example docstring."""
+        pass
+
+    print(example_function.__doc__) # Output: This is an example docstring.
+    # help(example_function) # Uncomment to see full help output in a live environment
+    ```
 *   **Function Body:** The block of code that the function executes, always indented.
 
 ## Function Parameters and Arguments
@@ -191,6 +200,20 @@ def increment_counter():
 print(f"Before call: {global_counter}") # Output: Before call: 0
 increment_counter()                     # Output: Inside function: 1
 print(f"After call: {global_counter}")  # Output: After call: 1
+    ```
+
+    **What happens without `global`?**
+    If you omit the `global` keyword, Python assumes you are creating a *new local variable* with the same name, rather than modifying the global one. This can lead to unexpected behavior.
+    ```python
+    another_global_counter = 0
+
+    def try_to_increment_without_global():
+        another_global_counter = 1 # This creates a NEW local variable, doesn't modify the global one
+        print(f"Inside function (local): {another_global_counter}")
+
+    print(f"Before call: {another_global_counter}") # Output: Before call: 0
+    try_to_increment_without_global()                  # Output: Inside function (local): 1
+    print(f"After call: {another_global_counter}")  # Output: After call: 0 (Global variable remains unchanged)
     ```
     Without `global`, `global_counter += 1` inside `increment_counter()` would create a new local variable named `global_counter` instead of modifying the global one.
 

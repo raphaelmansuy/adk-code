@@ -18,7 +18,7 @@ Go to the official Python website (python.org) and download the latest stable ve
 For users interested in data science, scientific computing, or who prefer an all-in-one distribution, consider installing Anaconda or Miniconda. These come with Python and many popular packages pre-installed, along with tools for managing environments.
 
 ### 2. Installation
-*   **Windows:** Run the installer. Make sure to check the box "Add Python X.X to PATH" during installation. After installation, you should be able to use `python` or `python3` in your terminal.
+*   **Windows:** Run the installer. Make sure to check the box "Add Python X.X to PATH" during installation. After installation, you should primarily use `python3` in your terminal.
 
     *A note on `python` vs `python3`*: On some systems, `python` might refer to an older Python 2 installation. It's best practice to explicitly use `python3` for modern Python development to ensure you're running the correct version.
 *   **macOS:** Python might be pre-installed, but it's recommended to install the latest version using Homebrew (`brew install python3`) or the official installer. You'll typically use `python3` in your terminal.
@@ -39,18 +39,22 @@ Let's confirm your Python installation and immediately write and run your first 
     ```bash
     python3 -m venv myproject_env
     # Activate the environment
-    source myproject_env/bin/activate  # On macOS/Linux
+    source myproject_env/bin/activate  # On macOS/Linux/Git Bash
     ```
-    On Windows, use:
-    ```bash
-    .\myproject_env\Scripts\activate
+On Windows, use one of the following:
+```bash
+# For Command Prompt (cmd.exe)
+.\myproject_env\Scripts\activate
+# For PowerShell
+.\myproject_env\Scripts\Activate.ps1
+```Activate.ps1
     ```
     You'll see `(myproject_env)` in your terminal prompt, indicating the environment is active. You can deactivate it by typing `deactivate`. While we won't delve deeper into `venv` management in this introductory chapter, understanding its importance is key for future development.
 
 3.  **Your First Python Program: "Hello, World!"**
     Now, let's write and run a classic "Hello, World!" program.
 
-    *   **Choose an Editor/IDE:** While any text editor works, a powerful Integrated Development Environment (IDE) like [VS Code](https://code.visualstudio.com/) is highly recommended for beginners. It offers features like syntax highlighting, autocompletion, and debugging.
+    *   **Choose an Editor/IDE:** While any text editor works, a powerful Integrated Development Environment (IDE) like [VS Code](https://code.visualstudio.com/) is highly recommended for beginners due to its excellent Python extension, integrated terminal, debugging capabilities, and rich ecosystem of extensions.
     *   Type the following line into your chosen editor:
         ```python
         print("Hello, World!")
@@ -74,13 +78,23 @@ Let's confirm your Python installation and immediately write and run your first 
     ```
 
     **Mini-Example: Exploring `print()`**
-    The `print()` function is fundamental for displaying output. Try these variations in your `hello.py` file or directly in a Python interactive shell (by typing `python3` in your terminal):
+    The `print()` function is fundamental for displaying output. Try these variations in your `hello.py` file or directly in a Python interactive shell.
 
-    ```python
-    print("Python is fun!")
-    print(123)
-    print("Hello", "Python", "World!") # Prints multiple arguments separated by spaces
+    To enter the interactive shell, open your terminal and type `python3`:
+    ```bash
+    python3
     ```
+    You'll see a `>>>` prompt. Type your Python code here:
+    ```python
+    >>> print("Python is fun!")
+    Python is fun!
+    >>> print(123)
+    123
+    >>> print("Hello", "Python", "World!") # Prints multiple arguments separated by spaces
+    Hello Python World!
+    >>> exit()
+    ```
+    To exit the interactive shell, type `exit()` or press `Ctrl+D` (on macOS/Linux) or `Ctrl+Z` followed by `Enter` (on Windows).
 
 Congratulations! You've just run your first Python program. In the next chapter, we'll dive into variables and data types.
 
@@ -95,4 +109,4 @@ Congratulations! You've just run your first Python program. In the next chapter,
 
 Modify your `hello.py` program to print a personalized greeting, like "Hello, [Your Name]!" instead of "Hello, World!".
 
-**Hint:** Just change the text inside the `print()` function.
+**Hint:** Just change the text inside the `print()` function. For example, `print("Hello, Alice!")`.

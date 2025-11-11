@@ -77,7 +77,10 @@ Python has several built-in data types to handle various kinds of data.
     message = "Hello, Python!"
     city = 'New York'
     print(message[0]) # Accessing individual characters
-    # message[0] = 'h' # This would cause a TypeError because strings are immutable
+    try:
+        message[0] = 'h' # This would cause a TypeError because strings are immutable
+    except TypeError as e:
+        print(f"Error: {e}") # Output: Error: 'str' object does not support item assignment
     ```
     You can use single quotes (`'`) or double quotes (`"`) for strings.
 
@@ -105,11 +108,14 @@ Python has several built-in data types to handle various kinds of data.
     ```python
     coordinates = (10.0, 20.0)
     colors = ("red", "green", "blue")
-    # coordinates[0] = 15.0 # This would cause a TypeError because tuples are immutable
+    try:
+        coordinates[0] = 15.0 # This would cause a TypeError because tuples are immutable
+    except TypeError as e:
+        print(f"Error: {e}") # Output: Error: 'tuple' object does not support item assignment
     ```
 
 ### 4. Mapping Type (Key-Value Pairs)
-*   **dict (Dictionary):** An ordered (since Python 3.7), mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
+*   **dict (Dictionary):** An ordered (since Python 3.7, meaning insertion order is preserved), mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
     ```python
     person = {"name": "Bob", "age": 25, "city": "London"}
     scores = {"math": 90, "science": 85}
@@ -123,8 +129,8 @@ Python has several built-in data types to handle various kinds of data.
 ### 5. Set Types (Unordered Collections of Unique Items)
 *   **set:** An unordered collection of unique items. Sets are mutable, meaning you can add or remove elements. They do not allow duplicate values and are useful for operations like checking membership, removing duplicates, and performing mathematical set operations (union, intersection). Sets are defined using curly braces `{}` or the `set()` constructor.
     ```python
-    unique_numbers = {1, 2, 3, 3, 4} # will store {1, 2, 3, 4}
-    print(unique_numbers) # Output: {1, 2, 3, 4} (order may vary)
+    unique_numbers = {1, 2, 3, 3, 4} # duplicates are automatically removed
+    print(unique_numbers) # Output: {1, 2, 3, 4} (the order of elements is not guaranteed)
     print(3 in unique_numbers) # Output: True (checking membership)
     
     set_a = {1, 2, 3}
@@ -195,6 +201,17 @@ print(float_from_str) # Output: 3.14
 ```
 
 **Caution:** Be careful when converting strings to numbers. If the string doesn't represent a valid number, it will raise a `ValueError`.
+
+```python
+# Example of ValueError during type conversion
+# invalid_num_str = "hello"
+# int_from_invalid_str = int(invalid_num_str) # This would raise a ValueError
+try:
+    invalid_num_str = "hello"
+    int_from_invalid_str = int(invalid_num_str)
+except ValueError as e:
+    print(f"Error: {e}") # Output: Error: invalid literal for int() with base 10: 'hello'
+```
 
 In the next chapter, we will explore how to control the flow of your program using conditional statements and loops.
 

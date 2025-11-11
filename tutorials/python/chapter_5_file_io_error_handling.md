@@ -42,8 +42,10 @@ To work with a file, you first need to open it using the `open()` function. It t
         print(f"Read binary data: {data}") # Output: b'\x01\x02\x03\x04'
     ```
 
-### Working with File Paths and OS Module
+### ### Working with File Paths and OS Module
 The `os` module provides functions for interacting with the operating system, including file system operations. `os.path` is a submodule for path manipulations.
+
+**Important:** Always use `os.path.join()` when constructing file paths to ensure your code works correctly across different operating systems (Windows, macOS, Linux) which use different path separators.
 
 ```python
 import os
@@ -74,16 +76,22 @@ if not os.path.exists(folder):
     print(f"Created directory: {folder}")
 
 # Deleting a file (use with caution!)
-# if os.path.exists(full_path):
-#     os.remove(full_path)
-#     print(f"Removed file: {full_path}")
+# Create a dummy file for deletion example
+dummy_file_path = os.path.join(folder, "dummy.txt")
+with open(dummy_file_path, "w") as f: f.write("Temporary file for deletion.")
+if os.path.exists(dummy_file_path):
+    os.remove(dummy_file_path)
+    print(f"Removed file: {dummy_file_path}")
 
 # Renaming a file
-# old_name = "old.txt"
-# new_name = "new.txt"
-# with open(old_name, "w") as f: f.write("test")
-# os.rename(old_name, new_name)
-# print(f"Renamed {old_name} to {new_name}")
+old_name_path = os.path.join(folder, "old_name.txt")
+new_name_path = os.path.join(folder, "new_name.txt")
+with open(old_name_path, "w") as f: f.write("Content of old file.")
+os.rename(old_name_path, new_name_path)
+print(f"Renamed {old_name_path} to {new_name_path}")
+# Clean up the renamed file
+if os.path.exists(new_name_path):
+    os.remove(new_name_path)
 ```
 
 ### Writing to Files (Using the `with` statement)
@@ -166,7 +174,7 @@ Python has many built-in exceptions to signal different types of errors. Here ar
 *   `FileNotFoundError`: Raised when a file or directory is requested but doesn't exist.
 *   `ZeroDivisionError`: Raised when the second operand of a division or modulo operation is zero.
 
-**Best Practice for `except` blocks:** It's generally good practice to catch more specific exceptions first, followed by more general ones. This allows you to handle different error conditions appropriately. Catching `Exception` (the base class for all exceptions) should typically be done last, if at all, to avoid masking unexpected errors.
+**Best Practice for `except` blocks:** It's generally good practice to catch more specific exceptions first, followed by more general ones. This allows you to handle different error conditions appropriately. For instance, catch `ValueError` or `ZeroDivisionError` before `Exception`. Catching `Exception` (the base class for all exceptions) should typically be done last, if at all, to avoid masking unexpected errors and making debugging harder.
 
 ### `else` Block
 The `else` block is executed if no exceptions are raised in the `try` block.
@@ -299,7 +307,7 @@ Write a Python script that performs the following tasks:
 3.  **Error Report:** Create a new file called `error_report.txt`. If a line in `application.log` contains the word "ERROR", write that entire line to `error_report.txt`.
 4.  **Handle potential errors:** Use `try-except` blocks to handle `FileNotFoundError` if `application.log` doesn't exist when trying to read it.
 
-**Hint:** You'll need to use `open()` with different modes, the `with` statement, string methods like `in` or `find()` to check for "ERROR", and `try-except` for error handling.
+**Hint:** You'll need to use `open()` with different modes, the `with` statement, string methods like `in` or `find()` to check for "ERROR", and `try-except` for error handling. Remember to use `os.makedirs()` to ensure your output directory exists before writing files.
 
 ## Conclusion
 This tutorial has covered the fundamentals of Python programming, from basic syntax and data types to control flow, functions, file I/O, and error handling. This knowledge forms a strong foundation for you to build more complex and robust Python applications. Keep practicing, explore Python's extensive libraries, and happy coding!

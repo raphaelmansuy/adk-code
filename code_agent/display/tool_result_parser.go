@@ -232,19 +232,29 @@ func (trp *ToolResultParser) parseCommandOutput(result map[string]any) string {
 
 // parseFileContent formats file content results
 func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
-	content, ok := result["content"].(string)
-	if !ok {
-		return trp.parseGeneric(result)
+	// Extract file path and total lines count
+	filePath, _ := result["file_path"].(string)
+	totalLines := 0
+	if tl, ok := result["total_lines"].(float64); ok {
+		totalLines = int(tl)
+	} else if tl, ok := result["total_lines"].(int); ok {
+		totalLines = tl
 	}
 
-	lines := strings.Count(content, "\n") + 1
-	bytes := len(content)
+	// If no total_lines, count from content (fallback)
+	if totalLines == 0 {
+		if content, ok := result["content"].(string); ok {
+			totalLines = strings.Count(content, "\n") + 1
+		}
+	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("📄 Read %d lines (%d bytes)\n\n", lines, bytes))
-	output.WriteString("```\n")
-	output.WriteString(content)
-	output.WriteString("\n```")
+
+	// Show path and line count only (no content)
+	if filePath != "" {
+		output.WriteString(fmt.Sprintf("📄 %s\n", filePath))
+	}
+	output.WriteString(fmt.Sprintf("   %d lines", totalLines))
 
 	result_str := output.String()
 	if trp.mdRenderer != nil {
