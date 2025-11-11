@@ -1,3 +1,20 @@
+### Best Practices for Documenting Functions
+- Always write a docstring for every function, explaining its purpose and parameters.
+- Use type hints for parameters and return types to improve code readability.
+
+### Higher-Order Functions
+Higher-order functions can take other functions as arguments or return them. For example:
+
+```python
+def apply_function(func, value):
+### Common Errors in Function Usage
+- Ensure that the parameters passed to functions match the expected types and quantities.
+- Watch out for mutable default arguments, which can lead to unexpected behavior.
+    return func(value)
+
+result = apply_function(lambda x: x**2, 5)
+print(result)  # Output: 25
+```
 # Chapter 4: Functions
 
 ## What are Functions?
@@ -9,12 +26,35 @@ Beyond simply reusing code, functions are crucial for **breaking down complex pr
 In Python, you define a function using the `def` keyword, followed by the function name, parentheses `()`, and a colon `:`. The function body is then indented.
 
 ```python
-def greet():
-    """This function prints a greeting message."""
-    print("Hello, welcome to the function tutorial!")
+def greet(name="Guest"):
+    """This function prints a personalized greeting message.
+    
+    Args:
+        name (str): The name of the person to greet. Defaults to "Guest".
+    """
+    print(f"Hello, {name}! Welcome to the function tutorial!")
 
 # Calling the function
-greet()
+greet()          # Output: Hello, Guest! Welcome to the function tutorial!
+greet("Alice")   # Output: Hello, Alice! Welcome to the function tutorial!
+
+# Real-world example: A simple calculation function
+def calculate_area_rectangle(length, width):
+    """Calculates the area of a rectangle.
+    
+    Args:
+        length (float): The length of the rectangle.
+        width (float): The width of the rectangle.
+        
+    Returns:
+        float: The area of the rectangle.
+    """
+    area = length * width
+    return area
+
+# Using the calculation function
+room_area = calculate_area_rectangle(5.0, 3.5)
+print(f"The area of the room is: {room_area} square units.") # Output: The area of the room is: 17.5 square units.
 ```
 
 Functions are fundamental for:
@@ -76,6 +116,16 @@ def add_numbers(a, b):
 
 add_numbers(10, 5) # a=10, b=5 (positional arguments)
 add_numbers(3, 7)  # a=3, b=7
+
+# Real-world example: Calculating the area of a triangle
+def calculate_triangle_area(base, height):
+    """Calculates the area of a triangle given its base and height."""
+    area = 0.5 * base * height
+    return area
+
+# Using positional arguments
+triangle_area = calculate_triangle_area(10, 4) # base=10, height=4
+print(f"Area of triangle: {triangle_area} square units.") # Output: Area of triangle: 20.0 square units.
 ```
 
 ### 2. Keyword Arguments

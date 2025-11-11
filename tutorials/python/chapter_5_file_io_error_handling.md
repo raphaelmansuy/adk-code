@@ -1,3 +1,31 @@
+### Custom Context Managers
+You can create your own context managers using the `contextlib` module. For example:
+
+```python
+### Common Errors in File Operations
+- Check for `FileNotFoundError` when trying to read a file that doesn't exist.
+- Ensure you have the necessary permissions to read or write to a file.
+from contextlib import contextmanager
+
+@contextmanager
+def custom_manager():
+    print("Entering the context...")
+    yield
+    print("Exiting the context...")
+
+with custom_manager():
+    print("Inside the context.")
+```  
+
+### Handling Multiple Exceptions
+You can catch multiple exceptions in a single `except` block:
+
+```python
+try:
+    # Code that may raise multiple exceptions
+except (ValueError, ZeroDivisionError) as e:
+    print(f"An error occurred: {e}")
+```
 # Chapter 5: File I/O and Error Handling
 
 This chapter covers how to interact with files on your computer and how to gracefully handle errors that might occur during program execution.

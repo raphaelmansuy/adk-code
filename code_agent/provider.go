@@ -12,6 +12,7 @@ type Provider string
 const (
 	ProviderGemini   Provider = "gemini"
 	ProviderVertexAI Provider = "vertexai"
+	ProviderOpenAI   Provider = "openai"
 )
 
 // ProviderMetadata describes a provider and its configuration
@@ -34,6 +35,7 @@ func AllProviders() []Provider {
 	return []Provider{
 		ProviderGemini,
 		ProviderVertexAI,
+		ProviderOpenAI,
 	}
 }
 
@@ -68,6 +70,16 @@ func GetProviderMetadata(provider Provider) ProviderMetadata {
 			Requirements: []string{
 				"GOOGLE_CLOUD_PROJECT",
 				"GOOGLE_CLOUD_LOCATION",
+			},
+		}
+	case ProviderOpenAI:
+		return ProviderMetadata{
+			Name:        "openai",
+			DisplayName: "OpenAI API",
+			Icon:        "⚡",
+			Description: "OpenAI's GPT models via official Go SDK",
+			Requirements: []string{
+				"OPENAI_API_KEY",
 			},
 		}
 	default:

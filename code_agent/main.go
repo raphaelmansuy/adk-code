@@ -176,6 +176,16 @@ func main() {
 			ModelName: actualModelID,
 		})
 
+	case "openai":
+		openaiKey := os.Getenv("OPENAI_API_KEY")
+		if openaiKey == "" {
+			log.Fatal("OpenAI backend requires OPENAI_API_KEY environment variable")
+		}
+		llmModel, modelErr = CreateOpenAIModel(ctx, OpenAIConfig{
+			APIKey:    openaiKey,
+			ModelName: actualModelID,
+		})
+
 	case "gemini":
 		fallthrough
 	default:

@@ -153,8 +153,8 @@ func TestListProviders(t *testing.T) {
 	registry := NewModelRegistry()
 	providers := registry.ListProviders()
 
-	if len(providers) != 2 {
-		t.Errorf("Expected 2 providers, got %d", len(providers))
+	if len(providers) != 3 {
+		t.Errorf("Expected 3 providers, got %d", len(providers))
 	}
 
 	// Check that expected providers are present
@@ -163,7 +163,7 @@ func TestListProviders(t *testing.T) {
 		providerMap[p] = true
 	}
 
-	expectedProviders := []string{"gemini", "vertexai"}
+	expectedProviders := []string{"gemini", "vertexai", "openai"}
 	for _, expected := range expectedProviders {
 		if !providerMap[expected] {
 			t.Errorf("Expected provider %q not found in list", expected)

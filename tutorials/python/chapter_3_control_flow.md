@@ -1,3 +1,21 @@
+### List Comprehensions
+List comprehensions provide a concise way to create lists. They consist of brackets containing an expression followed by a `for` clause:
+
+```python
+squares = [x**2 for x in range(10)]  # Generates a list of squares from 0 to 9
+print(squares)  # Output: [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+```
+### Real-World Applications
+Control flow statements are used in various applications, such as:
+- Decision-making processes in applications (e.g., user authentication).
+- Data analysis workflows to filter and analyze datasets based on conditions.
+- Game development for character movement and decision-making.
+- Web development to handle user interactions and backend logic.
+
+### Real-World Applications
+Control flow statements are used in various applications, such as:
+- Decision-making processes in applications (e.g., user authentication).
+- Data analysis workflows to filter and analyze datasets based on conditions.
 # Chapter 3: Control Flow
 
 Control flow statements determine the order in which the instructions in a program are executed. Python provides several constructs for this, primarily `if/else` statements for conditional execution and `for`/`while` loops for repetitive tasks.
@@ -12,25 +30,32 @@ To create more complex conditions, you can use logical operators:
 *   `not`: Reverses the boolean state of a condition.
 
 ```python
-# Example with 'and'
-age = 25
-has_license = True
+# Real-world example: Eligibility for a senior discount
+age = 68
+is_member = True
+purchase_amount = 120.00
 
-if age >= 18 and has_license:
-    print("You can legally drive.")
+# Condition 1: Must be over 65 AND a member
+if age >= 65 and is_member:
+    print("Eligible for senior member discount!")
 
-# Example with 'or'
-is_weekend = True
-has_holiday = False
+# Condition 2: Must be a member OR purchase over $100
+if is_member or purchase_amount > 100:
+    print("Eligible for loyalty bonus or large purchase discount.")
 
-if is_weekend or has_holiday:
-    print("It's a day off!")
+# Condition 3: Not a member (using 'not')
+if not is_member:
+    print("Consider becoming a member for more benefits.")
 
-# Example with 'not'
-is_raining = False
+# Combined example: Free shipping conditions
+# User must be premium OR purchase amount must be over 50
+is_premium_user = False
+order_total = 65.50
 
-if not is_raining:
-    print("Let's go outside!")
+if is_premium_user or (order_total > 50 and not is_premium_user):
+    print("Congratulations! You qualify for free shipping.")
+else:
+    print("Shipping fees apply. Spend more for free shipping!")
 ```
 
 ### Basic `if` Statement
@@ -81,6 +106,18 @@ elif score >= 70:
     print("Grade: C")
 else:
     print("Grade: F")
+
+# Real-world example: User access level
+user_role = "admin"
+
+if user_role == "admin":
+    print("Full administrative access granted.")
+elif user_role == "editor":
+    print("Access to edit and publish content.")
+elif user_role == "viewer":
+    print("Read-only access to content.")
+else:
+    print("Unknown role. Access denied.")
 ```
 
 Here's a flowchart representation of an `if-elif-else` statement:
@@ -115,6 +152,21 @@ if weather == "sunny":
         print("It's a pleasant sunny day.")
 else:
     print("It's not sunny today.")
+
+# Real-world example: Simple login system
+valid_username = "user123"
+valid_password = "pass456"
+
+input_username = input("Enter username: ")
+input_password = input("Enter password: ")
+
+if input_username == valid_username:
+    if input_password == valid_password:
+        print("Login successful! Welcome.")
+    else:
+        print("Incorrect password.")
+else:
+    print("Invalid username.")
 ```
 
 ## 2. Getting User Input (`input()`)
@@ -163,6 +215,13 @@ graph TD
 fruits = ["apple", "banana", "cherry"]
 for fruit in fruits:
     print(fruit)
+
+# Real-world example: Calculating total price of items in a shopping cart
+shopping_cart = [10.99, 5.50, 20.00, 3.25]
+total_price = 0
+for item_price in shopping_cart:
+    total_price += item_price
+print(f"Total price of items: ${total_price:.2f}") # Output: Total price of items: $39.74
 ```
 
 #### Iterating with `range()`
@@ -208,6 +267,21 @@ for index, fruit in enumerate(fruits):
 # Item at index 0: apple
 # Item at index 1: banana
 # Item at index 2: cherry
+
+# Real-world example: Displaying a leaderboard with ranks
+players = ["Alice", "Bob", "Charlie", "David"]
+scores = [1500, 1200, 1800, 900]
+
+# To get a ranked list, we might sort first (covered in Chapter 2, but useful here)
+# For simplicity, let's assume players are already ordered by score for this example
+print("\n--- Leaderboard ---")
+for rank, player in enumerate(players, start=1): # start=1 makes rank 1-indexed
+    print(f"Rank {rank}: {player} (Score: {scores[rank-1]}) ") # Access score using adjusted index
+# Output (assuming scores are already implicitly ordered with players):
+# Rank 1: Alice (Score: 1500)
+# Rank 2: Bob (Score: 1200)
+# Rank 3: Charlie (Score: 1800)
+# Rank 4: David (Score: 900)
 ```
 
 #### Iterating with `zip()`
@@ -227,6 +301,19 @@ for name, age in zip(names, ages):
 # Alice is 25 years old.
 # Bob is 30 years old.
 # Charlie is 35 years old.
+
+# Real-world example: Pairing product details for inventory management
+product_ids = ["P001", "P002", "P003"]
+product_names = ["Laptop", "Mouse", "Keyboard"]
+product_prices = [1200.00, 25.50, 75.00]
+
+print("\n--- Product Inventory ---")
+for pid, name, price in zip(product_ids, product_names, product_prices):
+    print(f"ID: {pid}, Name: {name}, Price: ${price:.2f}")
+# Output:
+# ID: P001, Name: Laptop, Price: $1200.00
+# ID: P002, Name: Mouse, Price: $25.50
+# ID: P003, Name: Keyboard, Price: $75.00
 ```
 
 ### `while` Loop
@@ -237,9 +324,30 @@ count = 0
 while count < 5:
     print(count)
     count += 1 # Increment count by 1
+
+# Real-world example: Simple retry mechanism
+import time # Often used with retry logic
+
+attempts = 0
+max_attempts = 3
+success = False
+
+while attempts < max_attempts and not success:
+    print(f"Attempt {attempts + 1} to connect...")
+    # Simulate an attempt (e.g., trying to connect to a server)
+    if attempts == 1: # Simulate success on the second attempt
+        success = True
+        print("Connection successful!")
+    else:
+        print("Connection failed. Retrying in 1 second...")
+        time.sleep(1) # Pause for 1 second before retrying
+    attempts += 1
+
+if not success:
+    print("Failed to connect after multiple attempts.")
 ```
 
-**Caution:** Be careful with `while` loops to avoid infinite loops. Ensure that the condition eventually becomes false.
+**Caution:** Be careful with `while` loops to avoid infinite loops. Ensure that the condition eventually becomes false. The `time.sleep()` function is used here to simulate a delay, which is common in real-world retry mechanisms.
 
 ### Nested Loops
 You can also nest loops, meaning one loop can be inside another. This is often used when working with multi-dimensional data structures like matrices or when you need to combine items from different lists.
@@ -253,6 +361,17 @@ for i in range(1, 3):
 # (1, 2)
 # (2, 1)
 # (2, 2)
+
+# Real-world example: Printing a multiplication table
+print("\n--- Multiplication Table (1-3) ---")
+for i in range(1, 4):
+    for j in range(1, 4):
+        print(f"{i} * {j} = {i * j}", end="\t") # Use tab for spacing
+    print() # Newline after each row
+# Expected Output:
+# 1 * 1 = 1   1 * 2 = 2   1 * 3 = 3
+# 2 * 1 = 2   2 * 2 = 4   2 * 3 = 6
+# 3 * 1 = 3   3 * 2 = 6   3 * 3 = 9
 ```
 
 ### `else` with Loops (Optional Advanced Concept)
