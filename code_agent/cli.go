@@ -271,7 +271,7 @@ func printToolsList(renderer *display.Renderer) {
 // printModelsList displays all available models
 func printModelsList(renderer *display.Renderer, registry *ModelRegistry) {
 	fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
-	fmt.Print(renderer.Cyan("Available AI Models\n"))
+	fmt.Print(renderer.Cyan("                      Available AI Models\n"))
 	fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
 
 	// Group models by backend
@@ -331,7 +331,7 @@ func printModelsList(renderer *display.Renderer, registry *ModelRegistry) {
 // printCurrentModelInfo displays detailed information about the current model
 func printCurrentModelInfo(renderer *display.Renderer, model ModelConfig) {
 	fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
-	fmt.Print(renderer.Cyan("Current Model Information\n"))
+	fmt.Print(renderer.Cyan("                 Current Model Information\n"))
 	fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
 
 	// Model name and backend
