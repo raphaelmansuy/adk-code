@@ -4,7 +4,7 @@
 # Variables
 BINARY_NAME=code-agent
 VERSION=1.0.0
-BUILD_DIR=.
+BUILD_DIR=../bin
 GO=go
 GOFLAGS=-v
 LDFLAGS=-ldflags "-X main.version=$(VERSION)"
@@ -51,6 +51,7 @@ help:
 ## build: Build the application binary
 build:
 	@echo "$(GREEN)Building $(BINARY_NAME)...$(NC)"
+	@mkdir -p $(BUILD_DIR)
 	$(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) .
 	@echo "$(GREEN)✓ Build complete: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
 
@@ -109,7 +110,7 @@ uninstall:
 ## run: Build and run the application
 run: build
 	@echo "$(GREEN)Running $(BINARY_NAME)...$(NC)"
-	./$(BINARY_NAME)
+	$(BUILD_DIR)/$(BINARY_NAME)
 
 ## fmt: Format the code
 fmt:

@@ -28,6 +28,8 @@ vendor/
 *.iml
 
 # Build artifacts
+/bin/
+/bin
 /code-agent
 /code_agent/code-agent
 /code_agent/demo/calculate

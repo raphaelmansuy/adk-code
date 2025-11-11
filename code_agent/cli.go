@@ -73,13 +73,9 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 
 // handleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
+// Note: /exit and /quit are handled separately in main.go to break the loop
 func handleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens) bool {
 	switch input {
-	case "/exit", "/quit":
-		goodbye := renderer.Cyan("Goodbye! Happy coding! 👋")
-		fmt.Printf("\n%s\n", goodbye)
-		return true
-
 	case "/prompt":
 		fmt.Print(renderer.Yellow("\n=== System Prompt ===\n\n"))
 		fmt.Print(renderer.Dim(codingagent.EnhancedSystemPrompt))

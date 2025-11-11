@@ -7,6 +7,8 @@ replace google.golang.org/adk => ../research/adk-go
 require (
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
+	github.com/chzyer/readline v1.5.1
+	github.com/google/uuid v1.6.0
 	golang.org/x/term v0.36.0
 	google.golang.org/adk v0.0.0
 	google.golang.org/genai v1.20.0
@@ -33,7 +35,6 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect

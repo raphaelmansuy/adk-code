@@ -2,13 +2,16 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strings"
+	"syscall"
 
+	"github.com/chzyer/readline"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/runner"
@@ -23,7 +26,33 @@ import (
 const version = "1.0.0"
 
 func main() {
-	ctx := context.Background()
+	// Setup signal handling for graceful Ctrl+C
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Create a context that can be cancelled
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Track if we've received Ctrl+C once
+	ctrlCCount := 0
+
+	// Handle signals in a goroutine
+	go func() {
+		for sig := range sigChan {
+			ctrlCCount++
+			if sig == syscall.SIGINT {
+				if ctrlCCount == 1 {
+					fmt.Println("\n\n⚠️  Interrupted by user (Ctrl+C)")
+					fmt.Println("Cancelling current operation...")
+				} else {
+					fmt.Println("\n\n⚠️  Ctrl+C pressed again - forcing exit")
+					os.Exit(130) // Standard exit code for SIGINT
+				}
+			}
+			cancel()
+		}
+	}()
 
 	// Parse command-line flags
 	cliConfig, args := ParseCLIFlags()
@@ -127,21 +156,60 @@ func main() {
 	welcome := bannerRenderer.RenderWelcome()
 	fmt.Print(welcome)
 
-	// Interactive loop
-	scanner := bufio.NewScanner(os.Stdin)
+	// Setup readline with history persistence
+	historyFile := filepath.Join(os.Getenv("HOME"), ".code_agent_history")
 
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:          renderer.Cyan(renderer.Bold("❯") + " "),
+		HistoryFile:     historyFile,
+		HistoryLimit:    500,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+		FuncFilterInputRune: func(r rune) (rune, bool) {
+			// Allow all characters
+			return r, true
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create readline instance: %v", err)
+	}
+	defer l.Close()
+
+	// Interactive loop with readline
 	for {
-		// Show prompt
-		promptText := renderer.Bold("❯") + " "
-		fmt.Print(renderer.Cyan(promptText))
-
-		if !scanner.Scan() {
-			break
+		// Check if context was cancelled (e.g., by Ctrl+C signal)
+		select {
+		case <-ctx.Done():
+			fmt.Printf("\n%s\n", renderer.Cyan("Goodbye! Happy coding! 👋"))
+			return
+		default:
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		// Readline handles the prompt and history navigation automatically
+		input, err := l.Readline()
+		if err != nil {
+			if err == readline.ErrInterrupt {
+				// Handle Ctrl+C from readline - break the loop to exit gracefully
+				fmt.Printf("\n%s\n", renderer.Cyan("Goodbye! Happy coding! 👋"))
+				return
+			} else {
+				break
+			}
+		}
+
+		input = strings.TrimSpace(input)
 		if input == "" {
 			continue
+		}
+
+		// Save to history
+		l.SaveHistory(input)
+
+		// Check for exit commands first
+		if input == "/exit" || input == "/quit" {
+			goodbye := renderer.Cyan("Goodbye! Happy coding! 👋")
+			fmt.Printf("\n%s\n", goodbye)
+			break
 		}
 
 		// Handle built-in commands
@@ -166,15 +234,26 @@ func main() {
 		toolRunning := false
 		requestID := fmt.Sprintf("req_%d", sessionTokens.GetSummary().RequestCount+1)
 
+	agentLoop:
 		for event, err := range agentRunner.Run(ctx, userID, cliConfig.SessionName, userMsg, agent.RunConfig{
 			StreamingMode: agent.StreamingModeNone,
 		}) {
+			// Check if context was cancelled (Ctrl+C)
+			select {
+			case <-ctx.Done():
+				spinner.StopWithError("Task interrupted")
+				fmt.Printf("\n%s\n", renderer.Yellow("⚠️  Task cancelled by user"))
+				hasError = true
+				break agentLoop
+			default:
+			}
+
 			if err != nil {
 				spinner.StopWithError("Error occurred")
 				errMsg := renderer.RenderError(err)
 				fmt.Print(errMsg)
 				hasError = true
-				break
+				break agentLoop
 			}
 
 			if event != nil {
@@ -191,9 +270,5 @@ func main() {
 			failure := renderer.RenderTaskFailed()
 			fmt.Print(failure)
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("Error reading input: %v", err)
 	}
 }
