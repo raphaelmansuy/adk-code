@@ -10,6 +10,7 @@ import (
 
 	codingagent "code_agent/agent"
 	"code_agent/display"
+	"code_agent/tools"
 	"code_agent/tracking"
 )
 
@@ -153,8 +154,19 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 func handleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *ModelRegistry, currentModel ModelConfig) bool {
 	switch input {
 	case "/prompt":
-		fmt.Print(renderer.Yellow("\n=== System Prompt ===\n\n"))
-		fmt.Print(renderer.Dim(codingagent.EnhancedSystemPrompt))
+		// Show the XML-structured prompt with minimal context
+		registry := tools.GetRegistry()
+		ctx := codingagent.PromptContext{
+			HasWorkspace:         false,
+			WorkspaceRoot:        "",
+			WorkspaceSummary:     "(Context not available in REPL)",
+			EnvironmentMetadata:  "",
+			EnableMultiWorkspace: false,
+		}
+		xmlPrompt := codingagent.BuildEnhancedPromptWithContext(registry, ctx)
+
+		fmt.Print(renderer.Yellow("\n=== System Prompt (XML-Structured) ===\n\n"))
+		fmt.Print(renderer.Dim(xmlPrompt))
 		fmt.Print(renderer.Yellow("\n\n=== End of Prompt ===\n\n"))
 		return true
 

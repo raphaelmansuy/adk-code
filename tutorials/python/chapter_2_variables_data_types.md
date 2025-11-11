@@ -62,7 +62,7 @@ Python has several built-in data types to handle various kinds of data.
     pi = 3.14
     temperature = 98.6
     ```
-*   **complex (Complex Numbers):** Numbers with a real and imaginary part (e.g., `3 + 4j`). These are primarily used in advanced mathematical and scientific computing.
+*   **complex (Complex Numbers):** Numbers with a real and imaginary part (e.g., `3 + 4j`). These are typically used in specialized mathematical and scientific applications.
 
 ### 2. Boolean Type
 *   **bool:** Represents truth values. It can only be `True` or `False`.
@@ -109,10 +109,15 @@ Python has several built-in data types to handle various kinds of data.
     ```
 
 ### 4. Mapping Type (Key-Value Pairs)
-*   **dict (Dictionary):** An unordered collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
+*   **dict (Dictionary):** An ordered (since Python 3.7), mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
     ```python
     person = {"name": "Bob", "age": 25, "city": "London"}
     scores = {"math": 90, "science": 85}
+    # Accessing values
+    print(person["name"]) # Output: Bob
+    # Modifying values
+    person["age"] = 26
+    print(person) # Output: {'name': 'Bob', 'age': 26, 'city': 'London'}
     ```
 
 ### 5. Set Types (Unordered Collections of Unique Items)
@@ -120,11 +125,30 @@ Python has several built-in data types to handle various kinds of data.
     ```python
     unique_numbers = {1, 2, 3, 3, 4} # will store {1, 2, 3, 4}
     print(unique_numbers) # Output: {1, 2, 3, 4} (order may vary)
+    print(3 in unique_numbers) # Output: True (checking membership)
+    
+    set_a = {1, 2, 3}
+    set_b = {3, 4, 5}
+    print(set_a.union(set_b)) # Output: {1, 2, 3, 4, 5}
     ```
 *   **frozenset:** An **immutable** version of a set. Once created, you cannot add or remove elements. Frozensets can be used as keys in dictionaries or as elements in other sets, which regular (mutable) sets cannot.
     ```python
     immutable_set = frozenset([1, 2, 3])
     print(immutable_set) # Output: frozenset({1, 2, 3})
+    ```
+
+### 6. None Type
+*   **NoneType (None):** Represents the absence of a value or a null value. It's often used to indicate that a variable has not been assigned anything yet, or as the default return value for functions that don't explicitly return anything.
+    ```python
+    result = None
+    print(result) # Output: None
+    print(type(result)) # Output: <class 'NoneType'>
+
+    def do_nothing():
+        pass # This function implicitly returns None
+    
+    nothing_value = do_nothing()
+    print(nothing_value) # Output: None
     ```
 
 ## Checking Data Types

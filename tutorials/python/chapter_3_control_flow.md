@@ -141,8 +141,6 @@ Here's a flowchart representation of an `if-elif-else` statement:
         +-------------------+
 ```
 
-**Important:** Python uses indentation (whitespace at the beginning of a line) to define code blocks. This is crucial and different from many other languages that use curly braces `{}`.
-
 ### Nested Conditional Statements
 You can place `if` statements inside other `if` statements to handle more complex scenarios.
 
@@ -177,7 +175,19 @@ for i in range(1, 3):
 ```
 
 ### `for` Loop
-The `for` loop is used for iterating over a sequence (like a list, tuple, string, or range) or other iterable objects.
+The `for` loop is used for iterating over a sequence (like a list, tuple, string, or range) or other iterable objects. It executes a block of code for each item in the sequence.
+
+Here's a conceptual flowchart for a `for` loop:
+
+```mermaid
+graph TD
+    A[Start]
+    A --> B{Are there more items in the sequence?}
+    B -- Yes --> C[Get next item]
+    C --> D[Execute loop body with item]
+    D --> B
+    B -- No --> E[End]
+```
 
 #### Iterating over a List
 ```python
@@ -240,6 +250,33 @@ while count < 5:
 
 **Caution:** Be careful with `while` loops to avoid infinite loops. Ensure that the condition eventually becomes false.
 
+### `else` with Loops (Optional Advanced Concept)
+Both `for` and `while` loops can have an optional `else` block. This `else` block executes *only if the loop completes without encountering a `break` statement*.
+
+```python
+# Example with for-else
+for i in range(3):
+    print(f"For loop iteration: {i}")
+else:
+    print("For loop completed without break.")
+
+# Example with while-else
+count = 0
+while count < 2:
+    print(f"While loop iteration: {count}")
+    count += 1
+else:
+    print("While loop completed without break.")
+
+# Example where else does NOT execute (due to break)
+for i in range(3):
+    if i == 1:
+        break
+    print(f"For loop with break: {i}")
+else:
+    print("This will NOT be printed.")
+```
+
 ## 3. Loop Control Statements
 
 ### `break` Statement
@@ -288,9 +325,9 @@ In the next chapter, we will learn about functions, which allow you to organize 
 *   Logical operators (`and`, `or`, `not`) combine or modify conditions.
 *   `for` loops iterate over sequences (lists, strings, `range()`, `enumerate()`).
 *   `while` loops repeat code as long as a condition is true.
-*   `break` terminates a loop, and `continue` skips the current iteration.
+*   `break` terminates a loop, `continue` skips the current iteration, and `pass` is a null operation placeholder.
 *   Python uses indentation to define code blocks.
-*   The `pass` statement is a placeholder for future code.
+*   (Advanced) `for` and `while` loops can have an `else` block that executes if the loop completes normally.
 
 ## Exercise 3: Simple Calculator
 
@@ -302,7 +339,7 @@ Write a Python program that simulates a very basic calculator. It should:
 
 **Bonus:** Implement a check to prevent division by zero.
 
-**Hint:** You'll need to use `input()` to get user input and `float()` or `int()` to convert the input strings to numbers. Remember the `if-elif-else` structure for handling different operators.
+**Hint:** You'll need to use the `input()` function to get user input (which returns a string) and `float()` or `int()` to convert the input strings to numbers. Remember the `if-elif-else` structure for handling different operators.
 
 **Example Interaction:**
 ```

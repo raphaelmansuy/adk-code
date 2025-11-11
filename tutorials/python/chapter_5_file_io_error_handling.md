@@ -20,8 +20,27 @@ To work with a file, you first need to open it using the `open()` function. It t
 *   `"w"`: Write mode. Opens a file for writing. Creates the file if it doesn't exist, or truncates (empties) it if it does.
 *   `"a"`: Append mode. Opens a file for appending. Creates the file if it doesn't exist. Data is added to the end of the file.
 *   `"x"`: Exclusive creation mode. Creates a new file, but raises an `FileExistsError` if the file already exists.
-*   `"t"`: Text mode (default). Handles text data.
-*   `"b"`: Binary mode. Handles binary data (e.g., images, executables).
+*   `"t"`: Text mode (default). Handles text data (strings).
+*   `"b"`: Binary mode. Handles binary data (bytes objects), used for non-text files like images, executables, etc.
+
+    ```python
+    # Ensure the directory exists for the binary file example
+    import os # Ensure os is imported for this example
+    directory = "output_data"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    binary_file_path = os.path.join(directory, "binary_data.bin")
+    # Writing binary data
+    with open(binary_file_path, "wb") as file:
+        file.write(b"\x01\x02\x03\x04") # b'' prefix denotes a bytes literal
+    print(f"Binary data written to {binary_file_path}")
+
+    # Reading binary data
+    with open(binary_file_path, "rb") as file:
+        data = file.read()
+        print(f"Read binary data: {data}") # Output: b'\x01\x02\x03\x04'
+    ```
 
 ### Working with File Paths and OS Module
 The `os` module provides functions for interacting with the operating system, including file system operations. `os.path` is a submodule for path manipulations.
@@ -38,6 +57,10 @@ folder = "my_data"
 file_name = "report.txt"
 full_path = os.path.join(folder, file_name)
 print(f"Joined path: {full_path}")
+
+# Extracting parts of a path
+print(f"Basename: {os.path.basename(full_path)}") # Output: report.txt
+print(f"Dirname: {os.path.dirname(full_path)}")   # Output: my_data
 
 # Checking if a path exists
 if os.path.exists(full_path):
@@ -98,13 +121,13 @@ with open(file_path, "r") as file:
     print(content)
 
 # Reading line by line
-with open("my_file.txt", "r") as file:
+with open(file_path, "r") as file:
     print("--- Line by Line ---")
     for line in file:
         print(line.strip()) # .strip() removes leading/trailing whitespace, including newline
 
 # Reading a specific number of characters
-with open("my_file.txt", "r") as file:
+with open(file_path, "r") as file:
     first_10_chars = file.read(10)
     print("--- First 10 Characters ---")
     print(first_10_chars)
@@ -146,14 +169,43 @@ Python has many built-in exceptions to signal different types of errors. Here ar
 **Best Practice for `except` blocks:** It's generally good practice to catch more specific exceptions first, followed by more general ones. This allows you to handle different error conditions appropriately. Catching `Exception` (the base class for all exceptions) should typically be done last, if at all, to avoid masking unexpected errors.
 
 ### `else` Block
-The `else` block is executed if no exceptions are raised in the `try` block.`python
+The `else` block is executed if no exceptions are raised in the `try` block.
+
+```python
+# Example of else block with try-except for file operations
+import os
+
+# Ensure the directory exists for the example file
+directory = "output_data"
+if not os.path.exists(directory):
+    os.makedirs(directory)
+
+file_to_check = os.path.join(directory, "existing_file_for_else.txt")
+
+# First, create the file so the else block can execute
+with open(file_to_check, "w") as f:
+    f.write("This file exists for the else example.")
+
 try:
-    file = open("non_existent_file.txt", "r")
+    with open(file_to_check, "r") as file: # Use with statement inside try
+        content = file.read()
+        print(f"Content of {file_to_check}: {content}")
 except FileNotFoundError:
-    print("The file was not found.")
+    print(f"The file {file_to_check} was not found (this should not happen here).")
 else:
-    print("File opened successfully.")
-    file.close()
+    print(f"File '{os.path.basename(file_to_check)}' opened and read successfully (else block executed).")
+    # No need for file.close() because of 'with' statement
+
+print("-" * 30)
+
+# Example where file is not found (and else block does NOT execute)
+try:
+    with open(os.path.join(directory, "non_existent_file.txt"), "r") as file:
+        content = file.read()
+except FileNotFoundError:
+    print("Attempted to open a non-existent file: File not found (except block executed).")
+else:
+    print("This message will NOT be printed if FileNotFoundError occurs.")
 ```
 
 ### `finally` Block

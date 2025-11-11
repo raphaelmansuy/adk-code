@@ -16,9 +16,6 @@ import (
 	"code_agent/workspace"
 )
 
-// Use the enhanced system prompt from enhanced_prompt.go
-var SystemPrompt = EnhancedSystemPrompt
-
 // Config holds the configuration for creating the coding agent.
 type Config struct {
 	// Model is the LLM to use for the agent.
@@ -158,43 +155,16 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		envContext = ""
 	}
 
-	// Build dynamic system prompt from registered tools
-	dynamicPrompt := BuildEnhancedPrompt(registry)
-	workspaceSummary := wsManager.GetSummary()
-
-	// Create enhanced instruction with workspace context
-	instruction := fmt.Sprintf(`%s
-
-## Workspace Environment
-
-%s
-
-Primary workspace: %s
-
-`, dynamicPrompt, workspaceSummary, actualProjectRoot)
-
-	// Add environment context if available
-	if envContext != "" {
-		instruction += fmt.Sprintf(`### Workspace Metadata
-
-%s
-
-`, envContext)
+	// Build dynamic XML-tagged system prompt from registered tools
+	promptCtx := PromptContext{
+		HasWorkspace:         true,
+		WorkspaceRoot:        actualProjectRoot,
+		WorkspaceSummary:     wsManager.GetSummary(),
+		EnvironmentMetadata:  envContext,
+		EnableMultiWorkspace: cfg.EnableMultiWorkspace,
 	}
 
-	instruction += `### Path Usage
-
-All file paths should be relative to the primary workspace directory. For example:
-- To access a file in the current directory: "./filename.ext" or "filename.ext"
-- To access a file in a subdirectory: "./subdir/filename.ext" or "subdir/filename.ext"
-- Do NOT prefix paths with the working directory name.
-
-### Workspace Hints (Future Feature)
-
-In multi-workspace mode, you can use @workspace:path syntax to explicitly target a workspace:
-- @frontend:src/index.ts - targets the frontend workspace
-- @backend:api/server.go - targets the backend workspace
-`
+	instruction := BuildEnhancedPromptWithContext(registry, promptCtx)
 
 	// Create the coding agent with dynamically registered tools
 	codingAgent, err := llmagent.New(llmagent.Config{

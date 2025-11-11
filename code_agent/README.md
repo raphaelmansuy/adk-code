@@ -31,25 +31,16 @@ The C project is organized into several modules, each handling a specific aspect
 
 The `prolog` engine processes queries by interacting with the knowledge base through a series of steps involving parsing, unification, and inference.
 
-```
-+---------------+      +----------------+      +------------------+
-| Input Query   |----->| Parser         |----->| Internal Query   |
-| (e.g., father(X,Y)?) | (parser.c/h)   |      | Representation   |
-+---------------+      +----------------+      +------------------+
-                                |
-                                V
-+---------------------+      +----------------+      +---------------------+
-| Knowledge Base      |<-----| Inference      |<-----| Unification Engine  |
-| (knowledge_base.c/h)|      | (inference.c/h)|      | (unification.c/h)   |
-| (Facts & Rules)     |      | (Resolution,   |      | (Matches terms,     |
-+---------------------+      |  Backtracking) |      |  generates subs.)   |
-                                ^                |      +---------------------+
-                                |                V
-+---------------------+      +----------------+
-| Substitution Engine |<-----| Goal/Subgoal   |
-| (substitution.c/h)  |      | Management     |
-| (Applies bindings)  |      +----------------+
-+---------------------+
+```mermaid
+graph TD
+    A[Input Query<br>(e.g., father(X,Y)?)] --> B(Parser<br>(parser.c/h))
+    B --> C{Internal Query<br>Representation}
+    C --> D[Inference<br>(inference.c/h)<br>(Resolution, Backtracking)]
+    D --> E[Knowledge Base<br>(knowledge_base.c/h)<br>(Facts & Rules)]
+    D --> F[Unification Engine<br>(unification.c/h)<br>(Matches terms, generates subs.)]
+    F --> G[Substitution Engine<br>(substitution.c/h)<br>(Applies bindings)]
+    G --> H[Goal/Subgoal<br>Management]
+    H --> D
 ```
 
 ## Building and Running
