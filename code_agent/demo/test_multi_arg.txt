@@ -1,5 +1,0 @@
-parent(john, mary).
-?- parent(john, mary).
-?- parent(john, X).
-?- parent(X, mary).
-?- parent(X, Y).
