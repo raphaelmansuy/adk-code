@@ -42,7 +42,7 @@ To work with a file, you first need to open it using the `open()` function. It t
         print(f"Read binary data: {data}") # Output: b'\x01\x02\x03\x04'
     ```
 
-### ### Working with File Paths and OS Module
+## Working with File Paths and OS Module
 The `os` module provides functions for interacting with the operating system, including file system operations. `os.path` is a submodule for path manipulations.
 
 **Important:** Always use `os.path.join()` when constructing file paths to ensure your code works correctly across different operating systems (Windows, macOS, Linux) which use different path separators.

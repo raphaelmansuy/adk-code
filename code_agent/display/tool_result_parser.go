@@ -122,7 +122,7 @@ func (trp *ToolResultParser) parseListDirectory(result map[string]any) string {
 	return result_str
 }
 
-// parseSearchResults formats search results
+// parseSearchResults formats search results with file grouping
 func (trp *ToolResultParser) parseSearchResults(result map[string]any) string {
 	var output strings.Builder
 
@@ -136,27 +136,30 @@ func (trp *ToolResultParser) parseSearchResults(result map[string]any) string {
 		return "🔍 No matches found"
 	}
 
-	output.WriteString(fmt.Sprintf("🔍 Found %d matches:\n\n", len(matchesRaw)))
+	// Group matches by file
+	fileMatches := make(map[string]int)
+	files := []string{}
+	filesMap := make(map[string][]map[string]any)
 
-	// Render matches
-	for i, match := range matchesRaw {
-		if i >= 20 {
-			output.WriteString(fmt.Sprintf("\n...and %d more matches", len(matchesRaw)-20))
-			break
-		}
-
+	for _, match := range matchesRaw {
 		if matchMap, ok := match.(map[string]any); ok {
 			file, _ := matchMap["file"].(string)
-			line, _ := matchMap["line"].(float64)
-			content, _ := matchMap["content"].(string)
-
 			if file != "" {
-				output.WriteString(fmt.Sprintf("**%s:%d**\n", file, int(line)))
-				if content != "" {
-					output.WriteString(fmt.Sprintf("```\n%s\n```\n\n", strings.TrimSpace(content)))
+				if _, seen := fileMatches[file]; !seen {
+					files = append(files, file)
 				}
+				fileMatches[file]++
+				filesMap[file] = append(filesMap[file], matchMap)
 			}
 		}
+	}
+
+	output.WriteString(fmt.Sprintf("🔍 Found %d matches in %d files:\n\n", len(matchesRaw), len(fileMatches)))
+
+	// Show file summary
+	for _, file := range files {
+		count := fileMatches[file]
+		output.WriteString(fmt.Sprintf("**%s** (%d matches)\n", file, count))
 	}
 
 	result_str := output.String()
@@ -230,7 +233,7 @@ func (trp *ToolResultParser) parseCommandOutput(result map[string]any) string {
 	return result_str
 }
 
-// parseFileContent formats file content results
+// parseFileContent formats file content results with better info display
 func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
 	// Extract file path and total lines count
 	filePath, _ := result["file_path"].(string)
@@ -239,6 +242,14 @@ func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
 		totalLines = int(tl)
 	} else if tl, ok := result["total_lines"].(int); ok {
 		totalLines = tl
+	}
+
+	// Extract file size if available
+	fileSize := 0
+	if fs, ok := result["file_size"].(float64); ok {
+		fileSize = int(fs)
+	} else if fs, ok := result["file_size"].(int); ok {
+		fileSize = fs
 	}
 
 	// If no total_lines, count from content (fallback)
@@ -250,11 +261,23 @@ func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
 
 	var output strings.Builder
 
-	// Show path and line count only (no content)
+	// Show path and line count
 	if filePath != "" {
 		output.WriteString(fmt.Sprintf("📄 %s\n", filePath))
 	}
-	output.WriteString(fmt.Sprintf("   %d lines", totalLines))
+
+	// Build info line with lines and size
+	var infoParts []string
+	if totalLines > 0 {
+		infoParts = append(infoParts, fmt.Sprintf("%d lines", totalLines))
+	}
+	if fileSize > 0 {
+		infoParts = append(infoParts, formatFileSize(fileSize))
+	}
+
+	if len(infoParts) > 0 {
+		output.WriteString(fmt.Sprintf("   %s", strings.Join(infoParts, " | ")))
+	}
 
 	result_str := output.String()
 	if trp.mdRenderer != nil {
@@ -264,6 +287,26 @@ func (trp *ToolResultParser) parseFileContent(result map[string]any) string {
 		}
 	}
 	return result_str
+}
+
+// formatFileSize formats bytes into human-readable size
+func formatFileSize(bytes int) string {
+	const (
+		kb = 1024
+		mb = kb * 1024
+		gb = mb * 1024
+	)
+
+	switch {
+	case bytes >= gb:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/float64(gb))
+	case bytes >= mb:
+		return fmt.Sprintf("%.1f MB", float64(bytes)/float64(mb))
+	case bytes >= kb:
+		return fmt.Sprintf("%.1f KB", float64(bytes)/float64(kb))
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
 }
 
 // parseWriteFile formats write file results

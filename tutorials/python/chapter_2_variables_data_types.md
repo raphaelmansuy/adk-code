@@ -4,7 +4,7 @@
 In programming, a variable is a named storage location that holds a value. Think of it as a container where you can store different types of information. In Python, you don't need to explicitly declare the type of a variable; Python infers it based on the value you assign.
 
 ## Declaring and Assigning Variables
-You assign a value to a variable using the `=` operator.
+You assign a value to a variable using the `=` operator. Python is dynamically typed, meaning you can reassign a variable to a new value of a different type.
 
 ### Variable Naming Conventions (PEP 8)
 Python has guidelines for writing readable code, known as PEP 8. For variable names, the convention is:
@@ -61,6 +61,12 @@ Python has several built-in data types to handle various kinds of data.
     ```python
     pi = 3.14
     temperature = 98.6
+    ```
+*   **complex (Complex Numbers):** Numbers with a real and an imaginary part, represented as `a + bj`.
+    ```python
+    z = 1 + 2j
+    print(z.real) # Output: 1.0
+    print(z.imag) # Output: 2.0
     ```
 ### 2. Boolean Type
 *   **bool:** Represents truth values. It can only be `True` or `False`.
@@ -125,7 +131,7 @@ Python has several built-in data types to handle various kinds of data.
     ```
 
 ### 5. Set Types (Unordered Collections of Unique Items)
-*   **set:** An unordered collection of unique items. Sets are mutable, meaning you can add or remove elements. They do not allow duplicate values and are useful for operations like checking membership, removing duplicates, and performing mathematical set operations (union, intersection). Sets are defined using curly braces `{}` or the `set()` constructor.
+*   **set:** An unordered, **mutable** collection of unique items. Sets do not allow duplicate values and are useful for operations like checking membership, removing duplicates, and performing mathematical set operations (union, intersection). Sets are defined using curly braces `{}` or the `set()` constructor.
     ```python
     unique_numbers = {1, 2, 3, 3, 4} # duplicates are automatically removed
     print(unique_numbers) # Output: {1, 2, 3, 4} (the order of elements is not guaranteed)

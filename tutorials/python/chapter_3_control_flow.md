@@ -82,26 +82,6 @@ else:
         +-------------------+
 ```
 
-Here's a flowchart representation of an `if-else` statement:
-        +--------+----------+
-                 |
-                 V
-        +-------------------+
-        | Condition (age >= 18)? |
-        +---------+---------+
-        |   True  |  False  |
-        +---------+---------+
-            |           |
-            V           V
-    +-----------+   +-----------+
-    | Print("Adult")|   | Print("Minor")|
-    +-----------+   +-----------+
-            |           |
-            +-----+-----+
-                  |
-                  V
-        +-------------------+
-        | End               |
         +-------------------+
 ```
 
@@ -255,6 +235,7 @@ To see what `range()` generates, you can convert it to a list:
 print(list(range(5)))        # Output: [0, 1, 2, 3, 4]
 print(list(range(2, 5)))     # Output: [2, 3, 4]
 print(list(range(0, 10, 2))) # Output: [0, 2, 4, 6, 8]
+print(list(range(5, 0, -1)))  # Output: [5, 4, 3, 2, 1] (counting down)
 ```
 
 And here are examples of using `range()` in a `for` loop:
@@ -283,6 +264,21 @@ for index, fruit in enumerate(fruits):
 # Item at index 0: apple
 # Item at index 1: banana
 # Item at index 2: cherry
+```
+
+#### Iterating with `zip()`
+When you need to iterate over multiple sequences simultaneously, `zip()` is incredibly useful. It pairs up elements from each sequence.
+
+```python
+names = ["Alice", "Bob", "Charlie"]
+ages = [25, 30, 35]
+
+for name, age in zip(names, ages):
+    print(f"{name} is {age} years old.")
+# Output:
+# Alice is 25 years old.
+# Bob is 30 years old.
+# Charlie is 35 years old.
 ```
 
 ### `while` Loop
@@ -372,7 +368,8 @@ In the next chapter, we will learn about functions, which allow you to organize 
 *   Logical operators (`and`, `or`, `not`) combine or modify conditions.
 *   `for` loops iterate over sequences (lists, strings, `range()`, `enumerate()`).
 *   `while` loops repeat code as long as a condition is true.
-*   `break` terminates a loop, `continue` skips the current iteration, and `pass` is a null operation placeholder.
+*   `break` (terminates a loop) and `continue` (skips current iteration) are important loop control statements.
+*   `pass` is a null operation placeholder.
 *   Python uses indentation to define code blocks.
 *   (Advanced) `for` and `while` loops can have an `else` block that executes if the loop completes normally.
 

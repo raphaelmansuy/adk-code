@@ -822,6 +822,46 @@ func (r *Renderer) RenderAPIUsage(status string, usage *APIUsageInfo) string {
 	return "\n" + rendered + "\n"
 }
 
+// RenderBoxedOutput renders output with a subtle border for emphasis
+func (r *Renderer) RenderBoxedOutput(title string, content string) string {
+	if r.outputFormat == OutputFormatPlain || !IsTTY() {
+		if title != "" {
+			return fmt.Sprintf("\n%s:\n%s\n", title, content)
+		}
+		return fmt.Sprintf("\n%s\n", content)
+	}
+
+	// Use a subtle box style
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).
+		Padding(0, 1)
+
+	// Limit content width
+	width := GetTerminalWidth()
+	if width > 80 {
+		width = 80
+	}
+
+	// Truncate lines that are too long
+	lines := strings.Split(strings.TrimSpace(content), "\n")
+	for i, line := range lines {
+		if len(line) > width-4 {
+			lines[i] = line[:width-7] + "..."
+		}
+	}
+	content = strings.Join(lines, "\n")
+
+	boxedContent := boxStyle.Render(content)
+
+	if title != "" {
+		titleStyle := lipgloss.NewStyle().Bold(true)
+		return "\n" + titleStyle.Render(title) + "\n" + boxedContent + "\n"
+	}
+
+	return "\n" + boxedContent + "\n"
+}
+
 // RenderPartContent renders a content part from the agent.
 func (r *Renderer) RenderPartContent(part *genai.Part) string {
 	if part.Text != "" {

@@ -169,8 +169,8 @@ print(full_name)
 
 ## Scope of Variables
 
-*   `*args` collects all extra positional arguments into a tuple. Use it when your function needs to accept an arbitrary number of positional arguments (e.g., a `sum` function that can sum any number of items).
-*   `**kwargs` collects all extra keyword arguments into a dictionary. Use it when your function needs to accept an arbitrary number of keyword arguments (e.g., passing configuration options like `print_info(name="Alice", age=30)`).
+*   **Local Scope:** Variables defined inside a function (including its parameters) have local scope. They are only accessible from within that function.
+    ```python
     def my_function():
         local_var = 10
         print(local_var)
@@ -216,6 +216,19 @@ print(f"After call: {global_counter}")  # Output: After call: 1
     print(f"After call: {another_global_counter}")  # Output: After call: 0 (Global variable remains unchanged)
     ```
     Without `global`, `global_counter += 1` inside `increment_counter()` would create a new local variable named `global_counter` instead of modifying the global one.
+
+*   **`nonlocal` Keyword (for Nested Functions):** While less common for beginners, `nonlocal` is used in nested functions to modify variables in the nearest enclosing (but non-global) scope. This allows a function to modify a variable in its outer function's scope.
+    ```python
+    def outer_function():
+        x = 10
+        def inner_function():
+            nonlocal x
+            x = 20
+        inner_function()
+        print(f"Outer function: {x}") # Output: Outer function: 20
+
+    outer_function()
+    ```
 
 ## Lambda Functions (Anonymous Functions)
 
