@@ -27,7 +27,7 @@ char *parse_name(char *input, char **name_out) {
     }
     *name_out = (char *)malloc(len + 1);
     if (!*name_out) {
-        fprintf(stderr, "Memory allocation failed for name.\n");
+        fprintf(stderr, "Parser Error: Memory allocation failed for name.\n");
         return NULL; // Indicate critical error
     }
     strncpy(*name_out, start, len);
@@ -64,7 +64,7 @@ Term *parse_term(char **input) {
 
         args = (Term **)malloc(capacity * sizeof(Term *));
         if (!args) {
-            fprintf(stderr, "Memory allocation failed for arguments.\n");
+            fprintf(stderr, "Parser Error: Memory allocation failed for arguments.\n");
             free(name);
             return NULL;
         }
@@ -77,7 +77,7 @@ Term *parse_term(char **input) {
                     capacity *= 2;
                     args = (Term **)realloc(args, capacity * sizeof(Term *));
                     if (!args) {
-                        fprintf(stderr, "Memory re-allocation failed for arguments.\n");
+                        fprintf(stderr, "Parser Error: Memory re-allocation failed for arguments.\n");
                         for (int i = 0; i < arity; ++i) free_term(args[i]);
                         free(args);
                         free(name);
@@ -87,7 +87,7 @@ Term *parse_term(char **input) {
 
                 Term *arg = parse_term(input); // Recursive call for nested terms
                 if (!arg) {
-                    fprintf(stderr, "Error: Expected argument in compound term at %s\n", *input);
+                    fprintf(stderr, "Parser Error: Expected argument in compound term at %s\n", *input);
                     for (int i = 0; i < arity; ++i) free_term(args[i]);
                     free(args);
                     free(name);
@@ -102,7 +102,7 @@ Term *parse_term(char **input) {
                     (*input)++; // Consume ','
                     *input = skip_whitespace(*input);
                 } else {
-                    fprintf(stderr, "Error: Expected ',' or ')' in compound term at %s\n", *input);
+                    fprintf(stderr, "Parser Error: Expected ',' or ')' in compound term at %s\n", *input);
                     for (int i = 0; i < arity; ++i) free_term(args[i]);
                     free(args);
                     free(name);
@@ -150,7 +150,7 @@ Clause *parse_clause(char **input) {
         *input += 2; // Consume ":-"
         body_goals = (Term **)malloc(capacity * sizeof(Term *));
         if (!body_goals) {
-            fprintf(stderr, "Memory allocation failed for clause body.\n");
+            fprintf(stderr, "Parser Error: Memory allocation failed for clause body.\n");
             free_term(head);
             return NULL;
         }
@@ -159,7 +159,7 @@ Clause *parse_clause(char **input) {
             *input = skip_whitespace(*input);
             Term *goal = parse_term(input);
             if (!goal) {
-                fprintf(stderr, "Error: Expected term in clause body at %s\n", *input);
+                fprintf(stderr, "Parser Error: Expected term in clause body at %s\n", *input);
                 for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
                 free(body_goals);
                 free_term(head);
@@ -170,7 +170,7 @@ Clause *parse_clause(char **input) {
                 capacity *= 2;
                 body_goals = (Term **)realloc(body_goals, capacity * sizeof(Term *));
                 if (!body_goals) {
-                    fprintf(stderr, "Memory re-allocation failed for clause body.\n");
+                    fprintf(stderr, "Parser Error: Memory re-allocation failed for clause body.\n");
                     for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
                     free(body_goals);
                     free_term(head);
@@ -185,7 +185,7 @@ Clause *parse_clause(char **input) {
             } else if (**input == ',') {
                 (*input)++; // Consume ',', more goals to follow
             } else {
-                fprintf(stderr, "Error: Expected ',' or '.' after goal in clause body at %s\n", *input);
+                fprintf(stderr, "Parser Error: Expected ',' or '.' after goal in clause body at %s\n", *input);
                 for (int i = 0; i < num_body_goals; ++i) free_term(body_goals[i]);
                 free(body_goals);
                 free_term(head);
@@ -193,7 +193,7 @@ Clause *parse_clause(char **input) {
             }
         }
     } else if (**input != '.') {
-        fprintf(stderr, "Error: Expected ':-' or '.' after head in clause at %s\n", *input);
+        fprintf(stderr, "Parser Error: Expected ':-' or '.' after head in clause at %s\n", *input);
         free_term(head);
         return NULL;
     }

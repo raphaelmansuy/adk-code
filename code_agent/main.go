@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/model/gemini"
@@ -19,6 +20,7 @@ import (
 
 	codingagent "code_agent/agent"
 	"code_agent/display"
+	"code_agent/persistence"
 	"code_agent/tracking"
 )
 
@@ -30,7 +32,39 @@ func main() {
 	// Parse command-line flags
 	outputFormat := flag.String("output-format", "rich", "Output format: rich, plain, or json")
 	typewriterEnabled := flag.Bool("typewriter", false, "Enable typewriter effect for text output")
+	sessionName := flag.String("session", "", "Session name (optional, defaults to 'default')")
+	dbPath := flag.String("db", "", "Database path for sessions (optional, defaults to ~/.code_agent/sessions.db)")
 	flag.Parse()
+
+	// Handle special commands (new-session, list-sessions, etc.)
+	args := flag.Args()
+	if len(args) > 0 {
+		cmd := args[0]
+		if cmd == "new-session" {
+			if len(args) < 2 {
+				fmt.Println("Usage: code-agent new-session <session-name>")
+				os.Exit(1)
+			}
+			handleNewSession(ctx, args[1], *dbPath)
+			os.Exit(0)
+		} else if cmd == "list-sessions" {
+			handleListSessions(ctx, *dbPath)
+			os.Exit(0)
+		} else if cmd == "delete-session" {
+			if len(args) < 2 {
+				fmt.Println("Usage: code-agent delete-session <session-name>")
+				os.Exit(1)
+			}
+			handleDeleteSession(ctx, args[1], *dbPath)
+			os.Exit(0)
+		}
+	}
+
+	// Generate unique session name if not specified
+	// This ensures each run without --session gets a new session
+	if *sessionName == "" {
+		*sessionName = generateUniqueSessionName()
+	}
 
 	// Create renderer
 	renderer, err := display.NewRenderer(*outputFormat)
@@ -81,10 +115,29 @@ func main() {
 		log.Fatalf("Failed to create coding agent: %v", err)
 	}
 
-	// Create session service (in-memory for simplicity)
-	sessionService := session.InMemoryService()
+	// Create session manager with persistent storage
+	sessionManager, err := persistence.NewSessionManager("code_agent", *dbPath)
+	if err != nil {
+		log.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
 
-	// Create runner
+	// Get or create the session
+	userID := "user1"
+	sess, err := sessionManager.GetSession(ctx, userID, *sessionName)
+	if err != nil {
+		// Session doesn't exist, create it
+		sess, err = sessionManager.CreateSession(ctx, userID, *sessionName)
+		if err != nil {
+			log.Fatalf("Failed to create session: %v", err)
+		}
+		fmt.Printf("✨ Created new session: %s\n\n", *sessionName)
+	} else {
+		fmt.Printf("📖 Resumed session: %s (%d events)\n\n", *sessionName, sess.Events().Len())
+	}
+
+	// Create runner with persistent session service
+	sessionService := sessionManager.GetService()
 	agentRunner, err := runner.New(runner.Config{
 		AppName:        "code_agent",
 		Agent:          codingAgent,
@@ -92,20 +145,6 @@ func main() {
 	})
 	if err != nil {
 		log.Fatalf("Failed to create runner: %v", err)
-	}
-
-	// Start interactive session
-	userID := "user1"
-	sessionID := "session1"
-
-	// Create the session
-	_, err = sessionService.Create(ctx, &session.CreateRequest{
-		AppName:   "code_agent",
-		UserID:    userID,
-		SessionID: sessionID,
-	})
-	if err != nil {
-		log.Fatalf("Failed to create session: %v", err)
 	}
 
 	// Initialize token tracking
@@ -159,7 +198,14 @@ func main() {
 			fmt.Print(renderer.Green("  • ") + renderer.Bold("help") + " / " + renderer.Bold(".help") + " - Show this help message\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold(".tools") + " - List all available tools\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold(".prompt") + " - Display the system prompt\n")
+			fmt.Print(renderer.Green("  • ") + renderer.Bold(".tokens") + " - Show token usage statistics\n")
 			fmt.Print(renderer.Green("  • ") + renderer.Bold("exit") + " / " + renderer.Bold("quit") + " - Exit the agent\n")
+
+			fmt.Print(renderer.Bold("\n📚 Session Management (CLI commands):\n"))
+			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent new-session <name>") + " - Create a new session\n")
+			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent list-sessions") + " - List all sessions\n")
+			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent delete-session <name>") + " - Delete a session\n")
+			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent --session <name>") + " - Resume a specific session\n")
 
 			fmt.Print(renderer.Bold("\n💡 Example Requests:\n"))
 			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Add error handling to main.go\n"))
@@ -223,7 +269,7 @@ func main() {
 		toolRunning := false
 		requestID := fmt.Sprintf("req_%d", sessionTokens.GetSummary().RequestCount+1)
 
-		for event, err := range agentRunner.Run(ctx, userID, sessionID, userMsg, agent.RunConfig{
+		for event, err := range agentRunner.Run(ctx, userID, *sessionName, userMsg, agent.RunConfig{
 			StreamingMode: agent.StreamingModeNone,
 		}) {
 			if err != nil {
@@ -438,4 +484,77 @@ func getToolSpinnerMessage(toolName string, args map[string]any) string {
 	default:
 		return fmt.Sprintf("Running %s", toolName)
 	}
+}
+
+// handleNewSession creates a new session
+func handleNewSession(ctx context.Context, sessionName string, dbPath string) {
+	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	if err != nil {
+		log.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer manager.Close()
+
+	userID := "user1"
+	_, err = manager.CreateSession(ctx, userID, sessionName)
+	if err != nil {
+		log.Fatalf("Failed to create session: %v", err)
+	}
+
+	fmt.Printf("✨ Created new session: %s\n", sessionName)
+}
+
+// handleListSessions lists all sessions
+func handleListSessions(ctx context.Context, dbPath string) {
+	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	if err != nil {
+		log.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer manager.Close()
+
+	userID := "user1"
+	sessions, err := manager.ListSessions(ctx, userID)
+	if err != nil {
+		log.Fatalf("Failed to list sessions: %v", err)
+	}
+
+	if len(sessions) == 0 {
+		fmt.Println("📭 No sessions found")
+		return
+	}
+
+	fmt.Println("📋 Sessions:")
+	for i, sess := range sessions {
+		eventCount := sess.Events().Len()
+		fmt.Printf("%d. %s (%d events)\n", i+1, sess.ID(), eventCount)
+	}
+}
+
+// handleDeleteSession deletes a session
+func handleDeleteSession(ctx context.Context, sessionName string, dbPath string) {
+	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	if err != nil {
+		log.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer manager.Close()
+
+	userID := "user1"
+	err = manager.DeleteSession(ctx, userID, sessionName)
+	if err != nil {
+		log.Fatalf("Failed to delete session: %v", err)
+	}
+
+	fmt.Printf("🗑️  Deleted session: %s\n", sessionName)
+}
+
+// generateUniqueSessionName creates a unique session name based on timestamp
+// Format: session-YYYYMMDD-HHMMSS (e.g., session-20251110-221530)
+func generateUniqueSessionName() string {
+	now := time.Now()
+	return fmt.Sprintf("session-%d%02d%02d-%02d%02d%02d",
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		now.Hour(),
+		now.Minute(),
+		now.Second())
 }

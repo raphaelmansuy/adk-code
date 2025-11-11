@@ -253,6 +253,8 @@ API Key required: `GOOGLE_API_KEY` environment variable (Gemini API).
 
 ## Development Workflow
 
+VERY IMPORTANT PROCESS TO Follow
+
 ### Before Starting Work
 1. **Understand the intent clearly** - What problem are you solving? Read related issues/PRs in research/
 2. **Search the codebase first** - Is there existing similar code? Check `tools/` for patterns

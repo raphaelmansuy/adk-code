@@ -3,10 +3,15 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -I.
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -I. -MMD -MP # Add -MMD -MP for automatic dependency generation
 LDFLAGS = 
 
 VPATH = demo
+
+# Dependency files
+DEPS = $(SRCS:.c=.d)
 
 # Source files
 SRCS = main.c term.c clause.c knowledge_base.c substitution.c parser.c unification.c inference.c
@@ -33,7 +38,10 @@ $(TARGET): $(OBJS)
 
 %.o: %.c
 	@echo "$(YELLOW)Compiling $<...$(NC)"
+	@echo "$(YELLOW)Compiling $<...$(NC)"
 	$(CC) $(CFLAGS) -c $< -o $@
+
+-include $(DEPS) # Include auto-generated dependency files
 
 run: $(TARGET)
 	@echo "$(YELLOW)Running $(TARGET)...$(NC)"
@@ -47,7 +55,7 @@ test: $(TARGET)
 
 clean:
 	@echo "$(RED)Cleaning up...$(NC)"
-	@rm -f $(OBJS) $(TARGET)
+	@rm -f $(OBJS) $(TARGET) $(DEPS)
 	@echo "$(GREEN)Cleanup complete.$(NC)"
 
 help:

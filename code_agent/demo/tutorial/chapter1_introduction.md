@@ -108,25 +108,60 @@ Python handles various types of data. Here are some fundamental ones:
 ```python
 # Integer variable
 age = 30
-print(age) # Output: 30
+print(f"Age: {age}, Type: {type(age)}") # Output: Age: 30, Type: <class 'int'>
 
 # Float variable
 pi = 3.14159
-print(pi) # Output: 3.14159
+print(f"PI: {pi}, Type: {type(pi)}") # Output: PI: 3.14159, Type: <class 'float'>
 
 # String variable
 name = "Alice"
 message = 'Hello, ' + name + '!'
-print(message) # Output: Hello, Alice!
+print(f"Message: {message}, Type: {type(message)}") # Output: Message: Hello, Alice!, Type: <class 'str'>
 
 # Boolean variable
 is_student = True
-print(is_student) # Output: True
+print(f"Is student: {is_student}, Type: {type(is_student)}") # Output: Is student: True, Type: <class 'bool'>
 
-# You can check the type of a variable using the type() function
-print(type(age))        # Output: <class 'int'>
-print(type(name))       # Output: <class 'str'>
-print(type(is_student)) # Output: <class 'bool'>
+# Demonstrating type conversion
+num_str = "42"
+num_int = int(num_str)
+print(f"Converted string to int: {num_int}, Type: {type(num_int)}") # Output: Converted string to int: 42, Type: <class 'int'>
+
+float_num = 15.7
+int_from_float = int(float_num)
+print(f"Converted float to int: {int_from_float}, Type: {type(int_from_float)}") # Output: Converted float to int: 15, Type: <class 'int'>
+
+# Complex assignment and operations
+a = 10
+b = 20
+c = a + b
+print(f"Sum of a and b: {c}") # Output: Sum of a and b: 30
+
+greeting = "Good"
+time = "Morning"
+full_greeting = greeting + " " + time
+print(f"Full greeting: {full_greeting}") # Output: Full greeting: Good Morning
+
+# More examples of basic data types
+price = 19.99
+quantity = 3
+product_name = "Laptop"
+is_available = True
+
+print(f"Product: {product_name}, Price: ${price}, Quantity: {quantity}, Available: {is_available}")
+
+# Reassigning variables
+age = 31
+print(f"New age: {age}")
+
+# Multiple assignment
+x, y, z = 10, 20, 30
+print(f"x: {x}, y: {y}, z: {z}")
+
+# Swapping values
+x, y = y, x
+print(f"Swapped x: {x}, swapped y: {y}")
 ```
 
 ## Exercises

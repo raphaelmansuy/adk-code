@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define LINE_BUFFER_SIZE 1024 // Increased buffer size for longer inputs
+
 #include "term.h"
 #include "clause.h"
 #include "knowledge_base.h"
@@ -14,10 +16,10 @@
 // Function prototypes for better modularity
 void process_query_input(KnowledgeBase *kb, char *input_line);
 void process_clause_input(KnowledgeBase *kb, char *input_line, bool interactive_mode);
+void run_interpreter_loop(KnowledgeBase *kb, FILE *input_file, bool interactive_mode);
 
 int main(int argc, char *argv[]) {
     KnowledgeBase *kb = create_knowledge_base();
-    char line[256]; // Buffer for input line
     FILE *input_file = stdin;
     bool interactive_mode = true;
 
@@ -36,6 +38,19 @@ int main(int argc, char *argv[]) {
         printf("Type 'exit.' to quit.\n");
         fflush(stdout);
     }
+
+    run_interpreter_loop(kb, input_file, interactive_mode);
+
+    if (input_file != stdin) {
+        fclose(input_file);
+    }
+
+    free_knowledge_base(kb);
+    return 0;
+}
+
+void run_interpreter_loop(KnowledgeBase *kb, FILE *input_file, bool interactive_mode) {
+    char line[LINE_BUFFER_SIZE]; // Buffer for input line
 
     while (true) {
         if (interactive_mode) {
@@ -68,13 +83,6 @@ int main(int argc, char *argv[]) {
             process_clause_input(kb, input_ptr, interactive_mode);
         }
     }
-
-    if (input_file != stdin) {
-        fclose(input_file);
-    }
-
-    free_knowledge_base(kb);
-    return 0;
 }
 
 void process_query_input(KnowledgeBase *kb, char *input_ptr) {
@@ -94,15 +102,15 @@ void process_query_input(KnowledgeBase *kb, char *input_ptr) {
 void process_clause_input(KnowledgeBase *kb, char *input_ptr, bool interactive_mode) {
     Clause *clause = parse_clause(&input_ptr);
     if (clause) {
-        // It's good practice to check the return of add_clause if it returns a status
-        // For now, assuming it always succeeds or handles errors internally
         add_clause(kb, clause);
         if (interactive_mode) {
             printf("Clause added.\n");
             fflush(stdout);
         }
     } else {
-        fprintf(stderr, "Error: Invalid clause syntax: %s\n", input_ptr);
+        // input_ptr points to the beginning of the line buffer `line` in main
+        // We should print the original line for better context if parsing failed
+        fprintf(stderr, "Error: Invalid clause syntax. Problem near: \"%s\"\n", input_ptr);
         fflush(stderr);
     }
 }
