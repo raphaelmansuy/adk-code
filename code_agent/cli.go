@@ -200,6 +200,12 @@ func handleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		return true
 
 	default:
+		// Check if it's a /set-model command
+		if strings.HasPrefix(input, "/set-model ") {
+			modelSpec := strings.TrimPrefix(input, "/set-model ")
+			handleSetModel(renderer, modelRegistry, modelSpec)
+			return true
+		}
 		return false
 	}
 }
@@ -231,6 +237,7 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/models")+" - Show all available AI models")
 	lines = append(lines, "   • "+renderer.Bold("/providers")+" - Show available providers and their models")
 	lines = append(lines, "   • "+renderer.Bold("/current-model")+" - Show details about the current model")
+	lines = append(lines, "   • "+renderer.Bold("/set-model <provider/model>")+" - Validate and plan to switch models")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
 	lines = append(lines, "   • "+renderer.Bold("/exit")+" - Exit the agent")
@@ -510,6 +517,81 @@ func buildProvidersListLines(renderer *display.Renderer, registry *ModelRegistry
 	return lines
 }
 
+// handleSetModel validates and displays information about switching to a new model
+func handleSetModel(renderer *display.Renderer, registry *ModelRegistry, modelSpec string) {
+	modelSpec = strings.TrimSpace(modelSpec)
+	if modelSpec == "" {
+		fmt.Println(renderer.Red("Error: Please specify a model using provider/model syntax"))
+		fmt.Println("Example: /set-model gemini/2.5-flash")
+		fmt.Println(renderer.Dim("\nUse /providers to see all available models"))
+		return
+	}
+
+	// Parse the provider/model syntax
+	parsedProvider, parsedModel, parseErr := ParseProviderModelSyntax(modelSpec)
+	if parseErr != nil {
+		fmt.Printf("%s\n", renderer.Red(fmt.Sprintf("Invalid model syntax: %v", parseErr)))
+		fmt.Println("Use format: provider/model or shorthand/model")
+		fmt.Println("Examples:")
+		fmt.Println("  /set-model gemini/2.5-flash")
+		fmt.Println("  /set-model gemini/flash")
+		fmt.Println("  /set-model vertexai/1.5-pro")
+		return
+	}
+
+	// Determine default provider if not specified
+	defaultProvider := "gemini"
+	if parsedProvider == "" {
+		parsedProvider = defaultProvider
+	}
+
+	// Try to resolve the model
+	resolvedModel, modelErr := registry.ResolveFromProviderSyntax(
+		parsedProvider,
+		parsedModel,
+		defaultProvider,
+	)
+	if modelErr != nil {
+		fmt.Printf("%s\n", renderer.Red(fmt.Sprintf("Model not found: %v", modelErr)))
+		fmt.Println("\n" + renderer.Bold("Available models:"))
+		for _, providerName := range registry.ListProviders() {
+			models := registry.GetProviderModels(providerName)
+			fmt.Printf("\n%s:\n", renderer.Bold(strings.ToUpper(providerName[:1])+strings.ToLower(providerName[1:])))
+			for _, m := range models {
+				fmt.Printf("  • %s/%s\n", providerName, m.ID)
+			}
+		}
+		return
+	}
+
+	// Display the resolved model information
+	fmt.Println("")
+	fmt.Println(renderer.Green("✓ Model validation successful!"))
+	fmt.Println("")
+	fmt.Printf("You selected: %s (%s)\n", renderer.Bold(resolvedModel.DisplayName), resolvedModel.Backend)
+	fmt.Printf("Context window: %d tokens\n", resolvedModel.ContextWindow)
+	fmt.Printf("Cost tier: %s\n", resolvedModel.Capabilities.CostTier)
+	fmt.Println("")
+	fmt.Println(renderer.Yellow("ℹ️  Note:"))
+	fmt.Println("The model can only be switched at startup. To actually use this model, exit the agent and restart with:")
+
+	// Build the recommended command
+	recommendedCommand := ""
+	if strings.Contains(modelSpec, "/") {
+		// User provided provider/model syntax, use as-is
+		recommendedCommand = fmt.Sprintf("--model %s", modelSpec)
+	} else {
+		// User provided just the model ID or shorthand
+		// Try to extract a better shorthand from the model ID
+		// For "gemini-2.5-flash" suggest "2.5-flash", etc.
+		shorthand := extractShorthandFromModelID(resolvedModel.ID)
+		recommendedCommand = fmt.Sprintf("--model %s/%s", parsedProvider, shorthand)
+	}
+
+	fmt.Printf("  %s\n", renderer.Dim(fmt.Sprintf("./code-agent %s", recommendedCommand)))
+	fmt.Println("")
+}
+
 // buildPromptLines builds the system prompt as an array of lines for pagination
 func buildPromptLines(renderer *display.Renderer, cleanedPrompt string) []string {
 	var lines []string
@@ -554,4 +636,18 @@ func cleanupPromptOutput(prompt string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// extractShorthandFromModelID extracts a shorthand from a full model ID
+// Examples: "gemini-2.5-flash" → "2.5-flash", "gemini-1.5-pro" → "1.5-pro"
+func extractShorthandFromModelID(modelID string) string {
+	// Most model IDs follow the pattern: gemini-VERSION-VARIANT or similar
+	// Try to extract everything after "gemini-" or "claude-" etc.
+	parts := strings.Split(modelID, "-")
+	if len(parts) > 1 {
+		// Skip the provider prefix and return the rest
+		return strings.Join(parts[1:], "-")
+	}
+	// Fallback to the full ID if we can't extract a shorthand
+	return modelID
 }
