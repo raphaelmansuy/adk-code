@@ -13,7 +13,7 @@ import (
 
 	"github.com/chzyer/readline"
 	"google.golang.org/adk/agent"
-	"google.golang.org/adk/model/gemini"
+	"google.golang.org/adk/model"
 	"google.golang.org/adk/runner"
 	"google.golang.org/genai"
 
@@ -83,10 +83,19 @@ func main() {
 	// Create streaming display
 	streamingDisplay := display.NewStreamingDisplay(renderer, typewriter)
 
+	// Create model registry
+	modelRegistry := NewModelRegistry()
+
+	// Resolve which model to use
+	selectedModel, err := modelRegistry.ResolveModel(cliConfig.Model, cliConfig.Backend)
+	if err != nil {
+		log.Fatalf("Failed to resolve model: %v", err)
+	}
+
 	// Get API key from environment
-	apiKey := os.Getenv("GOOGLE_API_KEY")
-	if apiKey == "" {
-		log.Fatal("GOOGLE_API_KEY environment variable is required")
+	apiKey := cliConfig.APIKey
+	if apiKey == "" && selectedModel.Backend == "gemini" {
+		log.Fatal("Gemini API backend requires GOOGLE_API_KEY environment variable or --api-key flag")
 	}
 
 	// Get working directory
@@ -108,22 +117,48 @@ func main() {
 		workingDir = filepath.Join(homeDir, workingDir[1:])
 	}
 
-	// Print welcome banner
-	modelName := "gemini-2.5-flash"
-	banner := bannerRenderer.RenderStartBanner(version, modelName, workingDir)
+	// Print welcome banner (before model creation so user knows what backend is being used)
+	displayName := selectedModel.DisplayName
+	banner := bannerRenderer.RenderStartBanner(version, displayName, workingDir)
 	fmt.Print(banner)
 
-	// Create Gemini model
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
-		APIKey: apiKey,
-	})
-	if err != nil {
-		log.Fatalf("Failed to create model: %v", err)
+	// Create model based on selected model configuration
+	var llmModel model.LLM
+	var modelErr error
+
+	// Extract the actual model ID for the API (remove -vertex suffix if present)
+	actualModelID := ExtractModelIDFromGemini(selectedModel.ID)
+
+	switch selectedModel.Backend {
+	case "vertexai":
+		if cliConfig.VertexAIProject == "" {
+			log.Fatal("Vertex AI backend requires GOOGLE_CLOUD_PROJECT environment variable or --project flag")
+		}
+		if cliConfig.VertexAILocation == "" {
+			log.Fatal("Vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
+		}
+		llmModel, modelErr = CreateVertexAIModel(ctx, VertexAIConfig{
+			Project:   cliConfig.VertexAIProject,
+			Location:  cliConfig.VertexAILocation,
+			ModelName: actualModelID,
+		})
+
+	case "gemini":
+		fallthrough
+	default:
+		llmModel, modelErr = CreateGeminiModel(ctx, GeminiConfig{
+			APIKey:    apiKey,
+			ModelName: actualModelID,
+		})
+	}
+
+	if modelErr != nil {
+		log.Fatalf("Failed to create LLM model: %v", modelErr)
 	}
 
 	// Create coding agent
 	codingAgent, err := codingagent.NewCodingAgent(ctx, codingagent.Config{
-		Model:            model,
+		Model:            llmModel,
 		WorkingDirectory: workingDir,
 	})
 	if err != nil {
@@ -226,7 +261,7 @@ func main() {
 		}
 
 		// Handle built-in commands
-		if handleBuiltinCommand(input, renderer, sessionTokens) {
+		if handleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, selectedModel) {
 			continue
 		}
 

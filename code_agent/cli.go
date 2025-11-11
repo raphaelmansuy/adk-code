@@ -19,6 +19,13 @@ type CLIConfig struct {
 	SessionName       string
 	DBPath            string
 	WorkingDirectory  string
+	// Backend configuration
+	Backend          string // "gemini" or "vertexai"
+	APIKey           string // For Gemini API
+	VertexAIProject  string // For Vertex AI
+	VertexAILocation string // For Vertex AI
+	// Model selection
+	Model string // Specific model ID (e.g., "gemini-2.5-flash", "gemini-1.5-pro")
 }
 
 // ParseCLIFlags parses command-line arguments and returns config and remaining args
@@ -28,7 +35,33 @@ func ParseCLIFlags() (CLIConfig, []string) {
 	sessionName := flag.String("session", "", "Session name (optional, defaults to 'default')")
 	dbPath := flag.String("db", "", "Database path for sessions (optional, defaults to ~/.code_agent/sessions.db)")
 	workingDirectory := flag.String("working-directory", "", "Working directory for the agent (optional, defaults to current directory)")
+
+	// Model selection flags
+	model := flag.String("model", "", "Model to use (e.g., gemini-2.5-flash, gemini-1.5-pro). Use '/models' command to list available models.")
+
+	// Backend selection flags
+	backend := flag.String("backend", "", "Backend to use: 'gemini' or 'vertexai' (default: auto-detect from env vars)")
+	apiKey := flag.String("api-key", os.Getenv("GOOGLE_API_KEY"), "API key for Gemini (default: GOOGLE_API_KEY env var)")
+	vertexAIProject := flag.String("project", os.Getenv("GOOGLE_CLOUD_PROJECT"), "GCP Project ID for Vertex AI (default: GOOGLE_CLOUD_PROJECT env var)")
+	vertexAILocation := flag.String("location", os.Getenv("GOOGLE_CLOUD_LOCATION"), "GCP Location for Vertex AI (default: GOOGLE_CLOUD_LOCATION env var)")
+
 	flag.Parse()
+
+	// Auto-detect backend from environment if not specified
+	selectedBackend := *backend
+	if selectedBackend == "" {
+		if os.Getenv("GOOGLE_GENAI_USE_VERTEXAI") == "true" || os.Getenv("GOOGLE_GENAI_USE_VERTEXAI") == "1" {
+			selectedBackend = "vertexai"
+		} else if *apiKey != "" {
+			selectedBackend = "gemini"
+		} else if *vertexAIProject != "" {
+			// If project is set but backend not specified, assume vertexai
+			selectedBackend = "vertexai"
+		} else {
+			// Default to gemini if nothing is set (existing behavior)
+			selectedBackend = "gemini"
+		}
+	}
 
 	return CLIConfig{
 		OutputFormat:      *outputFormat,
@@ -36,6 +69,11 @@ func ParseCLIFlags() (CLIConfig, []string) {
 		SessionName:       *sessionName,
 		DBPath:            *dbPath,
 		WorkingDirectory:  *workingDirectory,
+		Backend:           selectedBackend,
+		APIKey:            *apiKey,
+		VertexAIProject:   *vertexAIProject,
+		VertexAILocation:  *vertexAILocation,
+		Model:             *model,
 	}, flag.Args()
 }
 
@@ -77,7 +115,7 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 // handleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in main.go to break the loop
-func handleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens) bool {
+func handleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *ModelRegistry, currentModel ModelConfig) bool {
 	switch input {
 	case "/prompt":
 		fmt.Print(renderer.Yellow("\n=== System Prompt ===\n\n"))
@@ -91,6 +129,14 @@ func handleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 
 	case "/tools":
 		printToolsList(renderer)
+		return true
+
+	case "/models":
+		printModelsList(renderer, modelRegistry)
+		return true
+
+	case "/current-model":
+		printCurrentModelInfo(renderer, currentModel)
 		return true
 
 	case "/tokens":
@@ -115,6 +161,8 @@ func printHelpMessage(renderer *display.Renderer) {
 	fmt.Print(renderer.Bold("⌨️  Built-in Commands:\n"))
 	fmt.Print("   • " + renderer.Bold("/help") + " - Show this help message\n")
 	fmt.Print("   • " + renderer.Bold("/tools") + " - List all available tools\n")
+	fmt.Print("   • " + renderer.Bold("/models") + " - Show all available AI models\n")
+	fmt.Print("   • " + renderer.Bold("/current-model") + " - Show details about the current model\n")
 	fmt.Print("   • " + renderer.Bold("/prompt") + " - Display the system prompt\n")
 	fmt.Print("   • " + renderer.Bold("/tokens") + " - Show token usage statistics\n")
 	fmt.Print("   • " + renderer.Bold("/exit") + " - Exit the agent\n")
@@ -159,4 +207,120 @@ func printToolsList(renderer *display.Renderer) {
 	fmt.Print("   ✓ " + renderer.Bold("execute_program") + " - Run programs directly (no quoting issues)\n\n")
 
 	fmt.Print("💡 Tip: Type " + renderer.Cyan("'/help'") + " for usage examples and patterns\n\n")
+}
+
+// printModelsList displays all available models
+func printModelsList(renderer *display.Renderer, registry *ModelRegistry) {
+	fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
+	fmt.Print(renderer.Cyan("Available AI Models\n"))
+	fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
+
+	// Group models by backend
+	geminiBakcend := registry.ListModelsByBackend("gemini")
+	vertexAIBackend := registry.ListModelsByBackend("vertexai")
+
+	if len(geminiBakcend) > 0 {
+		fmt.Print(renderer.Bold("🔷 Gemini API Models:\n"))
+		for _, model := range geminiBakcend {
+			icon := "○"
+			if model.IsDefault {
+				icon = "✓"
+			}
+			costIcon := "💰"
+			if model.Capabilities.CostTier == "economy" {
+				costIcon = "💵"
+			} else if model.Capabilities.CostTier == "premium" {
+				costIcon = "💎"
+			}
+
+			fmt.Printf("   %s %s %s - %s\n", icon, costIcon, renderer.Bold(model.Name), model.Description)
+			fmt.Printf("      Context: %d tokens | Tools: %v | Vision: %v\n",
+				model.ContextWindow,
+				model.Capabilities.ToolUseSupport,
+				model.Capabilities.VisionSupport)
+		}
+		fmt.Print("\n")
+	}
+
+	if len(vertexAIBackend) > 0 {
+		fmt.Print(renderer.Bold("🔶 Vertex AI Models:\n"))
+		for _, model := range vertexAIBackend {
+			icon := "○"
+			if model.IsDefault {
+				icon = "✓"
+			}
+			costIcon := "💰"
+			if model.Capabilities.CostTier == "economy" {
+				costIcon = "💵"
+			} else if model.Capabilities.CostTier == "premium" {
+				costIcon = "💎"
+			}
+
+			fmt.Printf("   %s %s %s - %s\n", icon, costIcon, renderer.Bold(model.Name), model.Description)
+			fmt.Printf("      Context: %d tokens | Tools: %v | Vision: %v\n",
+				model.ContextWindow,
+				model.Capabilities.ToolUseSupport,
+				model.Capabilities.VisionSupport)
+		}
+		fmt.Print("\n")
+	}
+
+	fmt.Print(renderer.Dim("Use --model flag to select a model (e.g., --model gemini-1.5-pro)\n"))
+	fmt.Print(renderer.Dim("Use /current-model command to see details about the active model\n\n"))
+}
+
+// printCurrentModelInfo displays detailed information about the current model
+func printCurrentModelInfo(renderer *display.Renderer, model ModelConfig) {
+	fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
+	fmt.Print(renderer.Cyan("Current Model Information\n"))
+	fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
+
+	// Model name and backend
+	backendIcon := "🔷"
+	if model.Backend == "vertexai" {
+		backendIcon = "🔶"
+	}
+
+	fmt.Print(renderer.Bold("Model: ") + fmt.Sprintf("%s %s (%s)\n", backendIcon, model.Name, model.Backend))
+	fmt.Print("\n")
+
+	// Description
+	fmt.Print(renderer.Bold("Description:\n"))
+	fmt.Print(renderer.Dim("  " + model.Description + "\n\n"))
+
+	// Capabilities
+	fmt.Print(renderer.Bold("Capabilities:\n"))
+	if model.Capabilities.VisionSupport {
+		fmt.Print("  ✓ Vision/Image Processing\n")
+	} else {
+		fmt.Print("  ✗ Vision/Image Processing\n")
+	}
+	if model.Capabilities.ToolUseSupport {
+		fmt.Print("  ✓ Tool/Function Calling\n")
+	} else {
+		fmt.Print("  ✗ Tool/Function Calling\n")
+	}
+	if model.Capabilities.LongContextWindow {
+		fmt.Print("  ✓ Long Context Window (1M+ tokens)\n")
+	} else {
+		fmt.Print("  ✗ Long Context Window\n")
+	}
+	fmt.Print("\n")
+
+	// Context and Cost
+	fmt.Print(renderer.Bold("Technical Details:\n"))
+	fmt.Printf("  Context Window: %d tokens\n", model.ContextWindow)
+	fmt.Printf("  Cost Tier: %s\n", model.Capabilities.CostTier)
+	fmt.Print("\n")
+
+	// Recommended use cases
+	if len(model.RecommendedFor) > 0 {
+		fmt.Print(renderer.Bold("Recommended For:\n"))
+		for _, useCase := range model.RecommendedFor {
+			fmt.Print("  • " + useCase + "\n")
+		}
+		fmt.Print("\n")
+	}
+
+	fmt.Print(renderer.Dim("Tip: Use --model flag to switch models when starting the agent\n\n"))
 }
