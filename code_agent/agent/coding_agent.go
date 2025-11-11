@@ -108,6 +108,12 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	if _, err := tools.NewExecuteProgramTool(); err != nil {
 		return nil, fmt.Errorf("failed to create execute_program tool: %w", err)
 	}
+	if _, err := tools.NewDisplayMessageTool(); err != nil {
+		return nil, fmt.Errorf("failed to create display_message tool: %w", err)
+	}
+	if _, err := tools.NewUpdateTaskListTool(); err != nil {
+		return nil, fmt.Errorf("failed to create update_task_list tool: %w", err)
+	}
 
 	// Get all registered tools from the registry
 	registry := tools.GetRegistry()

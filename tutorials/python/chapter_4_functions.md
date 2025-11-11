@@ -3,6 +3,8 @@
 ## What are Functions?
 A function is a block of organized, reusable code that is used to perform a single, related action. Functions provide better modularity for your application and a high degree of code reusing. You've already used built-in functions like `print()` and `type()`.
 
+Beyond simply reusing code, functions are crucial for **breaking down complex problems into smaller, manageable pieces** (decomposition) and **combining these smaller functions to build larger, more complex functionalities** (composition). This approach significantly improves code readability, maintainability, and makes debugging easier.
+
 ## Defining a Function
 In Python, you define a function using the `def` keyword, followed by the function name, parentheses `()`, and a colon `:`. The function body is then indented.
 
@@ -188,6 +190,23 @@ def another_function():
 another_function()
 print(global_var)
     ```
+
+Here's a simple illustration of variable scope:
+
+```mermaid
+graph LR
+    A[Global Scope] --> B(global_var = 20)
+    A --> C{another_function()}
+    C --> D[Access global_var]
+
+    E[my_function()] --> F(local_var = 10)
+    F --> G[End my_function]
+    E -- calls --> G
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style E fill:#ccf,stroke:#333,stroke-width:2px
+```
+
     If you need to *modify* a global variable from within a function, you must use the `global` keyword:
     ```python
 global_counter = 0
@@ -215,8 +234,6 @@ print(f"After call: {global_counter}")  # Output: After call: 1
     try_to_increment_without_global()                  # Output: Inside function (local): 1
     print(f"After call: {another_global_counter}")  # Output: After call: 0 (Global variable remains unchanged)
     ```
-    Without `global`, `global_counter += 1` inside `increment_counter()` would create a new local variable named `global_counter` instead of modifying the global one.
-
 *   **`nonlocal` Keyword (for Nested Functions):** While less common for beginners, `nonlocal` is used in nested functions to modify variables in the nearest enclosing (but non-global) scope. This allows a function to modify a variable in its outer function's scope.
     ```python
     def outer_function():

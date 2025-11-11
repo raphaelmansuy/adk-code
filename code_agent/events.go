@@ -207,6 +207,13 @@ func getToolSpinnerMessage(toolName string, args map[string]any) string {
 			return fmt.Sprintf("%s Executing %s", icon, filepath.Base(program))
 		}
 		return fmt.Sprintf("%s Executing program", icon)
+	case "display_message":
+		if messageType, ok := args["message_type"].(string); ok {
+			return fmt.Sprintf("%s Displaying %s message", icon, messageType)
+		}
+		return fmt.Sprintf("%s Displaying message", icon)
+	case "update_task_list":
+		return fmt.Sprintf("%s Updating task list", icon)
 	default:
 		return fmt.Sprintf("%s Running %s", icon, toolName)
 	}

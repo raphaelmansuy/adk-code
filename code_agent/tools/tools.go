@@ -15,6 +15,7 @@ package tools
 // Re-export all key functions from subpackages
 import (
 	"code_agent/tools/common"
+	"code_agent/tools/display"
 	"code_agent/tools/edit"
 	"code_agent/tools/exec"
 	"code_agent/tools/file"
@@ -30,6 +31,12 @@ var (
 	NewReplaceInFileTool = file.NewReplaceInFileTool
 	NewListDirectoryTool = file.NewListDirectoryTool
 	NewSearchFilesTool   = file.NewSearchFilesTool
+)
+
+// Display tools
+var (
+	NewDisplayMessageTool = display.NewDisplayMessageTool
+	NewUpdateTaskListTool = display.NewUpdateTaskListTool
 )
 
 // Search tools
@@ -112,6 +119,12 @@ type (
 	ApplyV4APatchOutput = v4a.ApplyV4APatchOutput
 	V4APatch            = v4a.V4APatch
 	V4AHunk             = v4a.V4AHunk
+
+	// Display types
+	DisplayMessageInput  = display.DisplayMessageInput
+	DisplayMessageOutput = display.DisplayMessageOutput
+	UpdateTaskListInput  = display.UpdateTaskListInput
+	UpdateTaskListOutput = display.UpdateTaskListOutput
 )
 
 // Re-export constants from common package
@@ -121,6 +134,7 @@ const (
 	CategoryCodeEditing     = common.CategoryCodeEditing
 	CategoryExecution       = common.CategoryExecution
 	CategoryWorkspace       = common.CategoryWorkspace
+	CategoryDisplay         = common.CategoryDisplay
 )
 
 // Registry functions

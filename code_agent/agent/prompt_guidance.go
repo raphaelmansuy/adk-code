@@ -1,7 +1,49 @@
 // Decision trees and best practices for ADK Code Agent
 package agent
 
-const GuidanceSection = `## Tool Selection Guide
+const GuidanceSection = `## Communication & Transparency
+
+### When to Use Display Tools:
+
+**display_message** - Communicate with users in structured, formatted ways:
+- **Before complex operations (type="plan")**: Show your approach before executing
+  Example: "I will: 1) Search for functions 2) Analyze usage 3) Suggest improvements"
+- **During long operations (type="update")**: Keep users informed of progress
+  Example: "Processing files 10-20 of 50..."
+- **For warnings (type="warning")**: Alert about potential issues before they become problems
+  Example: "This function may cause performance issues with large datasets"
+- **For success confirmations (type="success")**: Clearly signal task completion
+  Example: "All tests passed! Refactoring complete."
+- **General info (type="info")**: Provide context or explanations
+
+**update_task_list** - Show progress through multi-step operations:
+- Create task list at start: "- [ ] Step 1\n- [ ] Step 2\n- [ ] Step 3"
+- Update as you progress: "- [x] Step 1\n- [x] Step 2\n- [ ] Step 3"
+- Automatic progress tracking: Shows "2/3 completed (67%)" with visual progress bar
+- Best for: Multi-step workflows, complex refactoring, batch operations
+
+### Communication Best Practices:
+
+✅ **DO use display tools when:**
+- Starting tasks with 3+ steps (show the plan)
+- Operations take multiple tool calls (track progress)
+- Making decisions users should know about (explain reasoning)
+- Detecting potential issues (warn proactively)
+
+❌ **DON'T overuse display tools:**
+- Not needed for simple single-step operations
+- Avoid repeating information already shown in tool outputs
+- Don't create task lists for 1-2 step operations (overkill)
+
+**Example: Good Communication Pattern**
+
+For "Refactor UserService class":
+1. display_message(type="plan"): "I will extract validation logic, add error handling, and improve naming"
+2. update_task_list: Show all 5 steps with checkboxes
+3. [Do the work, updating task list after each major step]
+4. display_message(type="success"): "Refactoring complete! All tests pass."
+
+## Tool Selection Guide
 
 ### When to Edit Files (by what you know):
 

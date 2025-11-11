@@ -78,22 +78,12 @@ if not os.path.exists(folder):
     print(f"Created directory: {folder}")
 
 # Deleting a file (use with caution!)
-# Create a dummy file for deletion example
-dummy_file_path = os.path.join(folder, "dummy.txt")
-with open(dummy_file_path, "w") as f: f.write("Temporary file for deletion.")
-if os.path.exists(dummy_file_path):
-    os.remove(dummy_file_path)
-    print(f"Removed file: {dummy_file_path}")
+# Example: os.remove("path/to/my_file.txt")
+# This would delete the file if it exists.
 
 # Renaming a file
-old_name_path = os.path.join(folder, "old_name.txt")
-new_name_path = os.path.join(folder, "new_name.txt")
-with open(old_name_path, "w") as f: f.write("Content of old file.")
-os.rename(old_name_path, new_name_path)
-print(f"Renamed {old_name_path} to {new_name_path}")
-# Clean up the renamed file
-if os.path.exists(new_name_path):
-    os.remove(new_name_path)
+# Example: os.rename("old_name.txt", "new_name.txt")
+# This would rename 'old_name.txt' to 'new_name.txt'.
 ```
 
 ### Writing to Files (Using the `with` statement)
@@ -234,40 +224,19 @@ print("End of program.")
 
 Here's a flowchart illustrating the `try-except-finally` flow:
 
-```
-+------------------+
-|      Start       |
-+--------+---------+
-         |
-         V
-+------------------+
-|    try block     |
-| (Code to execute)|
-+--------+---------+
-         |  No Exception
-         |-----------> +------------------+
-         |             |   else block     |
-         |             | (If no errors)   |
-         |             +--------+---------+
-         |                      |
-         |  Exception Occurs    |
-         |-------------------+  |
-         V                   |  |
-+------------------+         |  |
-|   except block   | <-------+  |
-| (Handle error)   |            |
-+--------+---------+            |
-         |
-         V
-+------------------+
-|   finally block  |
-| (Always executes)|
-+--------+---------+
-         |
-         V
-+------------------+
-|       End        |
-+------------------+
+```mermaid
+graph TD
+    A[Start]
+    A --> B{try block}
+    B -- No Exception --> C{else block?}
+    C -- Yes --> D[else block (If no errors)]
+    C -- No --> E[finally block]
+    D --> E
+    B -- Exception Occurs --> F{except block?}
+    F -- Yes --> G[except block (Handle error)]
+    F -- No --> E
+    G --> E
+    E --> H[End]
 ```
 
 ### `raise` Statement
@@ -284,8 +253,17 @@ def validate_age(age):
     print("Age is valid.")
 
 try:
-    validate_age(20)
-    validate_age(-5)
+    validate_age(20) # This will print "Age is valid."
+except (TypeError, ValueError) as e:
+    print(f"Validation Error: {e}")
+
+try:
+    validate_age(-5) # This will raise a ValueError
+except (TypeError, ValueError) as e:
+    print(f"Validation Error: {e}")
+
+try:
+    validate_age("abc") # This will raise a TypeError
 except (TypeError, ValueError) as e:
     print(f"Validation Error: {e}")
 ```

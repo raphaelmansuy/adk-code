@@ -37,6 +37,10 @@ func (trp *ToolResultParser) ParseToolResult(toolName string, result map[string]
 		return trp.parseFileContent(result)
 	case "write_file":
 		return trp.parseWriteFile(result)
+	case "display_message":
+		return trp.parseDisplayMessage(result)
+	case "update_task_list":
+		return trp.parseUpdateTaskList(result)
 	default:
 		return trp.parseGeneric(result)
 	}
@@ -334,4 +338,24 @@ func (trp *ToolResultParser) parseGeneric(result map[string]any) string {
 	}
 
 	return fmt.Sprintf("```json\n%s\n```", string(jsonBytes))
+}
+
+// parseDisplayMessage extracts and displays the pre-formatted message content
+func (trp *ToolResultParser) parseDisplayMessage(result map[string]any) string {
+	// Extract the "message" field which contains the pre-formatted output
+	if message, ok := result["message"].(string); ok {
+		return message
+	}
+	// Fallback to generic parsing if message field is missing
+	return trp.parseGeneric(result)
+}
+
+// parseUpdateTaskList extracts and displays the pre-formatted task list
+func (trp *ToolResultParser) parseUpdateTaskList(result map[string]any) string {
+	// Extract the "message" field which contains the pre-formatted task list
+	if message, ok := result["message"].(string); ok {
+		return message
+	}
+	// Fallback to generic parsing if message field is missing
+	return trp.parseGeneric(result)
 }

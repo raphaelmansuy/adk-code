@@ -54,102 +54,194 @@ Python has several built-in data types to handle various kinds of data.
 ### 1. Numeric Types
 *   **int (Integers):** Whole numbers (positive, negative, or zero) without a fractional part.
     ```python
-    x = 10
-    y = -5
+    # Example: Number of students in a class
+    num_students = 30
+    # Example: Year of birth
+    birth_year = 1990
+    print(f"Number of students: {num_students}") # Output: Number of students: 30
+    print(f"Birth year: {birth_year}")         # Output: Birth year: 1990
     ```
 *   **float (Floating-Point Numbers):** Numbers with a decimal point.
     ```python
-    pi = 3.14
-    temperature = 98.6
+    # Example: Price of a product
+    product_price = 29.99
+    # Example: Average temperature
+    avg_temperature = 23.5
+    print(f"Product price: ${product_price}") # Output: Product price: $29.99
+    print(f"Average temperature: {avg_temperature}°C") # Output: Average temperature: 23.5°C
     ```
-*   **complex (Complex Numbers):** Numbers with a real and an imaginary part, represented as `a + bj`.
-    ```python
-    z = 1 + 2j
-    print(z.real) # Output: 1.0
-    print(z.imag) # Output: 2.0
-    ```
+*   **complex (Complex Numbers):** Represents numbers with a real and an imaginary part (e.g., `1 + 2j`). While less common in introductory programming, they are used in specialized mathematical and engineering applications and will not be covered in detail here.
 ### 2. Boolean Type
-*   **bool:** Represents truth values. It can only be `True` or `False`.
+*   **bool (Boolean):** Represents truth values. It can only be `True` or `False`. Booleans are fundamental for conditional logic.
     ```python
-    is_active = True
-    has_permission = False
+    # Example: Is a user logged in?
+    is_logged_in = True
+    # Example: Is a file saved?
+    file_saved = False
+    print("User logged in:", is_logged_in)   # Output: User logged in: True
+    print("File saved:", file_saved)       # Output: File saved: False
+
+    # Booleans are often the result of comparison operations
+    age = 20 # Define 'age' for this example
+    is_adult = (age >= 18)
+    print("Is adult (age >= 18):", is_adult)
     ```
 
 ### 3. Sequence Types (Ordered Collections)
 *   **str (Strings):** A sequence of characters. Strings are **immutable** (cannot be changed after creation). This means once a string is created, you cannot modify individual characters within it. Any operation that seems to modify a string actually creates a new string.
     ```python
-    message = "Hello, Python!"
-    city = 'New York'
-    print(message[0]) # Accessing individual characters
+    # Example: Storing a user's name and a greeting
+    first_name = "Alice"
+    last_name = "Smith"
+    full_name = first_name + " " + last_name # String concatenation
+    greeting = "Hello, " + full_name + "!"
+
+    print(f"Full Name: {full_name}") # Output: Full Name: Alice Smith
+    print(f"Greeting: {greeting}")   # Output: Hello, Alice Smith!
+    print(f"Length of greeting: {len(greeting)}") # Output: Length of greeting: 24
+    print(f"First character: {greeting[0]}") # Output: First character: H (indexing)
+    print(f"Slice (0-5): {greeting[0:5]}") # Output: Slice (0-5): Hello (slicing)
+
+    # Attempting to modify a character (will raise an error)
     try:
-        message[0] = 'h' # This would cause a TypeError because strings are immutable
+        # Strings are immutable - this will fail
+        greeting[0] = 'h'
     except TypeError as e:
-        print(f"Error: {e}") # Output: Error: 'str' object does not support item assignment
+        print(f"Error trying to modify string: {e}")
     ```
-    You can use single quotes (`'`) or double quotes (`"`) for strings.
+    You can use single quotes (`'`) or double quotes (`"`) for strings. Multi-line strings can be created using triple quotes (`'''` or `"""`).
 
     **F-Strings (Formatted String Literals):** A powerful and readable way to embed expressions inside string literals.
     ```python
-    name = "Alice"
-    age = 30
-    greeting = f"Hello, {name}! You are {age} years old."
-    print(greeting) # Output: Hello, Alice! You are 30 years old.
+    product = "Laptop"
+    price = 1200.50
+    description = f"The {product} costs ${price:.2f}."
+    print(description) # Output: The Laptop costs $1200.50.
     ```
 
 *   **list:** An ordered, **mutable** sequence of items. Lists can contain items of different data types and their contents can be changed after creation (add, remove, modify elements). They are defined using square brackets `[]`.
     ```python
-    fruits = ["apple", "banana", "cherry"]
-    numbers = [1, 2, 3, 4, 5]
-    mixed_list = ["text", 10, True, 3.14]
+    # Example: A list of tasks to complete
+    tasks = ["Learn Python", "Practice coding", "Build a project"]
+    print(f"Initial tasks: {tasks}")
 
-    # Example of mutability with lists
-    fruits[0] = "grape"
-    fruits.append("mango")
-    print(fruits) # Output: ['grape', 'banana', 'cherry', 'mango']
+    # Add a new task
+    tasks.append("Review concepts")
+    print(f"After append: {tasks}") # Output: ['Learn Python', 'Practice coding', 'Build a project', 'Review concepts']
+
+    # Modify a task
+    tasks[0] = "Master Python Basics"
+    print(f"After modification: {tasks}") # Output: ['Master Python Basics', 'Practice coding', 'Build a project', 'Review concepts']
+
+    # Remove a task by value
+    tasks.remove("Practice coding")
+    print(f"After remove: {tasks}") # Output: ['Master Python Basics', 'Build a project', 'Review concepts']
+
+    # Remove a task by index (and get its value)
+    completed_task = tasks.pop(1) # Removes 'Build a project'
+    print(f"Completed task: {completed_task}, Remaining tasks: {tasks}") # Output: Completed task: Build a project, Remaining tasks: ['Master Python Basics', 'Review concepts']
+
+    # A list can contain mixed data types
+    mixed_data = ["apple", 1, True, 3.14]
+    print(f"Mixed data list: {mixed_data}")
     ```
 
-*   **tuple:** An ordered, **immutable** sequence of items. Tuples are similar to lists but, like strings, their contents cannot be changed after creation. This makes them useful for data that should not be altered, such as coordinates or fixed configurations. They are defined using parentheses `()`.
+*   **tuple:** An ordered, **immutable** sequence of items. Tuples are similar to lists but, like strings, their contents cannot be changed after creation. This makes them useful for data that should not be altered, such as coordinates, fixed configurations, or when returning multiple values from a function. They are defined using parentheses `()`.
     ```python
-    coordinates = (10.0, 20.0)
-    colors = ("red", "green", "blue")
+    # Example: RGB color values (should not change)
+    rgb_color = (255, 0, 128)
+    print(f"RGB Color: {rgb_color}")
+    print(f"Green component: {rgb_color[1]}") # Accessing elements
+
+    # Attempting to modify a tuple (will raise an error)
     try:
-        coordinates[0] = 15.0 # This would cause a TypeError because tuples are immutable
+        # Tuples are immutable - this will fail
+        rgb_color[0] = 200
     except TypeError as e:
-        print(f"Error: {e}") # Output: Error: 'tuple' object does not support item assignment
+        print(f"Error trying to modify tuple: {e}")
+
+    # Example: Function returning multiple values as a tuple
+    def get_user_info():
+        return "Charlie", 35, "Engineer"
+
+    name, age, occupation = get_user_info()
+    print(f"User Info: Name={name}, Age={age}, Occupation={occupation}")
     ```
 
 ### 4. Mapping Type (Key-Value Pairs)
-*   **dict (Dictionary):** A mutable collection of key-value pairs. While historically considered unordered, since Python 3.7, dictionaries are **ordered**, meaning they retain the insertion order of items. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
+*   **dict (Dictionary):** A mutable collection of key-value pairs. Keys must be unique and immutable (like strings or numbers), while values can be of any data type. Dictionaries are defined using curly braces `{}` with `key: value` pairs.
+
+    **Note on Order:** While historically considered unordered, since Python 3.7, dictionaries are **ordered**, meaning they retain the insertion order of items. This is a guaranteed feature of the language.
     ```python
-    person = {"name": "Bob", "age": 25, "city": "London"}
-    scores = {"math": 90, "science": 85}
+    # Example: Storing user preferences
+    user_profile = {"username": "johndoe", "email": "john@example.com", "is_premium": False}
+    print(f"Initial profile: {user_profile}")
+
     # Accessing values
-    print(person["name"]) # Output: Bob
+    print(f"Username: {user_profile["username"]}") # Output: Username: johndoe
+
     # Modifying values
-    person["age"] = 26
-    print(person) # Output: {'name': 'Bob', 'age': 26, 'city': 'London'}
+    user_profile["is_premium"] = True
+    print(f"After updating premium status: {user_profile}") # Output: ... 'is_premium': True}
+
+    # Adding a new key-value pair
+    user_profile["last_login"] = "2023-10-26"
+    print(f"After adding last login: {user_profile}")
+
+    # Removing a key-value pair
+    del user_profile["email"]
+    print(f"After removing email: {user_profile}")
+
+    # Safely accessing a key using .get()
+    country = user_profile.get("country", "Unknown") # Returns 'Unknown' if 'country' key doesn't exist
+    print(f"User's country: {country}")
+
+    # Iterating through a dictionary
+    print("\nUser Profile Details:")
+    for key, value in user_profile.items():
+        print(f"  {key}: {value}")
     ```
 
 ### 5. Set Types (Unordered Collections of Unique Items)
-*   **set:** An unordered, **mutable** collection of unique items. Sets do not allow duplicate values and are useful for operations like checking membership, removing duplicates, and performing mathematical set operations (union, intersection). Sets are defined using curly braces `{}` or the `set()` constructor.
+*   **set:** An unordered, **mutable** collection of unique items. Sets do not allow duplicate values and are useful for operations like checking membership, removing duplicates from a list, and performing mathematical set operations (union, intersection, difference).
     ```python
-    unique_numbers = {1, 2, 3, 3, 4} # duplicates are automatically removed
-    print(unique_numbers) # Output: {1, 2, 3, 4} (the order of elements is not guaranteed)
-    print(3 in unique_numbers) # Output: True (checking for membership is very efficient with sets)
-    
-    # Demonstrating common set operations
-    set_a = {1, 2, 3, 4}
-    set_b = {3, 4, 5, 6}
-    print(f"Set A: {set_a}")
-    print(f"Set B: {set_b}")
-    print(f"Union (A | B): {set_a.union(set_b)}")          # Elements in A or B or both
-    print(f"Intersection (A & B): {set_a.intersection(set_b)}") # Elements common to A and B
-    print(f"Difference (A - B): {set_a.difference(set_b)}")   # Elements in A but not in B
+    # Example: Tracking unique visitors to a website (duplicates are automatically handled)
+    website_visitors = {"Alice", "Bob", "Charlie", "Alice"} # "Alice" is automatically deduplicated
+    print(f"Unique website visitors: {website_visitors}") # Output: {'Bob', 'Alice', 'Charlie'} (order may vary)
+
+    # Sets are great for quickly checking if an item is present
+    print(f"Is 'Charlie' a visitor? {'Charlie' in website_visitors}") # Output: True
+    print(f"Is 'Frank' a visitor? {'Frank' in website_visitors}")   # Output: False
+
+    # Adding and removing elements
+    website_visitors.add("David")
+    website_visitors.remove("Bob")
+    print(f"Visitors after add/remove: {website_visitors}")
+
+    # Demonstrating common set operations (useful for data analysis)
+    # Imagine two groups of students and their enrolled courses
+    math_students = {"Alice", "Bob", "David"}
+    science_students = {"Charlie", "David", "Eve"}
+
+    print(f"\nMath students: {math_students}")
+    print(f"Science students: {science_students}")
+    print(f"All students (Union): {math_students.union(science_students)}") # Students in Math OR Science (or both)
+    print(f"Students in both (Intersection): {math_students.intersection(science_students)}") # Students in Math AND Science
+    print(f"Students only in Math (Difference): {math_students.difference(science_students)}") # Students in Math but NOT Science
+    print(f"Students not in both (Symmetric Difference): {math_students.symmetric_difference(science_students)}") # Students in Math OR Science, but NOT both
     ```
-*   **frozenset:** An **immutable** version of a set. Once created, you cannot add or remove elements. Frozensets can be used as keys in dictionaries or as elements in other sets, which regular (mutable) sets cannot.not.
+*   **frozenset:** An **immutable** version of a set. Once created, you cannot add or remove elements. Frozensets can be used as keys in dictionaries or as elements in other sets (because they are hashable), which regular (mutable) sets cannot.
     ```python
-    immutable_set = frozenset([1, 2, 3])
-    print(immutable_set) # Output: frozenset({1, 2, 3})
+    # Example: Using a frozenset as a dictionary key
+    immutable_tags = frozenset(["python", "programming"])
+    article_metadata = {immutable_tags: "Introduction to Python"}
+    print(f"Article metadata with frozenset key: {article_metadata}") # Output: frozenset({'programming', 'python'}): 'Introduction to Python'}
+
+    # Attempting to modify a frozenset (will raise an AttributeError)
+    try:
+        immutable_tags.add("tutorial")
+    except AttributeError as e:
+        print(f"Error trying to modify frozenset: {e}")
     ```
 
 ### 6. None Type
@@ -223,6 +315,54 @@ except ValueError as e:
 ```
 
 In the next chapter, we will explore how to control the flow of your program using conditional statements and loops.
+
+## Common Mistakes and How to Avoid Them
+Understanding common pitfalls can save a lot of debugging time. Here are a few to watch out for:
+
+1.  **Incorrect Variable Naming:** Not following PEP 8 or using non-descriptive names.
+    ```python
+    # Bad:
+    a = 10 # What does 'a' mean?
+    UserName = "Bob" # Not snake_case (and typically reserved for class names)
+
+    # Good:
+    user_age = 10
+    user_name = "Bob"
+    ```
+
+2.  **Modifying Immutable Types:** Attempting to change a string or tuple in place.
+    ```python
+    my_string = "Python"
+    try:
+        my_string[0] = 'p' # TypeError
+    except TypeError as e:
+        print(f"Error: {e}")
+
+    my_tuple = (1, 2, 3)
+    try:
+        my_tuple[0] = 0 # TypeError
+    except TypeError as e:
+        print(f"Error: {e}")
+
+    # Instead, create a new object:
+    my_string = "p" + my_string[1:] # Creates a new string "python"
+    print(f"New string: {my_string}")
+    ```
+
+3.  **`ValueError` During Type Conversion:** Trying to convert a string that doesn't represent a valid number.
+    ```python
+    invalid_num_str = "abc"
+    try:
+        int_val = int(invalid_num_str)
+    except ValueError as e:
+        print(f"Error: {e}") # Output: Error: invalid literal for int() with base 10: 'abc'
+    ```
+
+4.  **Misunderstanding Set Uniqueness/Order:** Expecting sets to maintain insertion order or allow duplicates.
+    ```python
+    my_set = {1, 2, 3, 2, 1}
+    print(my_set) # Output will be {1, 2, 3} (duplicates removed, order not guaranteed)
+    ```
 
 ## Key Takeaways
 *   Variables are named storage locations for values, and Python infers their type.

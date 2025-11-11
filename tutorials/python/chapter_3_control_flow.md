@@ -57,32 +57,14 @@ else:
     print("You are a minor.")
 ```
 
-```
-        +-------------------+
-        | Start             |
-        +--------+----------+
-                 |
-                 V
-        +-------------------+
-        | Condition (age >= 18)? |
-        +---------+---------+
-        |   True  |  False  |
-        +---------+---------+
-            |           |
-            V           V
-    +-----------+   +-----------+
-    | Print("Adult")|   | Print("Minor")|
-    +-----------+   +-----------+
-            |           |
-            +-----+-----+
-                  |
-                  V
-        +-------------------+
-        | End               |
-        +-------------------+
-```
-
-        +-------------------+
+```mermaid
+graph TD
+    A[Start]
+    A --> B{Condition (age >= 18)?}
+    B -- True --> C[Print("You are an adult.")]
+    B -- False --> D[Print("You are a minor.")]
+    C --> E[End]
+    D --> E[End]
 ```
 
 ### `if-elif-else` Statement
@@ -103,43 +85,20 @@ else:
 
 Here's a flowchart representation of an `if-elif-else` statement:
 
-```
-        +-------------------+
-        | Start             |
-        +--------+----------+
-                 |
-                 V
-        +-------------------+
-        | Condition 1 (score >= 90)? |
-        +---------+---------+
-        |   True  |  False  |
-        +---------+---------+
-            |           |
-            V           V
-    +-----------+   +-------------------+
-    | Print("A")|   | Condition 2 (score >= 80)? |
-    +-----------+   +---------+---------+
-            |           |   True  |  False  |
-            |           +---------+---------+
-            |               |           |
-            |               V           V
-            |       +-----------+   +-------------------+
-            |       | Print("B")|   | Condition 3 (score >= 70)? |
-            |       +-----------+   +---------+---------+
-            |               |           |   True  |  False  |
-            |               |           +---------+---------+
-            |               |               |           |
-            |               |               V           V
-            |               |       +-----------+   +-----------+
-            |               |       | Print("C")|   | Print("F")|
-            |               |       +-----------+   +-----------+
-            |               |               |
-            +-------+-------+-------+
-                    |
-                    V
-        +-------------------+
-        | End               |
-        +-------------------+
+```mermaid
+graph TD
+    A[Start]
+    A --> B{score >= 90?}
+    B -- Yes --> C[Print("Grade: A")]
+    B -- No --> D{score >= 80?}
+    D -- Yes --> E[Print("Grade: B")]
+    D -- No --> F{score >= 70?}
+    F -- Yes --> G[Print("Grade: C")]
+    F -- No --> H[Print("Grade: F")]
+    C --> I[End]
+    E --> I
+    G --> I
+    H --> I
 ```
 
 ### Nested Conditional Statements
@@ -185,20 +144,6 @@ print(f"The sum is: {sum_result}")
 ## 3. Looping Statements (for, while)
 Loops are used to execute a block of code repeatedly.
 
-### Nested Loops
-You can also nest loops, meaning one loop can be inside another. This is often used when working with multi-dimensional data structures like matrices or when you need to combine items from different lists.
-
-```python
-for i in range(1, 3):
-    for j in range(1, 3):
-        print(f"({i}, {j})")
-# Output:
-# (1, 1)
-# (1, 2)
-# (2, 1)
-# (2, 2)
-```
-
 ### `for` Loop
 The `for` loop is used for iterating over a sequence (like a list, tuple, string, or range) or other iterable objects. It executes a block of code for each item in the sequence.
 
@@ -207,11 +152,10 @@ Here's a conceptual flowchart for a `for` loop:
 ```mermaid
 graph TD
     A[Start]
-    A --> B{Are there more items in the sequence?}
-    B -- Yes --> C[Get next item]
-    C --> D[Execute loop body with item]
-    D --> B
-    B -- No --> E[End]
+    A --> B{For each item in sequence?}
+    B -- Yes --> C[Execute loop body with item]
+    C --> B
+    B -- No --> D[End]
 ```
 
 #### Iterating over a List
@@ -279,6 +223,10 @@ for name, age in zip(names, ages):
 # Alice is 25 years old.
 # Bob is 30 years old.
 # Charlie is 35 years old.
+# Output:
+# Alice is 25 years old.
+# Bob is 30 years old.
+# Charlie is 35 years old.
 ```
 
 ### `while` Loop
@@ -292,6 +240,20 @@ while count < 5:
 ```
 
 **Caution:** Be careful with `while` loops to avoid infinite loops. Ensure that the condition eventually becomes false.
+
+### Nested Loops
+You can also nest loops, meaning one loop can be inside another. This is often used when working with multi-dimensional data structures like matrices or when you need to combine items from different lists.
+
+```python
+for i in range(1, 3):
+    for j in range(1, 3):
+        print(f"({i}, {j})")
+# Output:
+# (1, 1)
+# (1, 2)
+# (2, 1)
+# (2, 2)
+```
 
 ### `else` with Loops (Optional Advanced Concept)
 Both `for` and `while` loops can have an optional `else` block. This `else` block executes *only if the loop completes without encountering a `break` statement*.

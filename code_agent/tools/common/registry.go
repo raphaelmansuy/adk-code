@@ -23,6 +23,8 @@ const (
 	CategoryExecution ToolCategory = "Execution"
 	// CategoryWorkspace includes workspace management tools
 	CategoryWorkspace ToolCategory = "Workspace Management"
+	// CategoryDisplay includes tools for displaying messages and task lists to the user
+	CategoryDisplay ToolCategory = "Display & Communication"
 )
 
 // ToolMetadata contains a tool and its categorization metadata.
@@ -100,6 +102,7 @@ func (r *ToolRegistry) GetCategories() []ToolCategory {
 		CategorySearchDiscovery,
 		CategoryExecution,
 		CategoryWorkspace,
+		CategoryDisplay,
 	}
 
 	// Filter to only categories that have tools
