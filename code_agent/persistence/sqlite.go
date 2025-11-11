@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/adk/session"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // SQLiteSessionService provides SQLite-backed session persistence
@@ -28,8 +30,20 @@ func NewSQLiteSessionService(dbPath string) (*SQLiteSessionService, error) {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
+	// Configure GORM logger to only show errors (not warnings like "record not found")
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			LogLevel:                  logger.Error, // Only log actual errors
+			IgnoreRecordNotFoundError: true,         // Don't log "record not found"
+			Colorful:                  false,
+		},
+	)
+
 	// Open SQLite connection
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: gormLogger,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open SQLite database: %w", err)
 	}

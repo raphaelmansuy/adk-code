@@ -171,14 +171,14 @@ func main() {
 			continue
 		}
 
-		if input == "exit" || input == "quit" {
+		if input == "/exit" || input == "/quit" {
 			goodbye := renderer.Cyan("Goodbye! Happy coding! 👋")
 			fmt.Printf("\n%s\n", goodbye)
 			break
 		}
 
 		// Debug command to show system prompt
-		if input == "debug prompt" || input == "show prompt" || input == ".prompt" {
+		if input == "/prompt" {
 			fmt.Print(renderer.Yellow("\n=== System Prompt ===\n\n"))
 			fmt.Print(renderer.Dim(codingagent.EnhancedSystemPrompt))
 			fmt.Print(renderer.Yellow("\n\n=== End of Prompt ===\n\n"))
@@ -186,67 +186,67 @@ func main() {
 		}
 
 		// Help command
-		if input == "help" || input == ".help" {
-			fmt.Print(renderer.Cyan("\n════════════════════════════════════════════════════════════════\n"))
-			fmt.Print(renderer.Cyan("  ") + renderer.Bold("Code Agent Help") + "\n")
-			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n\n"))
+		if input == "/help" {
+			fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
+			fmt.Print(renderer.Cyan("                       Code Agent Help\n"))
+			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
 
 			fmt.Print(renderer.Bold("🤖 Natural Language Requests:\n"))
-			fmt.Print(renderer.Dim("   Just type what you want in plain English!\n\n"))
+			fmt.Print("   Just type what you want in plain English!\n\n")
 
 			fmt.Print(renderer.Bold("⌨️  Built-in Commands:\n"))
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("help") + " / " + renderer.Bold(".help") + " - Show this help message\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold(".tools") + " - List all available tools\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold(".prompt") + " - Display the system prompt\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold(".tokens") + " - Show token usage statistics\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("exit") + " / " + renderer.Bold("quit") + " - Exit the agent\n")
+			fmt.Print("   • " + renderer.Bold("/help") + " - Show this help message\n")
+			fmt.Print("   • " + renderer.Bold("/tools") + " - List all available tools\n")
+			fmt.Print("   • " + renderer.Bold("/prompt") + " - Display the system prompt\n")
+			fmt.Print("   • " + renderer.Bold("/tokens") + " - Show token usage statistics\n")
+			fmt.Print("   • " + renderer.Bold("/exit") + " - Exit the agent\n")
 
 			fmt.Print(renderer.Bold("\n📚 Session Management (CLI commands):\n"))
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent new-session <name>") + " - Create a new session\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent list-sessions") + " - List all sessions\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent delete-session <name>") + " - Delete a session\n")
-			fmt.Print(renderer.Green("  • ") + renderer.Bold("./code-agent --session <name>") + " - Resume a specific session\n")
+			fmt.Print("   • " + renderer.Bold("./code-agent new-session <name>") + " - Create a new session\n")
+			fmt.Print("   • " + renderer.Bold("./code-agent list-sessions") + " - List all sessions\n")
+			fmt.Print("   • " + renderer.Bold("./code-agent delete-session <name>") + " - Delete a session\n")
+			fmt.Print("   • " + renderer.Bold("./code-agent --session <name>") + " - Resume a specific session\n")
 
 			fmt.Print(renderer.Bold("\n💡 Example Requests:\n"))
-			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Add error handling to main.go\n"))
-			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Create a README.md with project overview\n"))
-			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Refactor the calculate function\n"))
-			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Run tests and fix any failures\n"))
-			fmt.Print(renderer.Green("  ❯ ") + renderer.Dim("Add comments to all Python files\n\n"))
+			fmt.Print("   ❯ Add error handling to main.go\n")
+			fmt.Print("   ❯ Create a README.md with project overview\n")
+			fmt.Print("   ❯ Refactor the calculate function\n")
+			fmt.Print("   ❯ Run tests and fix any failures\n")
+			fmt.Print("   ❯ Add comments to all Python files\n\n")
 
-			fmt.Print(renderer.Yellow("📖 More info: ") + renderer.Dim("See USER_GUIDE.md for detailed documentation\n\n"))
+			fmt.Print(renderer.Yellow("📖 More info: ") + "See USER_GUIDE.md for detailed documentation\n\n")
 			continue
 		}
 
 		// Tools listing command
-		if input == ".tools" {
-			fmt.Print(renderer.Cyan("\n════════════════════════════════════════════════════════════════\n"))
-			fmt.Print(renderer.Cyan("  ") + renderer.Bold("Available Tools") + "\n")
-			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n\n"))
+		if input == "/tools" {
+			fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
+			fmt.Print(renderer.Cyan("                    Available Tools\n"))
+			fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
 
 			fmt.Print(renderer.Bold("📝 Core Editing Tools:\n"))
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("read_file") + " - Read file contents (supports line ranges)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("write_file") + " - Create or overwrite files (atomic, safe)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("search_replace") + " - Make targeted changes (RECOMMENDED)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("edit_lines") + " - Edit by line number (structural changes)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("apply_patch") + " - Apply unified diff patches (standard)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("apply_v4a_patch") + " - Apply V4A semantic patches (NEW!)\n")
+			fmt.Print("   ✓ " + renderer.Bold("read_file") + " - Read file contents (supports line ranges)\n")
+			fmt.Print("   ✓ " + renderer.Bold("write_file") + " - Create or overwrite files (atomic, safe)\n")
+			fmt.Print("   ✓ " + renderer.Bold("search_replace") + " - Make targeted changes (RECOMMENDED)\n")
+			fmt.Print("   ✓ " + renderer.Bold("edit_lines") + " - Edit by line number (structural changes)\n")
+			fmt.Print("   ✓ " + renderer.Bold("apply_patch") + " - Apply unified diff patches (standard)\n")
+			fmt.Print("   ✓ " + renderer.Bold("apply_v4a_patch") + " - Apply V4A semantic patches (NEW!)\n")
 
 			fmt.Print(renderer.Bold("\n🔍 Discovery Tools:\n"))
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("list_files") + " - Explore directory structure\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("search_files") + " - Find files by pattern (*.go, test_*.py)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("grep_search") + " - Search text in files (with line numbers)\n")
+			fmt.Print("   ✓ " + renderer.Bold("list_files") + " - Explore directory structure\n")
+			fmt.Print("   ✓ " + renderer.Bold("search_files") + " - Find files by pattern (*.go, test_*.py)\n")
+			fmt.Print("   ✓ " + renderer.Bold("grep_search") + " - Search text in files (with line numbers)\n")
 
 			fmt.Print(renderer.Bold("\n⚡ Execution Tools:\n"))
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("execute_command") + " - Run shell commands (pipes, redirects)\n")
-			fmt.Print(renderer.Green("  ✓ ") + renderer.Bold("execute_program") + " - Run programs directly (no quoting issues)\n\n")
+			fmt.Print("   ✓ " + renderer.Bold("execute_command") + " - Run shell commands (pipes, redirects)\n")
+			fmt.Print("   ✓ " + renderer.Bold("execute_program") + " - Run programs directly (no quoting issues)\n\n")
 
-			fmt.Print(renderer.Dim("💡 Tip: Type ") + renderer.Cyan("'help'") + renderer.Dim(" for usage examples and patterns\n\n"))
+			fmt.Print("💡 Tip: Type " + renderer.Cyan("'/help'") + " for usage examples and patterns\n\n")
 			continue
 		}
 
 		// Token usage reporting command
-		if input == ".tokens" || input == "tokens" || input == "token usage" {
+		if input == "/tokens" {
 			summary := sessionTokens.GetSummary()
 			fmt.Print(tracking.FormatSessionSummary(summary))
 			continue
