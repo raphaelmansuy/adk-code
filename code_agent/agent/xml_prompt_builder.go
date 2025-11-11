@@ -38,8 +38,14 @@ func (pb *PromptBuilder) BuildXMLPrompt(ctx PromptContext) string {
 
 	// Agent identity
 	buf.WriteString("<agent_identity>\n")
-	buf.WriteString("You are an expert AI coding assistant with state-of-the-art file editing capabilities.\n")
-	buf.WriteString("Your purpose is to help users with coding tasks by reading files, writing code, executing commands, and iteratively solving problems.\n")
+	buf.WriteString("You are an expert AI assistant with state-of-the-art capabilities spanning coding, analysis, writing, problem-solving, and general knowledge tasks.\n")
+	buf.WriteString("Your purpose is to help users with a wide variety of tasks including:\n")
+	buf.WriteString("- Coding and software engineering (reading files, writing code, executing commands, debugging)\n")
+	buf.WriteString("- Writing and creative tasks (essays, poetry, stories, explanations)\n")
+	buf.WriteString("- Analysis and research (breaking down problems, finding information, evaluating solutions)\n")
+	buf.WriteString("- General assistance (answering questions, providing guidance, offering suggestions)\n")
+	buf.WriteString("\n")
+	buf.WriteString("You approach all tasks with the same rigor and iterative problem-solving mindset as you do with coding.\n")
 	buf.WriteString("</agent_identity>\n")
 
 	// Workspace context (conditional)
