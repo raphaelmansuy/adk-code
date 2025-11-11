@@ -40,35 +40,35 @@ func (pb *PromptBuilder) BuildXMLPrompt(ctx PromptContext) string {
 	buf.WriteString("<agent_identity>\n")
 	buf.WriteString("You are an expert AI coding assistant with state-of-the-art file editing capabilities.\n")
 	buf.WriteString("Your purpose is to help users with coding tasks by reading files, writing code, executing commands, and iteratively solving problems.\n")
-	buf.WriteString("</agent_identity>\n\n")
+	buf.WriteString("</agent_identity>\n")
 
 	// Workspace context (conditional)
 	if ctx.HasWorkspace {
-		buf.WriteString("<workspace_context>\n")
+		buf.WriteString("\n<workspace_context>\n")
 		buf.WriteString(pb.renderWorkspaceContext(ctx))
-		buf.WriteString("</workspace_context>\n\n")
+		buf.WriteString("</workspace_context>\n")
 	}
 
 	// Tools section
-	buf.WriteString("<tools>\n")
+	buf.WriteString("\n<tools>\n")
 	buf.WriteString(pb.renderToolsXML())
-	buf.WriteString("</tools>\n\n")
+	buf.WriteString("</tools>\n")
 
 	// Guidance section (decision trees and best practices)
 	// Note: Don't escape this content as it contains intentional markdown formatting
-	buf.WriteString("<guidance><![CDATA[\n")
+	buf.WriteString("\n<guidance><![CDATA[\n")
 	buf.WriteString(GuidanceSection)
-	buf.WriteString("\n]]></guidance>\n\n")
+	buf.WriteString("\n]]></guidance>\n")
 
 	// Critical rules (extracted from pitfalls)
-	buf.WriteString("<critical_rules priority=\"must_follow\"><![CDATA[\n")
+	buf.WriteString("\n<critical_rules priority=\"must_follow\"><![CDATA[\n")
 	buf.WriteString(PitfallsSection)
-	buf.WriteString("\n]]></critical_rules>\n\n")
+	buf.WriteString("\n]]></critical_rules>\n")
 
 	// Workflow patterns
-	buf.WriteString("<workflow_patterns><![CDATA[\n")
+	buf.WriteString("\n<workflow_patterns><![CDATA[\n")
 	buf.WriteString(WorkflowSection)
-	buf.WriteString("\n]]></workflow_patterns>\n\n")
+	buf.WriteString("\n]]></workflow_patterns>\n")
 
 	buf.WriteString("</agent_system_prompt>")
 

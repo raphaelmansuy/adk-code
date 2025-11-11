@@ -165,8 +165,11 @@ func handleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		}
 		xmlPrompt := codingagent.BuildEnhancedPromptWithContext(registry, ctx)
 
+		// Clean up excessive blank lines in the output
+		cleanedPrompt := cleanupPromptOutput(xmlPrompt)
+
 		fmt.Print(renderer.Yellow("\n=== System Prompt (XML-Structured) ===\n\n"))
-		fmt.Print(renderer.Dim(xmlPrompt))
+		fmt.Print(renderer.Dim(cleanedPrompt))
 		fmt.Print(renderer.Yellow("\n\n=== End of Prompt ===\n\n"))
 		return true
 
@@ -424,4 +427,29 @@ func printProvidersList(renderer *display.Renderer, registry *ModelRegistry) {
 	fmt.Print(renderer.Dim("Usage: --model provider/model (e.g., --model gemini/2.5-flash)\n"))
 	fmt.Print(renderer.Dim("You can also use shorthands: --model gemini/flash\n"))
 	fmt.Print(renderer.Dim("Use /current-model command to see details about the active model\n\n"))
+}
+
+// cleanupPromptOutput removes excessive blank lines while preserving readability
+// This prevents visual clutter when displaying the XML prompt
+func cleanupPromptOutput(prompt string) string {
+	lines := strings.Split(prompt, "\n")
+	var result []string
+	blankLineCount := 0
+
+	for _, line := range lines {
+		// Check if line is blank (only whitespace)
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine == "" {
+			blankLineCount++
+			// Allow up to 2 consecutive blank lines for readability, skip more
+			if blankLineCount <= 2 {
+				result = append(result, line)
+			}
+		} else {
+			blankLineCount = 0
+			result = append(result, line)
+		}
+	}
+
+	return strings.Join(result, "\n")
 }
