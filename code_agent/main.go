@@ -90,9 +90,22 @@ func main() {
 	}
 
 	// Get working directory
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Failed to get working directory: %v", err)
+	workingDir := cliConfig.WorkingDirectory
+	if workingDir == "" {
+		var err error
+		workingDir, err = os.Getwd()
+		if err != nil {
+			log.Fatalf("Failed to get current working directory: %v", err)
+		}
+	}
+
+	// Expand ~ in the path
+	if strings.HasPrefix(workingDir, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatalf("Failed to get home directory: %v", err)
+		}
+		workingDir = filepath.Join(homeDir, workingDir[1:])
 	}
 
 	// Print welcome banner

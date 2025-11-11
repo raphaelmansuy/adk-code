@@ -18,6 +18,7 @@ type CLIConfig struct {
 	TypewriterEnabled bool
 	SessionName       string
 	DBPath            string
+	WorkingDirectory  string
 }
 
 // ParseCLIFlags parses command-line arguments and returns config and remaining args
@@ -26,6 +27,7 @@ func ParseCLIFlags() (CLIConfig, []string) {
 	typewriterEnabled := flag.Bool("typewriter", false, "Enable typewriter effect for text output")
 	sessionName := flag.String("session", "", "Session name (optional, defaults to 'default')")
 	dbPath := flag.String("db", "", "Database path for sessions (optional, defaults to ~/.code_agent/sessions.db)")
+	workingDirectory := flag.String("working-directory", "", "Working directory for the agent (optional, defaults to current directory)")
 	flag.Parse()
 
 	return CLIConfig{
@@ -33,6 +35,7 @@ func ParseCLIFlags() (CLIConfig, []string) {
 		TypewriterEnabled: *typewriterEnabled,
 		SessionName:       *sessionName,
 		DBPath:            *dbPath,
+		WorkingDirectory:  *workingDirectory,
 	}, flag.Args()
 }
 

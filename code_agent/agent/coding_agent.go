@@ -29,21 +29,42 @@ type Config struct {
 	EnableMultiWorkspace bool
 }
 
-// GetProjectRoot traverses upwards from the given path to find the project root,
+// GetProjectRoot traverses to find the project root,
 // identified by the presence of a "go.mod" file.
+// It searches: current path, immediate subdirectories, and parent directories.
 func GetProjectRoot(startPath string) (string, error) {
+	// First, check if go.mod exists in the start path
+	if _, err := os.Stat(filepath.Join(startPath, "go.mod")); err == nil {
+		return startPath, nil
+	}
+
+	// Check if go.mod exists in immediate subdirectories (e.g., code_agent/)
+	entries, err := os.ReadDir(startPath)
+	if err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				subdir := filepath.Join(startPath, entry.Name())
+				if _, err := os.Stat(filepath.Join(subdir, "go.mod")); err == nil {
+					return subdir, nil
+				}
+			}
+		}
+	}
+
+	// Then traverse upwards to find go.mod in parent directories
 	currentPath := startPath
 	for {
-		goModPath := fmt.Sprintf("%s/go.mod", currentPath)
+		parentPath := filepath.Dir(currentPath)
+		if parentPath == currentPath {
+			// Reached the root of the filesystem
+			return "", fmt.Errorf("go.mod not found in %s, its subdirectories, or any parent directories", startPath)
+		}
+		currentPath = parentPath
+
+		goModPath := filepath.Join(currentPath, "go.mod")
 		if _, err := os.Stat(goModPath); err == nil {
 			return currentPath, nil
 		}
-
-		parentPath := filepath.Dir(currentPath)
-		if parentPath == currentPath {
-			return "", fmt.Errorf("go.mod not found in %s or any parent directories", startPath)
-		}
-		currentPath = parentPath
 	}
 }
 
