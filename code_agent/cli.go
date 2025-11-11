@@ -6,11 +6,42 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	codingagent "code_agent/agent"
 	"code_agent/display"
 	"code_agent/tracking"
 )
+
+// ParseProviderModelSyntax parses a "provider/model" string into components
+// Examples:
+//
+//	"gemini/2.5-flash" → ("gemini", "2.5-flash", nil)
+//	"gemini/flash" → ("gemini", "flash", nil)
+//	"flash" → ("", "flash", nil)
+//	"/flash" → ("", "", error)
+//	"a/b/c" → ("", "", error)
+func ParseProviderModelSyntax(input string) (string, string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", "", fmt.Errorf("model syntax cannot be empty")
+	}
+
+	parts := strings.Split(input, "/")
+	switch len(parts) {
+	case 1:
+		// Shorthand without provider: "flash" → ("", "flash")
+		return "", parts[0], nil
+	case 2:
+		// Full syntax: "provider/model" → ("provider", "model")
+		if parts[0] == "" || parts[1] == "" {
+			return "", "", fmt.Errorf("invalid model syntax: %q (use provider/model)", input)
+		}
+		return parts[0], parts[1], nil
+	default:
+		return "", "", fmt.Errorf("invalid model syntax: %q (use provider/model)", input)
+	}
+}
 
 // CLIConfig holds parsed command-line flags
 type CLIConfig struct {
@@ -37,7 +68,11 @@ func ParseCLIFlags() (CLIConfig, []string) {
 	workingDirectory := flag.String("working-directory", "", "Working directory for the agent (optional, defaults to current directory)")
 
 	// Model selection flags
-	model := flag.String("model", "", "Model to use (e.g., gemini-2.5-flash, gemini-1.5-pro). Use '/models' command to list available models.")
+	model := flag.String("model", "", "Model to use with provider/model syntax. Examples:\n"+
+		"  --model gemini/2.5-flash     (explicit provider)\n"+
+		"  --model gemini/flash          (shorthand, means 2.5-flash)\n"+
+		"  --model vertexai/1.5-pro      (Vertex AI model)\n"+
+		"Use '/providers' command to list all available models.")
 
 	// Backend selection flags
 	backend := flag.String("backend", "", "Backend to use: 'gemini' or 'vertexai' (default: auto-detect from env vars)")
@@ -139,6 +174,10 @@ func handleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		printCurrentModelInfo(renderer, currentModel)
 		return true
 
+	case "/providers":
+		printProvidersList(renderer, modelRegistry)
+		return true
+
 	case "/tokens":
 		summary := sessionTokens.GetSummary()
 		fmt.Print(tracking.FormatSessionSummary(summary))
@@ -162,10 +201,18 @@ func printHelpMessage(renderer *display.Renderer) {
 	fmt.Print("   • " + renderer.Bold("/help") + " - Show this help message\n")
 	fmt.Print("   • " + renderer.Bold("/tools") + " - List all available tools\n")
 	fmt.Print("   • " + renderer.Bold("/models") + " - Show all available AI models\n")
+	fmt.Print("   • " + renderer.Bold("/providers") + " - Show available providers and their models\n")
 	fmt.Print("   • " + renderer.Bold("/current-model") + " - Show details about the current model\n")
 	fmt.Print("   • " + renderer.Bold("/prompt") + " - Display the system prompt\n")
 	fmt.Print("   • " + renderer.Bold("/tokens") + " - Show token usage statistics\n")
 	fmt.Print("   • " + renderer.Bold("/exit") + " - Exit the agent\n")
+
+	fmt.Print(renderer.Bold("\n📚 Model Selection:\n"))
+	fmt.Print("   Start the agent with --model flag using provider/model syntax:\n")
+	fmt.Print("   • " + renderer.Dim("./code-agent --model gemini/2.5-flash") + "\n")
+	fmt.Print("   • " + renderer.Dim("./code-agent --model gemini/flash") + " (shorthand)\n")
+	fmt.Print("   • " + renderer.Dim("./code-agent --model vertexai/1.5-pro") + "\n")
+	fmt.Print("   Use " + renderer.Cyan("'/providers'") + " command to see all available options\n")
 
 	fmt.Print(renderer.Bold("\n📚 Session Management (CLI commands):\n"))
 	fmt.Print("   • " + renderer.Bold("./code-agent new-session <name>") + " - Create a new session\n")
@@ -323,4 +370,46 @@ func printCurrentModelInfo(renderer *display.Renderer, model ModelConfig) {
 	}
 
 	fmt.Print(renderer.Dim("Tip: Use --model flag to switch models when starting the agent\n\n"))
+}
+
+// printProvidersList displays available providers and their models
+func printProvidersList(renderer *display.Renderer, registry *ModelRegistry) {
+	fmt.Print("\n" + renderer.Cyan("════════════════════════════════════════════════════════════════\n"))
+	fmt.Print(renderer.Cyan("                  Available Providers & Models\n"))
+	fmt.Print(renderer.Cyan("════════════════════════════════════════════════════════════════\n") + "\n")
+
+	// Display each provider
+	for _, providerName := range registry.ListProviders() {
+		provider := ParseProvider(providerName)
+		meta := GetProviderMetadata(provider)
+
+		// Provider header
+		fmt.Printf("%s %s\n", meta.Icon, renderer.Bold(meta.DisplayName))
+		fmt.Printf("   %s\n\n", meta.Description)
+
+		// List models for this provider
+		models := registry.GetProviderModels(providerName)
+		for _, model := range models {
+			icon := "○"
+			if model.IsDefault {
+				icon = "✓"
+			}
+			costIcon := "💰"
+			if model.Capabilities.CostTier == "economy" {
+				costIcon = "💵"
+			} else if model.Capabilities.CostTier == "premium" {
+				costIcon = "💎"
+			}
+
+			// Display model with provider syntax
+			modelSyntax := fmt.Sprintf("%s/%s", providerName, model.ID)
+			fmt.Printf("   %s %s %s - %s\n", icon, costIcon, renderer.Bold(modelSyntax), model.Description)
+		}
+
+		fmt.Print("\n")
+	}
+
+	fmt.Print(renderer.Dim("Usage: --model provider/model (e.g., --model gemini/2.5-flash)\n"))
+	fmt.Print(renderer.Dim("You can also use shorthands: --model gemini/flash\n"))
+	fmt.Print(renderer.Dim("Use /current-model command to see details about the active model\n\n"))
 }

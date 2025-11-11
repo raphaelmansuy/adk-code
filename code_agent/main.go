@@ -86,10 +86,43 @@ func main() {
 	// Create model registry
 	modelRegistry := NewModelRegistry()
 
-	// Resolve which model to use
-	selectedModel, err := modelRegistry.ResolveModel(cliConfig.Model, cliConfig.Backend)
-	if err != nil {
-		log.Fatalf("Failed to resolve model: %v", err)
+	// Resolve which model to use based on provider/model syntax
+	var selectedModel ModelConfig
+
+	if cliConfig.Model == "" {
+		// No model specified, use default
+		selectedModel = modelRegistry.GetDefaultModel()
+	} else {
+		// Parse the provider/model syntax
+		parsedProvider, parsedModel, parseErr := ParseProviderModelSyntax(cliConfig.Model)
+		if parseErr != nil {
+			log.Fatalf("Invalid model syntax: %v\nUse format: provider/model (e.g., gemini/2.5-flash)", parseErr)
+		}
+
+		// Determine default provider if not specified
+		defaultProvider := cliConfig.Backend
+		if defaultProvider == "" {
+			defaultProvider = "gemini"
+		}
+
+		// Resolve the model using provider-aware lookup
+		resolvedModel, modelErr := modelRegistry.ResolveFromProviderSyntax(
+			parsedProvider,
+			parsedModel,
+			defaultProvider,
+		)
+		if modelErr != nil {
+			log.Fatalf("❌ Error: %v\n\nAvailable models:\n", modelErr)
+			for _, providerName := range modelRegistry.ListProviders() {
+				models := modelRegistry.GetProviderModels(providerName)
+				fmt.Printf("\n%s:\n", strings.ToUpper(providerName[:1])+strings.ToLower(providerName[1:]))
+				for _, m := range models {
+					fmt.Printf("  • %s/%s\n", providerName, m.ID)
+				}
+			}
+			os.Exit(1)
+		}
+		selectedModel = resolvedModel
 	}
 
 	// Get API key from environment

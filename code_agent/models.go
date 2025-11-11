@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -42,16 +43,21 @@ type ModelConfig struct {
 
 // ModelRegistry manages available models and configurations
 type ModelRegistry struct {
-	models map[string]ModelConfig
+	models           map[string]ModelConfig // model ID → config
+	aliases          map[string]string      // "provider/shorthand" → model ID
+	modelsByProvider map[string][]string    // provider → list of model IDs
 }
 
 // NewModelRegistry creates a new model registry with default models
+// Models are registered once and then aliased for each provider to avoid duplication
 func NewModelRegistry() *ModelRegistry {
 	registry := &ModelRegistry{
-		models: make(map[string]ModelConfig),
+		models:           make(map[string]ModelConfig),
+		aliases:          make(map[string]string),
+		modelsByProvider: make(map[string][]string),
 	}
 
-	// Register default models
+	// Define base models ONCE (no more -vertex duplicates!)
 	registry.RegisterModel(ModelConfig{
 		ID:            "gemini-2.5-flash",
 		Name:          "Gemini 2.5 Flash",
@@ -120,40 +126,50 @@ func NewModelRegistry() *ModelRegistry {
 		IsDefault:      false,
 	})
 
-	// Vertex AI versions (same models, different backend)
-	registry.RegisterModel(ModelConfig{
-		ID:            "gemini-2.5-flash-vertex",
-		Name:          "Gemini 2.5 Flash",
-		DisplayName:   "Gemini 2.5 Flash (Vertex AI)",
-		Backend:       "vertexai",
-		ContextWindow: 1000000,
-		Capabilities: ModelCapabilities{
-			VisionSupport:     true,
-			ToolUseSupport:    true,
-			LongContextWindow: true,
-			CostTier:          "economy",
-		},
-		Description:    "Fast, affordable model via Vertex AI. Same capabilities as Gemini API.",
-		RecommendedFor: []string{"coding", "analysis", "enterprise"},
-		IsDefault:      false,
-	})
+	// Register each base model for both providers with shorthands
+	// This eliminates the need for -vertex duplicate entries
+	registry.RegisterModelForProvider(
+		"gemini",
+		"gemini-2.5-flash",
+		[]string{"2.5-flash", "flash", "latest"},
+	)
+	registry.RegisterModelForProvider(
+		"gemini",
+		"gemini-2.0-flash",
+		[]string{"2.0-flash"},
+	)
+	registry.RegisterModelForProvider(
+		"gemini",
+		"gemini-1.5-flash",
+		[]string{"1.5-flash"},
+	)
+	registry.RegisterModelForProvider(
+		"gemini",
+		"gemini-1.5-pro",
+		[]string{"1.5-pro", "pro"},
+	)
 
-	registry.RegisterModel(ModelConfig{
-		ID:            "gemini-1.5-pro-vertex",
-		Name:          "Gemini 1.5 Pro",
-		DisplayName:   "Gemini 1.5 Pro (Vertex AI)",
-		Backend:       "vertexai",
-		ContextWindow: 2000000,
-		Capabilities: ModelCapabilities{
-			VisionSupport:     true,
-			ToolUseSupport:    true,
-			LongContextWindow: true,
-			CostTier:          "premium",
-		},
-		Description:    "Advanced model via Vertex AI. Enterprise deployment option.",
-		RecommendedFor: []string{"complex reasoning", "enterprise", "regulated"},
-		IsDefault:      false,
-	})
+	// Register same models for Vertex AI
+	registry.RegisterModelForProvider(
+		"vertexai",
+		"gemini-2.5-flash",
+		[]string{"2.5-flash", "flash", "latest"},
+	)
+	registry.RegisterModelForProvider(
+		"vertexai",
+		"gemini-2.0-flash",
+		[]string{"2.0-flash"},
+	)
+	registry.RegisterModelForProvider(
+		"vertexai",
+		"gemini-1.5-flash",
+		[]string{"1.5-flash"},
+	)
+	registry.RegisterModelForProvider(
+		"vertexai",
+		"gemini-1.5-pro",
+		[]string{"1.5-pro", "pro"},
+	)
 
 	return registry
 }
@@ -252,4 +268,95 @@ func ExtractModelIDFromGemini(modelID string) string {
 		return strings.TrimSuffix(modelID, "-vertex")
 	}
 	return modelID
+}
+
+// RegisterModelForProvider registers a base model for a specific provider with optional shorthands
+// This avoids duplicating model definitions across providers
+func (mr *ModelRegistry) RegisterModelForProvider(
+	provider string,
+	baseModelID string,
+	shorthands []string,
+) error {
+	// Verify base model exists
+	if _, exists := mr.models[baseModelID]; !exists {
+		return fmt.Errorf("base model %q not found", baseModelID)
+	}
+
+	// Register provider/fullid → baseModelID alias
+	key := fmt.Sprintf("%s/%s", provider, baseModelID)
+	mr.aliases[key] = baseModelID
+
+	// Register provider/shorthand → baseModelID aliases
+	for _, shorthand := range shorthands {
+		key := fmt.Sprintf("%s/%s", provider, shorthand)
+		mr.aliases[key] = baseModelID
+	}
+
+	// Track models by provider
+	mr.modelsByProvider[provider] = append(
+		mr.modelsByProvider[provider],
+		baseModelID,
+	)
+
+	return nil
+}
+
+// GetProviderModels returns all models available for a specific provider
+func (mr *ModelRegistry) GetProviderModels(provider string) []ModelConfig {
+	modelIDs := mr.modelsByProvider[provider]
+	result := make([]ModelConfig, 0, len(modelIDs))
+	for _, id := range modelIDs {
+		if model, err := mr.GetModel(id); err == nil {
+			result = append(result, model)
+		}
+	}
+	return result
+}
+
+// ListProviders returns a list of all available providers
+func (mr *ModelRegistry) ListProviders() []string {
+	providers := make([]string, 0, len(mr.modelsByProvider))
+	for p := range mr.modelsByProvider {
+		providers = append(providers, p)
+	}
+	// Sort for consistent output
+	sort.Strings(providers)
+	return providers
+}
+
+// ResolveFromProviderSyntax resolves a model using provider/model syntax
+// Returns the resolved ModelConfig based on provider and model identifier
+// providerName: explicit provider, or empty string for shorthand
+// modelIdentifier: model ID or shorthand (e.g., "flash", "2.5-flash", "gemini-2.5-flash")
+// defaultProvider: fallback provider if not specified (e.g., "gemini")
+func (mr *ModelRegistry) ResolveFromProviderSyntax(
+	providerName string,
+	modelIdentifier string,
+	defaultProvider string,
+) (ModelConfig, error) {
+	// If provider not specified, use default
+	if providerName == "" {
+		providerName = defaultProvider
+	}
+
+	// Try to resolve using alias first (provider/modelid or provider/shorthand)
+	aliasKey := fmt.Sprintf("%s/%s", providerName, modelIdentifier)
+	if baseModelID, exists := mr.aliases[aliasKey]; exists {
+		return mr.GetModel(baseModelID)
+	}
+
+	// Try exact model ID lookup if provided
+	if model, err := mr.GetModel(modelIdentifier); err == nil {
+		// Verify it's available for the requested provider
+		providerModels := mr.GetProviderModels(providerName)
+		for _, m := range providerModels {
+			if m.ID == modelIdentifier {
+				return model, nil
+			}
+		}
+	}
+
+	// Generate helpful error message
+	return ModelConfig{}, fmt.Errorf(
+		"model %q not found for provider %q", modelIdentifier, providerName)
 }

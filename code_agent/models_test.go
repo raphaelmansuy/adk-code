@@ -28,7 +28,7 @@ func TestModelRegistry(t *testing.T) {
 	}{
 		{"gemini-2.5-flash", "gemini-2.5-flash", true},
 		{"gemini-1.5-pro", "gemini-1.5-pro", true},
-		{"gemini-2.5-flash-vertex", "gemini-2.5-flash-vertex", true},
+		// No more -vertex duplicates! These are now handled by provider aliases
 		{"nonexistent", "nonexistent-model", false},
 	}
 
@@ -55,16 +55,14 @@ func TestModelResolve(t *testing.T) {
 	registry := NewModelRegistry()
 
 	tests := []struct {
-		name            string
-		modelID         string
-		backend         string
-		expectedBackend string
-		shouldSucceed   bool
+		name          string
+		modelID       string
+		backend       string
+		shouldSucceed bool
 	}{
-		{"explicit-model", "gemini-1.5-pro", "", "gemini", true},
-		{"explicit-backend", "", "vertexai", "vertexai", true},
-		{"both-specified", "gemini-1.5-pro-vertex", "vertexai", "vertexai", true},
-		{"neither", "", "", "gemini", true}, // Should use default
+		{"explicit-model", "gemini-1.5-pro", "", true},
+		{"explicit-backend", "", "vertexai", true},
+		{"neither", "", "", true}, // Should use default
 	}
 
 	for _, tt := range tests {
@@ -81,8 +79,9 @@ func TestModelResolve(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			if model.Backend != tt.expectedBackend {
-				t.Errorf("Expected backend %s, got %s", tt.expectedBackend, model.Backend)
+			// All models have backend="gemini" now (base models)
+			if model.Backend != "gemini" {
+				t.Errorf("Expected backend gemini, got %s", model.Backend)
 			}
 		})
 	}
@@ -92,14 +91,9 @@ func TestListModelsByBackend(t *testing.T) {
 	registry := NewModelRegistry()
 
 	geminiBakcend := registry.ListModelsByBackend("gemini")
-	vertexAI := registry.ListModelsByBackend("vertexai")
 
 	if len(geminiBakcend) == 0 {
 		t.Error("Expected Gemini models, got none")
-	}
-
-	if len(vertexAI) == 0 {
-		t.Error("Expected Vertex AI models, got none")
 	}
 
 	// Verify that Gemini models have correct backend
@@ -109,11 +103,17 @@ func TestListModelsByBackend(t *testing.T) {
 		}
 	}
 
-	// Verify that Vertex AI models have correct backend
-	for _, model := range vertexAI {
-		if model.Backend != "vertexai" {
-			t.Errorf("Model %s has backend %s, expected vertexai", model.ID, model.Backend)
-		}
+	// After refactoring: all base models have backend="gemini"
+	// Provider-specific selection is done via provider namespace, not model.Backend
+	vertexAI := registry.ListModelsByBackend("vertexai")
+	if len(vertexAI) > 0 {
+		t.Error("No models should have explicit vertexai backend after refactoring")
+	}
+
+	// Verify provider-based access works
+	providerModels := registry.GetProviderModels("vertexai")
+	if len(providerModels) == 0 {
+		t.Error("Expected Vertex AI models via provider lookup, got none")
 	}
 }
 
