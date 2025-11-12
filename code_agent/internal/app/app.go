@@ -9,22 +9,15 @@ import (
 	"strings"
 
 	"google.golang.org/adk/agent"
-	"google.golang.org/adk/model"
-	"google.golang.org/adk/runner"
 
-	codingagent "code_agent/agent"
-	"code_agent/display"
-	"code_agent/pkg/cli"
-	"code_agent/pkg/models"
-	"code_agent/session"
-	"code_agent/tracking"
+	"code_agent/internal/config"
 )
 
 const AppVersion = "1.0.0"
 
 // Application manages the entire code agent application lifecycle
 type Application struct {
-	config        *cli.CLIConfig
+	config        *config.Config
 	ctx           context.Context
 	signalHandler *SignalHandler
 	display       *DisplayComponents
@@ -35,158 +28,54 @@ type Application struct {
 }
 
 // New creates a new Application instance
-func New(ctx context.Context, config *cli.CLIConfig) (*Application, error) {
+func New(ctx context.Context, cfg *config.Config) (*Application, error) {
 	app := &Application{
-		config: config,
+		config: cfg,
 	}
 
 	// Setup signal handling
 	app.signalHandler = NewSignalHandler(ctx)
 	app.ctx = app.signalHandler.Context()
 
-	// Initialize components
-	if err := app.initializeDisplay(); err != nil {
+	// Initialize display components
+	var err error
+	app.display, err = initializeDisplayComponents(cfg)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := app.initializeModel(); err != nil {
+	// Initialize model components
+	app.model, err = initializeModelComponents(app.ctx, cfg)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := app.initializeAgent(); err != nil {
+	// Resolve working directory
+	cfg.WorkingDirectory = app.resolveWorkingDirectory()
+
+	// Print welcome banner
+	displayName := app.model.Selected.DisplayName
+	banner := app.display.BannerRenderer.RenderStartBanner(AppVersion, displayName, cfg.WorkingDirectory)
+	fmt.Print(banner)
+
+	// Initialize agent
+	app.agent, err = initializeAgentComponent(app.ctx, cfg, app.model.LLM)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := app.initializeSession(); err != nil {
+	// Initialize session components
+	app.session, err = initializeSessionComponents(app.ctx, cfg, app.agent, app.display.BannerRenderer)
+	if err != nil {
 		return nil, err
 	}
 
+	// Initialize REPL
 	if err := app.initializeREPL(); err != nil {
 		return nil, err
 	}
 
 	return app, nil
-}
-
-// initializeDisplay sets up display components
-func (a *Application) initializeDisplay() error {
-	var err error
-	renderer, err := display.NewRenderer(a.config.OutputFormat)
-	if err != nil {
-		return fmt.Errorf("failed to create renderer: %w", err)
-	}
-
-	typewriter := display.NewTypewriterPrinter(display.DefaultTypewriterConfig())
-	typewriter.SetEnabled(a.config.TypewriterEnabled)
-	streamDisplay := display.NewStreamingDisplay(renderer, typewriter)
-
-	a.display = &DisplayComponents{
-		Renderer:       renderer,
-		BannerRenderer: display.NewBannerRenderer(renderer),
-		Typewriter:     typewriter,
-		StreamDisplay:  streamDisplay,
-	}
-
-	return nil
-}
-
-// initializeModel sets up the LLM model
-func (a *Application) initializeModel() error {
-	registry := models.NewRegistry()
-
-	// Resolve which model to use
-	var selectedModel models.Config
-	var err error
-	if a.config.Model == "" {
-		selectedModel = registry.GetDefaultModel()
-	} else {
-		parsedProvider, parsedModel, parseErr := cli.ParseProviderModelSyntax(a.config.Model)
-		if parseErr != nil {
-			return fmt.Errorf("invalid model syntax: %w\nUse format: provider/model (e.g., gemini/2.5-flash)", parseErr)
-		}
-
-		defaultProvider := a.config.Backend
-		if defaultProvider == "" {
-			defaultProvider = "gemini"
-		}
-
-		selectedModel, err = registry.ResolveFromProviderSyntax(parsedProvider, parsedModel, defaultProvider)
-		if err != nil {
-			// Print available models and return error
-			fmt.Printf("❌ Error: %v\n\nAvailable models:\n", err)
-			for _, providerName := range registry.ListProviders() {
-				models := registry.GetProviderModels(providerName)
-				fmt.Printf("\n%s:\n", strings.ToUpper(providerName[:1])+strings.ToLower(providerName[1:]))
-				for _, m := range models {
-					fmt.Printf("  • %s/%s\n", providerName, m.ID)
-				}
-			}
-			return fmt.Errorf("model resolution failed")
-		}
-	}
-
-	// Get API key
-	apiKey := a.config.APIKey
-	if apiKey == "" && selectedModel.Backend == "gemini" {
-		return fmt.Errorf("Gemini API backend requires GOOGLE_API_KEY environment variable or --api-key flag")
-	}
-
-	// Get working directory
-	a.config.WorkingDirectory = a.resolveWorkingDirectory()
-
-	// Print welcome banner
-	displayName := selectedModel.DisplayName
-	banner := a.display.BannerRenderer.RenderStartBanner(AppVersion, displayName, a.config.WorkingDirectory)
-	fmt.Print(banner)
-
-	// Create LLM model
-	actualModelID := models.ExtractModelIDFromGemini(selectedModel.ID)
-	var llm model.LLM
-
-	switch selectedModel.Backend {
-	case "vertexai":
-		if a.config.VertexAIProject == "" {
-			return fmt.Errorf("Vertex AI backend requires GOOGLE_CLOUD_PROJECT environment variable or --project flag")
-		}
-		if a.config.VertexAILocation == "" {
-			return fmt.Errorf("Vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
-		}
-		llm, err = models.CreateVertexAIModel(a.ctx, models.VertexAIConfig{
-			Project:   a.config.VertexAIProject,
-			Location:  a.config.VertexAILocation,
-			ModelName: actualModelID,
-		})
-
-	case "openai":
-		openaiKey := os.Getenv("OPENAI_API_KEY")
-		if openaiKey == "" {
-			return fmt.Errorf("OpenAI backend requires OPENAI_API_KEY environment variable")
-		}
-		llm, err = models.CreateOpenAIModel(a.ctx, models.OpenAIConfig{
-			APIKey:    openaiKey,
-			ModelName: actualModelID,
-		})
-
-	case "gemini":
-		fallthrough
-	default:
-		llm, err = models.CreateGeminiModel(a.ctx, models.GeminiConfig{
-			APIKey:    apiKey,
-			ModelName: actualModelID,
-		})
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to create LLM model: %w", err)
-	}
-
-	a.model = &ModelComponents{
-		Registry: registry,
-		Selected: selectedModel,
-		LLM:      llm,
-	}
-
-	return nil
 }
 
 // resolveWorkingDirectory resolves and validates the working directory
@@ -196,7 +85,7 @@ func (a *Application) resolveWorkingDirectory() string {
 		var err error
 		workingDir, err = os.Getwd()
 		if err != nil {
-			log.Fatalf("Failed to get current working directory: %v", err)
+			log.Fatalf("failed to get current working directory: %v", err)
 		}
 	}
 
@@ -204,70 +93,12 @@ func (a *Application) resolveWorkingDirectory() string {
 	if strings.HasPrefix(workingDir, "~") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatalf("Failed to get home directory: %v", err)
+			log.Fatalf("failed to get home directory: %v", err)
 		}
 		workingDir = filepath.Join(homeDir, workingDir[1:])
 	}
 
 	return workingDir
-}
-
-// initializeAgent creates the coding agent
-func (a *Application) initializeAgent() error {
-	var err error
-	a.agent, err = codingagent.NewCodingAgent(a.ctx, codingagent.Config{
-		Model:            a.model.LLM,
-		WorkingDirectory: a.config.WorkingDirectory,
-		EnableThinking:   a.config.EnableThinking,
-		ThinkingBudget:   a.config.ThinkingBudget,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create coding agent: %w", err)
-	}
-
-	return nil
-}
-
-// initializeSession sets up session management
-func (a *Application) initializeSession() error {
-	var err error
-	sessionManager, err := session.NewSessionManager("code_agent", a.config.DBPath)
-	if err != nil {
-		return fmt.Errorf("failed to create session manager: %w", err)
-	}
-
-	// Generate unique session name if not specified
-	if a.config.SessionName == "" {
-		a.config.SessionName = GenerateUniqueSessionName()
-	}
-
-	// Initialize the session
-	sessionInit := NewSessionInitializer(sessionManager, a.display.BannerRenderer)
-	if err := sessionInit.InitializeSession(a.ctx, "user1", a.config.SessionName); err != nil {
-		return err
-	}
-
-	// Create agent runner
-	sessionService := sessionManager.GetService()
-	agentRunner, err := runner.New(runner.Config{
-		AppName:        "code_agent",
-		Agent:          a.agent,
-		SessionService: sessionService,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create runner: %w", err)
-	}
-
-	// Initialize token tracking
-	sessionTokens := tracking.NewSessionTokens()
-
-	a.session = &SessionComponents{
-		Manager: sessionManager,
-		Runner:  agentRunner,
-		Tokens:  sessionTokens,
-	}
-
-	return nil
 }
 
 // initializeREPL sets up the REPL

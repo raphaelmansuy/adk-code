@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"code_agent/display"
-	"code_agent/pkg/cli"
+	"code_agent/internal/config"
 )
 
 func TestDisplayComponentFactory(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		OutputFormat:      display.OutputFormatPlain,
 		TypewriterEnabled: false,
 	}
 
-	factory := NewDisplayComponentFactory(config)
+	factory := NewDisplayComponentFactory(cfg)
 	if factory == nil {
 		t.Error("NewDisplayComponentFactory should not return nil")
 	}
@@ -42,12 +42,12 @@ func TestDisplayComponentFactory(t *testing.T) {
 }
 
 func TestDisplayComponentFactoryTypewriterEnabled(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		OutputFormat:      display.OutputFormatPlain,
 		TypewriterEnabled: true,
 	}
 
-	factory := NewDisplayComponentFactory(config)
+	factory := NewDisplayComponentFactory(cfg)
 	components, err := factory.Create()
 	if err != nil {
 		t.Fatalf("Create() failed: %v", err)
@@ -59,13 +59,13 @@ func TestDisplayComponentFactoryTypewriterEnabled(t *testing.T) {
 }
 
 func TestModelComponentFactory(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		OutputFormat: display.OutputFormatPlain,
 		Model:        "", // Use default model
 		APIKey:       "", // Will fail without API key, but we can test factory creation
 	}
 
-	factory := NewModelComponentFactory(config)
+	factory := NewModelComponentFactory(cfg)
 	if factory == nil {
 		t.Error("NewModelComponentFactory should not return nil")
 	}
@@ -83,10 +83,10 @@ func TestResolveWorkingDirectory(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		config := &cli.CLIConfig{
+		cfg := &config.Config{
 			WorkingDirectory: test.input,
 		}
-		factory := NewModelComponentFactory(config)
+		factory := NewModelComponentFactory(cfg)
 		result := factory.resolveWorkingDirectory()
 		if result != test.expected {
 			t.Errorf("resolveWorkingDirectory(%q) = %q, expected %q", test.input, result, test.expected)
@@ -95,10 +95,10 @@ func TestResolveWorkingDirectory(t *testing.T) {
 }
 
 func TestResolveWorkingDirectoryEmpty(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		WorkingDirectory: "",
 	}
-	factory := NewModelComponentFactory(config)
+	factory := NewModelComponentFactory(cfg)
 	result := factory.resolveWorkingDirectory()
 	if result == "" {
 		t.Error("resolveWorkingDirectory with empty input should return a directory")
@@ -106,12 +106,12 @@ func TestResolveWorkingDirectoryEmpty(t *testing.T) {
 }
 
 func TestDisplayComponentFactoryWithJSONOutput(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		OutputFormat:      display.OutputFormatJSON,
 		TypewriterEnabled: false,
 	}
 
-	factory := NewDisplayComponentFactory(config)
+	factory := NewDisplayComponentFactory(cfg)
 	components, err := factory.Create()
 	if err != nil {
 		t.Fatalf("Create() failed: %v", err)
@@ -127,22 +127,22 @@ func TestDisplayComponentFactoryWithJSONOutput(t *testing.T) {
 
 func TestFactorySequence(t *testing.T) {
 	// Test that factories can be created in sequence
-	displayConfig := &cli.CLIConfig{
+	displayCfg := &config.Config{
 		OutputFormat:      display.OutputFormatPlain,
 		TypewriterEnabled: false,
 	}
 
-	displayFactory := NewDisplayComponentFactory(displayConfig)
+	displayFactory := NewDisplayComponentFactory(displayCfg)
 	displayComponents, err := displayFactory.Create()
 	if err != nil {
 		t.Fatalf("Display factory failed: %v", err)
 	}
 
-	modelConfig := &cli.CLIConfig{
+	modelCfg := &config.Config{
 		WorkingDirectory: "/tmp",
 	}
 
-	modelFactory := NewModelComponentFactory(modelConfig)
+	modelFactory := NewModelComponentFactory(modelCfg)
 	// Don't call Create() on model factory without API key
 	if modelFactory == nil {
 		t.Error("Model factory creation failed")
@@ -155,12 +155,12 @@ func TestFactorySequence(t *testing.T) {
 }
 
 func TestDisplayComponentFactoryContextCancellation(t *testing.T) {
-	config := &cli.CLIConfig{
+	cfg := &config.Config{
 		OutputFormat:      display.OutputFormatPlain,
 		TypewriterEnabled: false,
 	}
 
-	factory := NewDisplayComponentFactory(config)
+	factory := NewDisplayComponentFactory(cfg)
 
 	// Create with active context
 	ctx, cancel := context.WithCancel(context.Background())

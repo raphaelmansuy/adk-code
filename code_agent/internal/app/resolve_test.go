@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"code_agent/pkg/cli"
+	"code_agent/internal/config"
 )
 
 func TestResolveWorkingDirectory_Default(t *testing.T) {
@@ -14,7 +14,7 @@ func TestResolveWorkingDirectory_Default(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := &cli.CLIConfig{WorkingDirectory: ""}
+	cfg := &config.Config{WorkingDirectory: ""}
 	a := &Application{config: cfg}
 	got := a.resolveWorkingDirectory()
 	if got != wd {
@@ -26,7 +26,7 @@ func TestResolveWorkingDirectory_TildeExpand(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 
-	cfg := &cli.CLIConfig{WorkingDirectory: "~/myproj"}
+	cfg := &config.Config{WorkingDirectory: "~/myproj"}
 	a := &Application{config: cfg}
 	got := a.resolveWorkingDirectory()
 	want := filepath.Join(tmpHome, "myproj")
@@ -37,7 +37,7 @@ func TestResolveWorkingDirectory_TildeExpand(t *testing.T) {
 
 func TestResolveWorkingDirectory_Absolute(t *testing.T) {
 	tmpDir := t.TempDir()
-	cfg := &cli.CLIConfig{WorkingDirectory: tmpDir}
+	cfg := &config.Config{WorkingDirectory: tmpDir}
 	a := &Application{config: cfg}
 	got := a.resolveWorkingDirectory()
 	if got != tmpDir {

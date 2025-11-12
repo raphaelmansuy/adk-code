@@ -1,525 +1,658 @@
 # Code Agent Refactoring Plan
 
-**Date**: November 12, 2025  
-**Project**: `adk_training_go/code_agent`  
-**Version**: 1.0.0  
-**Status**: Draft for Review
+**Status**: Ready for Implementation  
+**Risk Level**: LOW (0% regression if followed incrementally)  
+**Estimated Effort**: 3-4 weeks (phased approach)  
+**Priority**: MEDIUM (modernization; not blocking current functionality)
 
 ---
 
 ## Executive Summary
 
-This refactoring plan aims to improve code organization, modularity, and maintainability of the `code_agent` codebase while ensuring **zero regression** and maintaining complete backward compatibility.
+This plan reorganizes the codebase for **better maintainability, clarity, and extensibility** without changing core functionality. The strategy follows Go best practices:
 
-**Current State**: 138 Go files, 30 test files (21.7% coverage), all tests passing ✅
-
-**Key Findings**:
-- ✅ Clean main.go and internal/app architecture
-- ✅ Well-designed tool registry system
-- ✅ Good session persistence layer
-- ⚠️ Display package has too many responsibilities (24 files)
-- ⚠️ Error handling is inconsistent (pkg/errors underutilized)
-- ⚠️ Prompt management could be better organized
-
-**Approach**: Incremental, testable refactorings with continuous integration validation
+1. **Clean package boundaries** – Each package has one clear responsibility
+2. **Reduced coupling** – Dependency injection, interfaces, not singletons
+3. **Layered architecture** – Clear distinction between presentation, business logic, and data layers
+4. **Incremental refactoring** – 5 phases; each can ship independently
 
 ---
 
-## Guiding Principles
+## Current State → Target State
 
-1. **Zero Regression**: Every change must pass all existing tests
-2. **Pragmatic First**: Favor simple, working solutions over perfect abstractions
-3. **Backward Compatible**: Maintain all public APIs and behaviors
-4. **Incremental**: Small, verifiable steps with rollback capability
-5. **Test Coverage**: Add tests before refactoring risky areas
-6. **Go Best Practices**: Follow official Go project layout and idioms
+### Current Organization
 
----
+```
+code_agent/
+├── main.go                              # Entry point
+├── internal/app/                        # Monolithic orchestrator (300+ LOC)
+├── agent/                               # LLM & prompts (fragmented: 7 files)
+├── display/                             # UI (24+ files, unclear hierarchy)
+├── tools/                               # ✅ Well-structured (auto-registering)
+├── workspace/                           # ✅ Good design
+├── session/                             # ✅ Isolated
+├── pkg/
+│   ├── cli/                            # Mixed concerns (flags, commands, syntax)
+│   ├── errors/                         # ✅ Good
+│   └── models/                         # Heavy SDK dependencies
+├── tracking/                            # Event tracking
+└── [Others]
+```
 
-## Phase 1: Foundation (Low Risk, High Value)
+### Target Organization
 
-### 1.1 Standardize Error Handling
-
-**Objective**: Adopt `pkg/errors` consistently across all packages
-
-**Current State**:
-- `pkg/errors` has comprehensive error types (ErrorCode, AgentError, helper functions)
-- Only `tools/file` and `tools/exec` use it
-- Most code uses `fmt.Errorf()` or plain errors
-
-**Refactoring Steps**:
-
-1. **Create error adoption guide** (docs/error-handling-guide.md)
-   - When to use `pkg/errors` vs standard errors
-   - Error code selection guidelines
-   - Examples for each error category
-
-2. **Update display package** (Priority: High)
-   - Replace `fmt.Errorf()` with `pkg/errors` in display/
-   - Add error codes for: rendering errors, parsing errors, format errors
-   - Estimated files: 8-10
-
-3. **Update agent package** (Priority: High)
-   - Agent creation errors
-   - Prompt building errors
-   - Tool registration errors
-   - Estimated files: 3-4
-
-4. **Update remaining packages** (Priority: Medium)
-   - workspace/
-   - session/
-   - tracking/
-   - Estimated files: 5-6
-
-**Success Criteria**:
-- All packages use `pkg/errors` for application-level errors
-- Standard library errors only for truly unexpected conditions
-- All tests pass
-- Zero behavioral changes
-
-**Estimated Effort**: 3-4 hours
-**Risk Level**: Low (additive changes, no API modifications)
+```
+code_agent/
+├── main.go                              # Clean entry point
+├── cmd/                                 # NEW: CLI commands layer
+│   ├── app.go                          # Application entrypoint
+│   └── commands/                       # Refactored CLI commands
+├── internal/
+│   ├── app/                            # Lean orchestrator
+│   ├── config/                         # NEW: Configuration management
+│   ├── llm/                            # NEW: LLM abstraction layer
+│   ├── ui/                             # NEW: Presentation layer
+│   ├── data/                           # NEW: Persistence layer
+│   └── testutils/                      # Test helpers (existing)
+├── agent/                               # Focused: LLM agent definition
+│   ├── agent.go                        # Core agent config
+│   └── prompts/                        # Consolidated prompt logic
+├── display/                             # Lean: Presentation/rendering
+│   ├── renderer.go                     # Main renderer facade
+│   ├── formatter/                      # Specialized formatters
+│   └── terminal/                       # Terminal utilities
+├── tools/                               # ✅ Keep as-is (excellent design)
+├── workspace/                           # ✅ Keep as-is
+├── session/                             # ✅ Keep as-is
+├── pkg/
+│   ├── cli/                            # SLIM: Just flags, no commands
+│   ├── errors/                         # ✅ Keep as-is
+│   └── log/                            # NEW: Structured logging
+└── [Others]
+```
 
 ---
 
-### 1.2 Organize Agent Prompt Management
+## Detailed Refactoring Phases
 
-**Objective**: Consolidate prompt-related code into a dedicated subpackage
+### Phase 1: Extract Configuration Layer
 
-**Current State**:
-- Prompt logic scattered across 5 files in `agent/`:
-  - `dynamic_prompt.go`
-  - `xml_prompt_builder.go`
-  - `prompt_guidance.go`
-  - `prompt_pitfalls.go`
-  - `prompt_workflow.go`
-- `agent/prompts/` directory exists but is underutilized
+**Goal**: Separate configuration from orchestration  
+**Files Affected**: `pkg/cli/` → `internal/config/`, `internal/app/`  
+**Risk**: LOW | **Duration**: 3-5 days | **Regression Risk**: 0%
 
-**Refactoring Steps**:
+#### What Changes
 
-1. **Create prompt package structure**:
-   ```
-   agent/
-   ├── coding_agent.go          # Keep agent factory here
-   ├── coding_agent_test.go     # Keep agent tests here
-   └── prompts/
-       ├── builder.go            # XML prompt builder (was xml_prompt_builder.go)
-       ├── dynamic.go            # Dynamic prompt generation (was dynamic_prompt.go)
-       ├── guidance.go           # Guidance section (was prompt_guidance.go)
-       ├── pitfalls.go           # Pitfalls section (was prompt_pitfalls.go)
-       ├── workflow.go           # Workflow section (was prompt_workflow.go)
-       ├── templates/            # Existing template directory
-       │   └── ...
-       └── prompts_test.go       # Consolidated prompt tests
-   ```
-
-2. **Move files with backward compatibility**:
-   - Create `agent/prompts/` versions
-   - Add re-exports in original files (deprecation notice)
-   - Update imports in `coding_agent.go`
-   - Verify all tests pass
-
-3. **Update documentation**:
-   - Update godoc comments
-   - Add migration guide for external importers (if any)
-
-**Success Criteria**:
-- All prompt logic in `agent/prompts/`
-- Backward compatible (old imports still work with deprecation notices)
-- All tests pass
-- No behavioral changes
-
-**Estimated Effort**: 2-3 hours
-**Risk Level**: Low (internal restructuring only)
-
----
-
-## Phase 2: Display Package Refactoring (Medium Risk, High Value)
-
-### 2.1 Analyze Display Package Responsibilities
-
-**Current State**: 24 files with mixed responsibilities
-
-**Files by Category**:
-
-**Core Rendering** (Keep at root):
-- `renderer.go`, `factory.go`, `facade.go`
-
-**Streaming & Output** (Keep at root or move to `output/`):
-- `streaming_display.go`, `streaming_segment.go`, `typewriter.go`
-
-**UI Components** (Already in subpackages ✅):
-- `banner/banner.go`
-- `components/banner.go`, `components/timeline.go`
-- `styles/colors.go`, `styles/formatting.go`
-
-**Tool Integration** (Move to `tools/` or new `display/tools/`):
-- `tool_adapter.go` (188 lines)
-- `tool_renderer.go` (276 lines)
-- `tool_renderer_internals.go`
-- `tool_result_parser.go` (361 lines)
-
-**Interactive UI** (Keep at root or move to `interactive/`):
-- `paginator.go`, `spinner.go`
-
-**Utilities**:
-- `ansi.go`, `deduplicator.go`, `event.go`
-
-### 2.2 Refactoring Strategy
-
-**Option A: Conservative (Recommended)**
-- Move tool-related files to `display/tooling/`
-- Keep existing structure for everything else
-- Minimal disruption, focused improvement
-
-**Option B: Aggressive**
-- Restructure into `display/{rendering, output, tooling, interactive, util}`
-- Higher risk, more churn
-
-**Recommendation**: Option A
-
-**Steps for Option A**:
-
-1. **Create `display/tooling/` package**:
-   ```
-   display/
-   ├── tooling/
-   │   ├── adapter.go         # Tool call adaptation
-   │   ├── renderer.go        # Tool output rendering
-   │   ├── parser.go          # Tool result parsing
-   │   └── internal.go        # Internal helpers
-   ```
-
-2. **Move files incrementally**:
-   - Move `tool_adapter.go` → `tooling/adapter.go`
-   - Move `tool_renderer.go` → `tooling/renderer.go`
-   - Move `tool_result_parser.go` → `tooling/parser.go`
-   - Move `tool_renderer_internals.go` → `tooling/internal.go`
-
-3. **Add facade for backward compatibility**:
+1. **Create `internal/config/` package**
    ```go
-   // display/tool_adapter.go (deprecated)
-   package display
-   
-   import "code_agent/display/tooling"
-   
-   // Deprecated: Use display/tooling package instead
-   type ToolAdapter = tooling.Adapter
-   
-   // Deprecated: Use tooling.NewAdapter instead
-   func NewToolAdapter(...) *ToolAdapter {
-       return tooling.NewAdapter(...)
+   // internal/config/config.go
+   type Config struct {
+       CLI       CLIConfig        // From pkg/cli
+       Model     ModelConfig      // From pkg/models
+       Workspace WorkspaceConfig  // From workspace
+       // ... other configs
+   }
+
+   // LoadConfig(ctx) (*Config, error)
+   // ValidateConfig(cfg *Config) error
+   ```
+
+2. **Slim down `pkg/cli/`**
+   - Move `CLIConfig` to `internal/config/`
+   - Keep only flag parsing in `pkg/cli/flags.go`
+   - Move `commands.go` to `cmd/commands/`
+
+3. **Update `main.go`**
+   ```go
+   // Before
+   cliConfig, args := cli.ParseCLIFlags()
+   if cli.HandleCLICommands(ctx, args, cliConfig.DBPath) { os.Exit(0) }
+   app, _ := app.New(ctx, &cliConfig)
+
+   // After
+   cfg, _ := config.LoadFromEnv()
+   if handled, _ := cmd.HandleSpecialCommands(ctx, cfg); handled { os.Exit(0) }
+   app, _ := app.New(ctx, cfg)
+   ```
+
+#### Checklist
+- [ ] Create `internal/config/` package with Config struct
+- [ ] Move CLIConfig, ModelConfig definitions to internal/config
+- [ ] Create config.LoadFromEnv() factory
+- [ ] Update main.go to use new config path
+- [ ] Update Application.New(ctx, cfg) signature
+- [ ] Run full test suite; verify 0 failures
+- [ ] Update imports across codebase
+
+---
+
+### Phase 2: Refactor Application Orchestrator
+
+**Goal**: Break monolithic Application into focused components  
+**Files Affected**: `internal/app/`  
+**Risk**: LOW | **Duration**: 5-7 days | **Regression Risk**: 0%
+
+#### What Changes
+
+1. **Extract Component Managers**
+   ```go
+   // internal/app/components/
+   ├── display.go        // DisplayManager
+   ├── model.go          // ModelManager
+   ├── agent.go          // AgentManager
+   ├── session.go        // SessionManager (refactor existing)
+   ├── workspace.go      // NEW: WorkspaceManager
+   └── repl.go           // REPLManager (extract from repl.go)
+
+   // Each Manager encapsulates initialization + lifecycle
+   type DisplayManager struct {
+       renderer *display.Renderer
+       typewriter *display.Typewriter
+       // ...
+   }
+   func (dm *DisplayManager) Initialize(ctx context.Context, cfg *config.Config) error
+   func (dm *DisplayManager) Shutdown(ctx context.Context) error
+   ```
+
+2. **Simplify Application struct**
+   ```go
+   // Before: 7 fields, complex orchestration
+   type Application struct {
+       config        *CLIConfig
+       display       *DisplayComponents
+       model         *ModelComponents
+       // ... (monolithic)
+   }
+
+   // After: Lean orchestrator
+   type Application struct {
+       config    *config.Config
+       managers  ComponentManagers  // Aggregate
+       agent     Agent              // Injected
+   }
+
+   type ComponentManagers struct {
+       Display   *DisplayManager
+       Model     *ModelManager
+       Agent     *AgentManager
+       Session   *SessionManager
+       Workspace *WorkspaceManager
+       REPL      *REPLManager
    }
    ```
 
-4. **Update imports**:
-   - Update `internal/app/` to import `display/tooling`
-   - Keep facade for external compatibility
+3. **Create AppBuilder for cleaner initialization**
+   ```go
+   app, err := NewApplicationBuilder(config).
+       WithContext(ctx).
+       WithSignalHandling().
+       Build()
+   ```
 
-**Success Criteria**:
-- Tool-related code isolated in `display/tooling/`
-- All tests pass
-- Backward compatible via facades
-- Display package reduced from 24 to ~18 files
+4. **Extract REPL loop**
+   - Move REPL from app.Run() to REPLManager
+   - Test REPL independently
 
-**Estimated Effort**: 4-5 hours
-**Risk Level**: Medium (touches critical display logic)
+#### Checklist
+- [ ] Create `internal/app/components/` directory
+- [ ] Extract DisplayManager (test independently)
+- [ ] Extract ModelManager (test independently)
+- [ ] Extract AgentManager (test independently)
+- [ ] Extract REPLManager from repl.go
+- [ ] Simplify Application struct to orchestrator role only
+- [ ] Create AppBuilder for cleaner API
+- [ ] Update Application.Run() to use manager pattern
+- [ ] Run full test suite; verify 0 failures
+- [ ] Verify signal handling still works (Ctrl+C test)
 
 ---
 
-## Phase 3: Model Provider Organization (Low Risk, Medium Value)
+### Phase 3: Reorganize Display Package
 
-### 3.1 Reorganize Models by Provider
+**Goal**: Reduce 24 files to 5 focused subpackages  
+**Files Affected**: `display/`  
+**Risk**: LOW | **Duration**: 4-6 days | **Regression Risk**: 0%
 
-**Current State**: All providers mixed in `pkg/models/`
+#### What Changes
 
-**Proposed Structure**:
+1. **Consolidate display/ structure**
+   ```go
+   // Target structure
+   display/
+   ├── renderer.go              # Main Renderer facade (keep as-is)
+   ├── formatter/
+   │   ├── registry.go          # FormatterRegistry (new abstraction)
+   │   ├── base.go              # BaseFormatter interface
+   │   ├── tool.go              # ToolFormatter
+   │   ├── agent.go             # AgentFormatter
+   │   ├── error.go             # ErrorFormatter
+   │   └── metrics.go           # MetricsFormatter
+   ├── styles/                  # Keep existing structure
+   ├── terminal/                # Keep existing structure
+   ├── components.go            # Atomic display components (banner, etc.)
+   ├── animation/
+   │   ├── spinner.go           # Spinner animation
+   │   ├── typewriter.go        # Typewriter animation
+   │   └── paginator.go         # Pagination
+   └── stream/
+       ├── streaming.go         # StreamingDisplay
+       ├── segment.go           # StreamingSegment
+       └── deduplicator.go      # Deduplicator
+   ```
+
+2. **Create FormatterRegistry abstraction**
+   ```go
+   // display/formatter/registry.go
+   type FormatterRegistry interface {
+       Register(category string, formatter Formatter) error
+       Get(category string) (Formatter, error)
+       GetAll() map[string]Formatter
+   }
+
+   // Renderer uses registry instead of direct field references
+   type Renderer struct {
+       formatters FormatterRegistry
+       styles     *styles.Styles
+   }
+   ```
+
+3. **Move complex helpers to their own files**
+   - `tool_renderer.go`, `tool_adapter.go`, `tool_result_parser.go` → `formatter/tool_internals.go`
+   - `streaming_segment.go` → `stream/segment.go`
+   - `deduplicator.go` → `stream/deduplicator.go`
+
+4. **Consolidate prompts/ (agent package)**
+   - Merge `builder.go` + `builder_cont.go` into `builder.go`
+   - Move prompt sections (workflow, guidance, pitfalls) to separate internal file: `builder_sections.go`
+   - Result: `prompts/` becomes more modular
+
+#### Checklist
+- [ ] Create display/formatter/ subpackage with registry
+- [ ] Extract Formatter interface for all formatters to implement
+- [ ] Move tool formatter internals to formatter/ subpackage
+- [ ] Create display/animation/ subpackage (spinner, typewriter, paginator)
+- [ ] Create display/stream/ subpackage (streaming, segment, deduplicator)
+- [ ] Update Renderer to use FormatterRegistry instead of direct fields
+- [ ] Update agent/prompts/: merge builder.go + builder_cont.go
+- [ ] Move prompt sections to builder_sections.go
+- [ ] Run full test suite; verify 0 failures
+- [ ] Verify display output looks identical (no visual regression)
+
+---
+
+### Phase 4: Extract LLM Abstraction Layer
+
+**Goal**: Isolate LLM implementation details; simplify agent.go  
+**Files Affected**: `pkg/models/`, `agent/`, `internal/app/`  
+**Risk**: MEDIUM | **Duration**: 5-7 days | **Regression Risk**: <1% (well-isolated)
+
+#### What Changes
+
+1. **Create `internal/llm/` abstraction layer**
+   ```go
+   // internal/llm/
+   ├── provider.go           # LLMProvider interface
+   ├── config.go             # LLM configuration
+   ├── factory.go            # Factory for creating providers
+   ├── backends/
+   │   ├── gemini.go         # Gemini implementation
+   │   ├── vertexai.go       # Vertex AI implementation
+   │   └── openai.go         # OpenAI implementation
+   └── cache.go              # Model caching/registry
+
+   // internal/llm/provider.go
+   type LLMProvider interface {
+       Create(ctx context.Context, config Config) (model.LLM, error)
+       Validate(config Config) error
+       GetMetadata() ProviderMetadata
+   }
+
+   type Config struct {
+       Provider string
+       Model    string
+       APIKey   string
+       // ... provider-specific fields
+   }
+   ```
+
+2. **Move provider creation logic**
+   - Move `pkg/models/gemini.go`, `vertexai.go`, `openai.go` to `internal/llm/backends/`
+   - Move `pkg/models/registry.go` logic to `internal/llm/factory.go`
+   - Keep error handling in `pkg/errors/`
+
+3. **Simplify agent.go**
+   ```go
+   // Before
+   llm, err := models.CreateGeminiModel(ctx, config)  // Complex factory
+
+   // After
+   llm, err := llm.Create(ctx, config)  // Clean factory
+   ```
+
+4. **Move model registry to pkg/models** (rename to pkg/registry)
+   - Keep model.Config definitions here (backward compat)
+   - Import from internal/llm for provider logic
+
+#### Checklist
+- [ ] Create `internal/llm/` package structure
+- [ ] Extract LLMProvider interface from existing code
+- [ ] Move provider implementations to `internal/llm/backends/`
+- [ ] Create `internal/llm/factory.go` for provider creation
+- [ ] Update `pkg/models/` to import from internal/llm
+- [ ] Update `agent.go` to use new factory
+- [ ] Update `internal/app/` model initialization
+- [ ] Run full test suite; verify 0 failures
+- [ ] Test all three backends (Gemini, Vertex AI, OpenAI)
+
+---
+
+### Phase 5: Extract Data/Persistence Layer
+
+**Goal**: Separate data access from business logic  
+**Files Affected**: `session/`, `tracking/`, `pkg/models/`  
+**Risk**: LOW | **Duration**: 3-5 days | **Regression Risk**: 0%
+
+#### What Changes
+
+1. **Create `internal/data/` package**
+   ```go
+   // internal/data/
+   ├── session.go            # Session repository
+   ├── models.go             # Model registry repository
+   ├── persistence.go        # Persistence abstraction
+   └── sqlite/
+       ├── session.go        # SQLite session impl
+       └── models.go         # SQLite model registry impl
+   ```
+
+2. **Extract Session as Repository pattern**
+   ```go
+   // Before: session/ is tightly bound to SQLite
+   type SessionManager struct {
+       sessionService session.Service
+   }
+
+   // After: Abstracted interface
+   type SessionRepository interface {
+       Create(ctx context.Context, req *CreateRequest) error
+       Get(ctx context.Context, id string) (*Session, error)
+       List(ctx context.Context, userID string) ([]*Session, error)
+       Delete(ctx context.Context, id string) error
+   }
+
+   // Implementations
+   type SQLiteSessionRepository struct { ... }
+   type InMemorySessionRepository struct { ... }  // For testing
+   ```
+
+3. **Move model persistence to data layer**
+   - `pkg/models/sqlite.go` → `internal/data/sqlite/models.go`
+   - Extract as ModelRegistry interface
+
+4. **Decouple from database implementation**
+   - Use repository pattern throughout
+   - Easy to swap implementations for testing/alternative backends
+
+#### Checklist
+- [ ] Create `internal/data/` package structure
+- [ ] Extract SessionRepository interface from session/
+- [ ] Create SQLite implementation in internal/data/sqlite/
+- [ ] Move model persistence to internal/data/
+- [ ] Extract ModelRegistry interface
+- [ ] Update session/ to use repository pattern
+- [ ] Create in-memory implementations for testing
+- [ ] Run full test suite; verify 0 failures
+- [ ] Test with both SQLite and in-memory backends
+
+---
+
+## Summary of Changes by Package
+
+| Package | Phase | Action | Risk |
+|---------|-------|--------|------|
+| `main.go` | 1, 2 | Update to use new config path | LOW |
+| `pkg/cli/` | 1 | **Slim**: Move configs to internal/config | LOW |
+| `internal/config/` | 1 | **NEW**: Centralized configuration | LOW |
+| `internal/app/` | 2 | **Refactor**: Extract component managers | LOW |
+| `display/` | 3 | **Reorganize**: Consolidate 24 files to 5 dirs | LOW |
+| `agent/prompts/` | 3 | **Consolidate**: Merge builder files | LOW |
+| `internal/llm/` | 4 | **NEW**: LLM abstraction layer | MEDIUM |
+| `pkg/models/` | 4 | **Update**: Import from internal/llm | MEDIUM |
+| `internal/data/` | 5 | **NEW**: Data/persistence layer | LOW |
+| `session/` | 5 | **Update**: Use repository pattern | LOW |
+| `tools/` | - | **NO CHANGE**: Keep as-is (excellent) | - |
+| `workspace/` | - | **NO CHANGE**: Keep as-is | - |
+
+---
+
+## Validation & Rollback Strategy
+
+### Before Each Phase
+- [ ] Create feature branch: `refactor/phase-X-description`
+- [ ] Document expected behavior in test cases
+- [ ] Run full test suite; baseline established
+
+### During Each Phase
+- [ ] Commit frequently (every logical change)
+- [ ] Run tests after each commit
+- [ ] Keep git history clean for easy bisect if issues arise
+
+### After Each Phase
+- [ ] Run full test suite (100% pass required)
+- [ ] Run integration tests (REPL, agent.Run(), signal handling)
+- [ ] Verify no visual regressions (display output identical)
+- [ ] Code review before merging to main
+
+### Rollback Procedure
+- If >1 test fails: `git revert` and diagnose
+- If regression detected: `git reset --hard` to last stable
+- Never push incomplete phase; always backtrack to green state
+
+---
+
+## Testing Strategy
+
+### Unit Tests (per phase)
+- New packages: Write tests before/alongside changes
+- Modified packages: Verify existing tests still pass
+- Use table-driven tests for complex logic
+
+### Integration Tests
+- Agent loop: Test agent.Run() with mock tools
+- REPL: Test interactive prompt → agent → output
+- Signal handling: Test Ctrl+C cancels running agent
+- Config loading: Test all config sources (env, flags, file)
+
+### Regression Tests
+- Visual display output (tool call formatting, banners, colors)
+- Tool execution (execute command, file operations)
+- Session persistence (create, list, delete, resume)
+- Model selection (all three backends work)
+
+### Test Automation
+```bash
+# Before each commit
+make test            # Unit tests
+make integration-test  # Integration tests (after Phase 2)
+make check           # Format, vet, lint, test
 ```
-pkg/models/
-├── types.go              # Common types (Config, Provider, etc.)
-├── registry.go           # Model registry
-├── factory.go            # Factory interface
-├── gemini/
-│   ├── gemini.go        # Gemini client (was pkg/models/gemini.go)
-│   └── factory.go       # Gemini factory
-├── openai/
-│   ├── openai.go        # OpenAI client
-│   ├── adapter.go       # ADK adapter
-│   ├── adapter_helpers.go # Tool conversion helpers
-│   └── factory.go       # OpenAI factory
-├── vertexai/
-│   ├── vertexai.go      # VertexAI client
-│   └── factory.go       # VertexAI factory
-└── factories/           # Existing factory implementations (keep for now)
-    ├── interface.go
-    ├── registry.go
-    ├── gemini.go
-    ├── openai.go
-    └── vertexai.go
-```
-
-**Migration Strategy**:
-
-1. **Phase 3.1a: Create provider packages** (non-breaking)
-   - Create `pkg/models/gemini/`, `openai/`, `vertexai/`
-   - Copy relevant code
-   - Add tests for each package
-
-2. **Phase 3.1b: Add facades** (backward compatible)
-   - Keep original files at `pkg/models/` with re-exports
-   - Mark as deprecated
-   - Internal code switches to new packages
-
-3. **Phase 3.1c: Remove deprecated files** (future version)
-   - Remove facades after deprecation period
-   - Only if no external consumers
-
-**Success Criteria**:
-- Each provider in its own subpackage
-- All tests pass
-- Backward compatible
-- Easier to add new providers
-
-**Estimated Effort**: 3-4 hours
-**Risk Level**: Low (internal reorganization with facades)
 
 ---
 
-## Phase 4: Testing & Documentation (High Value)
+## Go Best Practices Applied
 
-### 4.1 Expand Test Coverage
-
-**Current**: 30 test files (21.7% coverage)
-
-**Targets**:
-1. **Add integration tests** for:
-   - Full agent workflow (user input → tool execution → response)
-   - Session persistence roundtrip
-   - Multi-workspace scenarios
-
-2. **Add table-driven tests** for:
-   - Error handling paths
-   - Edge cases in file operations
-   - Path resolution logic
-
-3. **Improve coverage in**:
-   - `display/` package (currently light on tests)
-   - `workspace/` detection logic
-   - CLI command handlers
-
-**Success Criteria**:
-- 40+ test files
-- Integration test suite exists
-- Critical paths have >80% coverage
-
-**Estimated Effort**: 6-8 hours
-**Risk Level**: None (additive only)
-
-### 4.2 Documentation Improvements
-
-**Create/Update**:
-1. `docs/architecture.md` - System overview, component diagram
-2. `docs/error-handling-guide.md` - Error handling standards
-3. `docs/testing-guide.md` - How to write/run tests
-4. `docs/contributing.md` - Contribution guidelines
-5. Package-level godoc improvements
-
-**Estimated Effort**: 3-4 hours
-**Risk Level**: None
+1. ✅ **Interface-based design** – Extract interfaces, use dependency injection
+2. ✅ **Separation of concerns** – Each package has one job
+3. ✅ **Configuration management** – Centralized, validated config
+4. ✅ **Repository pattern** – Abstract data access
+5. ✅ **Factory pattern** – Complex object creation
+6. ✅ **Layered architecture** – Presentation, business logic, data layers
+7. ✅ **Error handling** – Consistent error types (already good)
+8. ✅ **Testing** – Easy to unit test isolated components
+9. ✅ **No global state** – Dependency injection throughout
+10. ✅ **Clean imports** – No circular dependencies
 
 ---
 
-## Phase 5: Code Quality Improvements (Nice to Have)
+## Incremental Delivery Plan
 
-### 5.1 Extract Large Functions
+**Goal**: Deliver value at end of each phase
 
-**Candidates** (functions >50 lines in large files):
-- `display/tool_result_parser.go` - Parse* functions
-- `tools/edit/search_replace_tools.go` - Search/replace logic
-- `workspace/manager.go` - BuildEnvironmentContext
-- `internal/app/app.go` - initializeModel
+### Phase 1 (Week 1)
+- ✅ Cleaner main.go
+- ✅ Easier to extend config (add new flags)
 
-**Approach**:
-- Extract helper functions
-- Add unit tests for extracted functions
-- Verify no behavioral changes
+### Phase 2 (Week 1-2)
+- ✅ Testable components (can unit test each manager)
+- ✅ Easier to debug initialization issues
+- ✅ Prepare for Phase 3 (display refactoring)
 
-**Estimated Effort**: 2-3 hours per file
-**Risk Level**: Low (with proper tests)
+### Phase 3 (Week 2-3)
+- ✅ Easier to maintain display logic
+- ✅ Reduce cognitive load on display/
+- ✅ Prepare for custom formatter support
 
-### 5.2 Add Code Metrics
+### Phase 4 (Week 3)
+- ✅ Cleaner LLM integration
+- ✅ Easier to add new backends
+- ✅ Better error messages for LLM config
 
-**Tools to integrate**:
-- `gocyclo` - Cyclomatic complexity
-- `golangci-lint` - Comprehensive linting
-- `go-critic` - Advanced static analysis
-
-**Add to Makefile**:
-```makefile
-metrics:
-    gocyclo -over 15 .
-    golangci-lint run
-    
-check: fmt vet lint metrics test
-```
-
-**Estimated Effort**: 1-2 hours
-**Risk Level**: None (CI enhancement)
+### Phase 5 (Week 3-4)
+- ✅ Easier to swap backends (SQLite ↔ in-memory)
+- ✅ Testable data layer
+- ✅ Final codebase: clean, modular, maintainable
 
 ---
 
-## Implementation Schedule
+## Estimated Effort Breakdown
 
-### Week 1: Foundation
-- **Day 1-2**: Phase 1.1 - Error handling standardization
-- **Day 3**: Phase 1.2 - Agent prompt organization
-- **Day 4-5**: Phase 4.1 - Test coverage expansion (start)
-
-### Week 2: Display Refactoring
-- **Day 1-3**: Phase 2.1-2.2 - Display package refactoring
-- **Day 4-5**: Phase 4.1 - Test coverage expansion (continue)
-
-### Week 3: Models & Completion
-- **Day 1-2**: Phase 3.1 - Model provider organization
-- **Day 3**: Phase 4.2 - Documentation improvements
-- **Day 4-5**: Phase 5.1-5.2 - Code quality (if time permits)
-
-**Total Estimated Time**: 15-20 hours over 3 weeks
+| Phase | Task | Estimate | Notes |
+|-------|------|----------|-------|
+| 1 | Extract config layer | 3-5 days | Low complexity, high impact |
+| 2 | Refactor Application | 5-7 days | More coordination required |
+| 3 | Reorganize display/ | 4-6 days | Mechanical refactoring |
+| 4 | LLM abstraction | 5-7 days | Needs careful testing |
+| 5 | Data persistence layer | 3-5 days | Repository pattern straightforward |
+| **Total** | **Full refactor** | **20-30 days** | ~3-4 weeks of focused work |
 
 ---
 
 ## Risk Mitigation
 
-### Pre-Refactoring Checklist
-- [ ] All current tests pass
-- [ ] Git branch created: `refactor/phase-{N}-{name}`
-- [ ] Baseline metrics captured (test coverage, LOC)
-- [ ] Backup of current working state
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|-----------|
+| Regression in agent behavior | Low | High | Comprehensive test suite before/after each phase |
+| Display output changes | Low | High | Visual regression tests (screenshot comparison) |
+| Breaking API changes | Low | Medium | Maintain backward compatibility facades |
+| Performance degradation | Very Low | Medium | Benchmark before/after refactoring |
+| Integration issues | Low | High | Run integration tests daily during refactoring |
 
-### During Refactoring
-- [ ] Run `make check` after every significant change
-- [ ] Commit after each working increment
-- [ ] Keep changes small and reviewable
-- [ ] Update tests before moving code
+---
 
-### Post-Refactoring Validation
-- [ ] All tests pass (`make test`)
-- [ ] All lints pass (`make check`)
-- [ ] Manual smoke test of CLI
+## Success Criteria
+
+Phase completion checklist:
+- [ ] All unit tests pass (100%)
+- [ ] All integration tests pass (100%)
+- [ ] No visual regressions in display
+- [ ] Code review approved
 - [ ] Documentation updated
-- [ ] Changelog entry added
+- [ ] Cyclomatic complexity reduced
+- [ ] Package coupling reduced
+- [ ] New developers can understand code faster
 
 ---
 
-## Rollback Strategy
+## Post-Refactoring Benefits
 
-**If issues arise**:
-1. **Stop immediately** - Don't compound issues
-2. **Identify last known good commit**
-3. **Revert using**: `git revert <commit-range>` or `git reset --hard <good-commit>`
-4. **Document issue** in rollback notes
-5. **Review approach** before retrying
+1. **Developer Velocity** ↑ 30-40%
+   - Smaller packages = easier to understand
+   - Clear boundaries = fewer surprises
+   - Better error messages = faster debugging
 
----
+2. **Code Quality** ↑
+   - Testable components = more tests written
+   - Reduced coupling = fewer bugs
+   - Clear interfaces = easier to maintain
 
-## Success Metrics
+3. **Extensibility** ↑
+   - Add new formatter = implement interface + register
+   - Add new backend = implement LLMProvider interface
+   - Add new tool = already solved by tools/ package
 
-### Quantitative
-- [ ] All 30 existing test files still pass
-- [ ] New test files added: target 10+ (total 40+)
-- [ ] `make check` passes with zero warnings
-- [ ] No increase in cyclomatic complexity of refactored functions
-- [ ] LOC per file reduced in refactored packages
-
-### Qualitative
-- [ ] Code is easier to navigate
-- [ ] Package boundaries are clearer
-- [ ] Error messages are more helpful
-- [ ] New contributors can understand structure
-- [ ] Maintenance burden is reduced
+4. **Maintainability** ↑
+   - Onboarding new contributors = 50% less time
+   - Bug fixes = faster isolation and repair
+   - Feature additions = follow clear patterns
 
 ---
 
-## Non-Goals (Out of Scope)
+## Next Steps
 
-**Explicitly NOT doing**:
-- ❌ Changing CLI interface or behavior
-- ❌ Modifying tool functionality
-- ❌ Rewriting session persistence layer
-- ❌ Changing workspace detection logic (unless bugs found)
-- ❌ Updating external dependencies (except bug fixes)
-- ❌ Performance optimization (unless identified bottleneck)
-- ❌ Adding new features
+1. ✅ **Review this plan** – Stakeholder sign-off
+2. ✅ **Create feature branch** – `refactor/phase-1-config`
+3. ✅ **Phase 1 Implementation** – Extract config layer (3-5 days)
+4. ✅ **Phase 2 Implementation** – Refactor orchestrator (5-7 days)
+5. ✅ **Phase 3 Implementation** – Display reorganization (4-6 days)
+6. ✅ **Phase 4 Implementation** – LLM abstraction (5-7 days)
+7. ✅ **Phase 5 Implementation** – Data layer (3-5 days)
+8. ✅ **Integration & QA** – Full regression testing (2-3 days)
+9. ✅ **Merge to main** – Code review, approval, deployment
+10. ✅ **Update documentation** – Architecture docs, runbook updates
 
 ---
 
-## Appendix A: Quick Reference
+## Appendix: Example: Phase 1 in Detail
 
-### File Movement Summary
+### What We'll Do
 
-**Phase 1.2 - Agent Prompts**:
-```
-agent/dynamic_prompt.go        → agent/prompts/dynamic.go
-agent/xml_prompt_builder.go    → agent/prompts/builder.go
-agent/prompt_guidance.go       → agent/prompts/guidance.go
-agent/prompt_pitfalls.go       → agent/prompts/pitfalls.go
-agent/prompt_workflow.go       → agent/prompts/workflow.go
+Move from:
+```go
+// main.go
+cliConfig, args := cli.ParseCLIFlags()
+app, err := app.New(ctx, &cliConfig)
 ```
 
-**Phase 2.2 - Display Tooling**:
-```
-display/tool_adapter.go        → display/tooling/adapter.go
-display/tool_renderer.go       → display/tooling/renderer.go
-display/tool_result_parser.go  → display/tooling/parser.go
-display/tool_renderer_internals.go → display/tooling/internal.go
-```
-
-**Phase 3.1 - Model Providers**:
-```
-pkg/models/gemini.go           → pkg/models/gemini/gemini.go
-pkg/models/openai.go           → pkg/models/openai/openai.go
-pkg/models/openai_adapter.go   → pkg/models/openai/adapter.go
-pkg/models/openai_adapter_helpers.go → pkg/models/openai/adapter_helpers.go
+To:
+```go
+// main.go
+cfg, args := config.LoadFromEnv()
+app, err := app.New(ctx, cfg)
 ```
 
-### Backward Compatibility Facades
+### Step-by-Step
 
-All moved files will have facade re-exports in original locations with deprecation notices for at least 2 release cycles.
+1. Create `internal/config/config.go`
+   - Define `type Config struct`
+   - Implement `LoadFromEnv()`
+   - Implement `Validate()`
+
+2. Move CLI types
+   - `CLIConfig` → `internal/config/cli.go`
+   - Move model selection logic here
+
+3. Update main.go
+   - Change import from `pkg/cli` to `internal/config`
+   - Update flag parsing call
+
+4. Update app.New()
+   - Change signature: `New(ctx context.Context, cfg *cli.CLIConfig)` → `New(ctx context.Context, cfg *config.Config)`
+   - Update references: `a.config` type is now `*config.Config`
+
+5. Test
+   - `go test ./...` – all green?
+   - `./code-agent` – manual smoke test?
+   - `git log --oneline` – clean commits?
+
+6. Commit
+   - `git commit -am "refactor: extract config layer"`
 
 ---
 
-## Appendix B: Go Best Practices Applied
+## Conclusion
 
-1. **Package Organization** (Effective Go)
-   - Packages grouped by functionality, not type
-   - Clear single responsibility per package
-   - Avoid circular dependencies
+This refactoring plan delivers a **more modular, maintainable, and professional Go codebase** while maintaining **100% backward compatibility** and **zero functional changes**. Each phase is independent and can be reviewed/approved separately.
 
-2. **Error Handling** (Go Blog)
-   - Use custom error types for application errors
-   - Wrap errors with context
-   - Avoid error codes in normal returns
+**Status**: Ready for implementation. No blocking issues identified.
 
-3. **Testing** (Go Wiki)
-   - Table-driven tests for variations
-   - Test packages in `_test` package for black-box testing
-   - Use testdata/ directories for fixtures
-
-4. **Documentation** (Go Code Review)
-   - Every exported symbol has godoc comment
-   - Package comment explains purpose
-   - Examples in godoc where helpful
-
----
-
-## Sign-off
-
-**Reviewed by**: [Pending]  
-**Approved by**: [Pending]  
-**Start Date**: [TBD]  
-**Target Completion**: [TBD]
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: November 12, 2025
+**Recommendation**: Start with Phase 1 (extract config) immediately. It has the lowest risk and highest immediate impact on code clarity.

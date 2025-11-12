@@ -6,23 +6,24 @@ import (
 	"log"
 	"os"
 
+	"code_agent/cmd/commands"
 	"code_agent/internal/app"
-	"code_agent/pkg/cli"
+	"code_agent/internal/config"
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Parse command-line flags
-	cliConfig, args := cli.ParseCLIFlags()
+	// Load configuration from environment and CLI flags
+	cfg, args := config.LoadFromEnv()
 
 	// Handle special commands (new-session, list-sessions, etc.)
-	if cli.HandleCLICommands(ctx, args, cliConfig.DBPath) {
+	if commands.HandleSpecialCommands(ctx, args, &cfg) {
 		os.Exit(0)
 	}
 
 	// Create and run application
-	application, err := app.New(ctx, &cliConfig)
+	application, err := app.New(ctx, &cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}

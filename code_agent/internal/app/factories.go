@@ -8,19 +8,20 @@ import (
 	"google.golang.org/adk/model"
 
 	"code_agent/display"
+	"code_agent/internal/config"
 	"code_agent/pkg/cli"
 	"code_agent/pkg/models"
 )
 
 // DisplayComponentFactory creates display components with consistent configuration
 type DisplayComponentFactory struct {
-	config *cli.CLIConfig
+	config *config.Config
 }
 
 // NewDisplayComponentFactory creates a new display component factory
-func NewDisplayComponentFactory(config *cli.CLIConfig) *DisplayComponentFactory {
+func NewDisplayComponentFactory(cfg *config.Config) *DisplayComponentFactory {
 	return &DisplayComponentFactory{
-		config: config,
+		config: cfg,
 	}
 }
 
@@ -45,13 +46,13 @@ func (f *DisplayComponentFactory) Create() (*DisplayComponents, error) {
 
 // ModelComponentFactory creates model-related components
 type ModelComponentFactory struct {
-	config *cli.CLIConfig
+	config *config.Config
 }
 
 // NewModelComponentFactory creates a new model component factory
-func NewModelComponentFactory(config *cli.CLIConfig) *ModelComponentFactory {
+func NewModelComponentFactory(cfg *config.Config) *ModelComponentFactory {
 	return &ModelComponentFactory{
-		config: config,
+		config: cfg,
 	}
 }
 
