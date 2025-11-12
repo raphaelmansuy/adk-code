@@ -45,7 +45,7 @@ Let's confirm your Python installation, set up a virtual environment, and then w
     **Important: `python` vs `python3`**
     It's crucial to understand that on some systems, especially older ones, the command `python` might still invoke an outdated Python 2 installation. Python 2 is no longer supported and should not be used for new development. For all modern Python development, **always explicitly use `python3`** in your terminal to ensure you're running the correct, up-to-date version of Python 3.
 
-4.  **Understanding and Setting Up Virtual Environments:**
+2.  **Understanding and Setting Up Virtual Environments:**
     Before we dive into creating one, let's understand *why* virtual environments are so important. Imagine you're working on two different Python projects. Project A needs an older version of a library (e.g., `requests` version 1.0), while Project B requires a newer one (e.g., `requests` version 2.0). If both projects use the global Python installation, installing `requests` 2.0 for Project B would break Project A. Virtual environments solve this by creating isolated spaces for each project, allowing you to manage dependencies independently without conflicts. This ensures your projects run smoothly and predictably.
 
     To create a simple virtual environment (recommended for every new project):
@@ -61,7 +61,7 @@ Let's confirm your Python installation, set up a virtual environment, and then w
     ```
     You'll see `(myproject_env)` in your terminal prompt, indicating the environment is active. You can deactivate it by typing `deactivate`. While we won't delve deeper into `venv` management in this introductory chapter, understanding its importance is key for future development.
 
-5.  **Understanding `pip` (Python's Package Installer):**
+3.  **Understanding `pip` (Python's Package Installer):**
     `pip` is the standard package manager for Python. It allows you to install and manage additional libraries and dependencies that are not part of the Python standard library. You'll use `pip` extensively to add functionality to your projects, such as web frameworks, data analysis tools, or machine learning libraries.
 
     **Key `pip` Commands:**
@@ -87,7 +87,7 @@ Let's confirm your Python installation, set up a virtual environment, and then w
     ```
     Run this script using `python3 fetch_data.py` (ensure you are in your activated virtual environment). This demonstrates how `pip` allows you to extend Python's capabilities.
 
-6.  **Your First Python Program: "Hello, World!"**
+4.  **Your First Python Program: "Hello, World!"**
     Now, let's write and run a classic "Hello, World!" program.
 
     *   **Choose an Editor/IDE:** While any text editor works, a powerful Integrated Development Environment (IDE) like [VS Code](https://code.visualstudio.com/) is highly recommended for beginners due to its excellent Python extension, integrated terminal, debugging capabilities, and rich ecosystem of extensions.
@@ -134,12 +134,12 @@ Let's confirm your Python installation, set up a virtual environment, and then w
 
 Congratulations! You've just run your first Python program.
 
-### 7. Recommended IDEs (Integrated Development Environments)
-While you can write Python code in any text editor, using an IDE significantly enhances your development experience with features like code auto-completion, debugging tools, and syntax highlighting.
+5.  **Recommended IDEs (Integrated Development Environments)**
+    While you can write Python code in any text editor, using an IDE significantly enhances your development experience with features like code auto-completion, debugging tools, and syntax highlighting.
 
-1.  **PyCharm**: A powerful and feature-rich IDE specifically designed for Python development, offering excellent support for web frameworks (Django, Flask), data science, and scientific computing. Available in Community (free) and Professional editions.
-2.  **Visual Studio Code (VSCode)**: A lightweight, highly customizable, and open-source code editor from Microsoft. With the Python extension, VSCode becomes a powerful IDE, offering intelligent code completion, linting, debugging, and integration with Git. It's a popular choice for its versatility.
-3.  **Jupyter Notebook**: An interactive web-based environment ideal for data science, machine learning, and exploratory programming. It allows you to create and share documents that contain live code, equations, visualizations, and narrative text. Great for learning and experimenting with Python in a step-by-step manner.
+    1.  **PyCharm**: A powerful and feature-rich IDE specifically designed for Python development, offering excellent support for web frameworks (Django, Flask), data science, and scientific computing. Available in Community (free) and Professional editions.
+    2.  **Visual Studio Code (VSCode)**: A lightweight, highly customizable, and open-source code editor from Microsoft. With the Python extension, VSCode becomes a powerful IDE, offering intelligent code completion, linting, debugging, and integration with Git. It's a popular choice for its versatility.
+    3.  **Jupyter Notebook**: An interactive web-based environment ideal for data science, machine learning, and exploratory programming. It allows you to create and share documents that contain live code, equations, visualizations, and narrative text. Great for learning and experimenting with Python in a step-by-step manner.
 
 In the next chapter, we'll dive into variables and data types.
 

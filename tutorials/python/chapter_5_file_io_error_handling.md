@@ -95,7 +95,6 @@ When working with files, the `with` statement is the **recommended best practice
 
 ```python
 # Example: Ensuring a directory exists before writing
-import os
 
 directory = "output_data"
 if not os.path.exists(directory):
@@ -176,7 +175,7 @@ except ZeroDivisionError:
 except Exception as e: # Catch any other unexpected error. Always catch specific exceptions first.
     print(f"An unexpected error occurred: {e}")
 
-    print("Program continues after error handling.")
+print("Program continues after error handling.")
 ```
 
 **Common Built-in Exceptions:**

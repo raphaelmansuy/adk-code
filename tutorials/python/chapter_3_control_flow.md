@@ -50,8 +50,6 @@ if age >= 18:
     print("You are an adult.")
 ```
 
-
-
 ### `if-else` Statement
 The `if-else` statement executes one block of code if the condition is true and another block if the condition is false.
 
@@ -275,10 +273,6 @@ ages = [25, 30, 35]
 
 for name, age in zip(names, ages):
     print(f"{name} is {age} years old.")
-# Output:
-# Alice is 25 years old.
-# Bob is 30 years old.
-# Charlie is 35 years old.
 # Output:
 # Alice is 25 years old.
 # Bob is 30 years old.

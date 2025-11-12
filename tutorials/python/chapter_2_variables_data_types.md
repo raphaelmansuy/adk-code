@@ -79,6 +79,12 @@ Python has several built-in data types to handle various kinds of data.
     print(f"Total cost with tax: ${total_cost:.2f}") # Output: Total cost with tax: $53.75
     ```
 *   **complex (Complex Numbers):** Represents numbers with a real and an imaginary part (e.g., `1 + 2j`). While less common in introductory programming, they are used in specialized mathematical and engineering applications and will not be covered in detail here.
+    ```python
+    # Example for complex numbers
+    z = 1 + 2j
+    print(f"Complex number: {z}")
+    print(f"Real part: {z.real}, Imaginary part: {z.imag}")
+    ```
 ### 2. Boolean Type
 *   **bool (Boolean):** Represents truth values. It can only be `True` or `False`. Booleans are fundamental for conditional logic.
     ```python
@@ -348,6 +354,7 @@ print(float_from_str) # Output: 3.14
 # Real-world scenario: User input is always a string
 # You need to convert it to a numeric type for calculations
 user_age_str = input("Enter your age: ") # input() always returns a string
+# Example user input: 20
 try:
     user_age_int = int(user_age_str)
     print(f"Next year you will be {user_age_int + 1} years old.")
@@ -464,6 +471,3 @@ Grades: {'Math': 'A', 'Science': 'B'}
 
 **Hint:** Remember to use appropriate data types for each piece of information and f-strings for printing.
 
-## Common Pitfalls with Data Types
-- **String Manipulation**: Strings are immutable in Python. When trying to change a character in a string, it will raise a TypeError.
-- **Type Casting**: Be cautious when converting strings to integers or floats. Ensure that the string represents a valid number to avoid ValueError.

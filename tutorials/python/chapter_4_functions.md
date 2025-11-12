@@ -215,13 +215,13 @@ print(full_name)
     ```
 *   **Global Scope:** Variables defined outside any function are global and can be accessed from anywhere in the program.
     ```python
-global_var = 20
+    global_var = 20
 
-def another_function():
-    print(global_var) # Can access global_var
+    def another_function():
+        print(global_var) # Can access global_var
 
-another_function()
-print(global_var)
+    another_function()
+    print(global_var)
     ```
 
 Here's a simple illustration of variable scope:
@@ -242,16 +242,16 @@ graph LR
 
     If you need to *modify* a global variable from within a function, you must use the `global` keyword:
     ```python
-global_counter = 0
+    global_counter = 0
 
-def increment_counter():
-    global global_counter # Declare intent to modify the global variable
-    global_counter += 1
-    print(f"Inside function: {global_counter}")
+    def increment_counter():
+        global global_counter # Declare intent to modify the global variable
+        global_counter += 1
+        print(f"Inside function: {global_counter}")
 
-print(f"Before call: {global_counter}") # Output: Before call: 0
-increment_counter()                     # Output: Inside function: 1
-print(f"After call: {global_counter}")  # Output: After call: 1
+    print(f"Before call: {global_counter}") # Output: Before call: 0
+    increment_counter()                     # Output: Inside function: 1
+    print(f"After call: {global_counter}")  # Output: After call: 1
     ```
 
     **What happens without `global`?**
