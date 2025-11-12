@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"code_agent/display/components"
 )
 
 // ToolRenderer provides specialized rendering for tool calls and results.
@@ -63,150 +61,10 @@ func (tr *ToolRenderer) RenderToolExecution(toolName string, args map[string]any
 
 // generateToolHeader generates a contextual header based on the tool and verb tense
 // Returns plain text that will be styled by the renderer
-func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any, verbTense string) string {
-	var action string
-	var path string
-
-	// Extract path from args if present
-	if p, ok := args["path"].(string); ok {
-		path = components.ShortenPath(p, 60)
-	}
-
-	switch toolName {
-	case "read_file":
-		if verbTense == "wants to" {
-			action = "wants to read"
-		} else {
-			action = "is reading"
-		}
-		if path != "" {
-			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
-		}
-		return fmt.Sprintf("Agent %s file", action)
-
-	case "write_file":
-		if verbTense == "wants to" {
-			action = "wants to write"
-		} else {
-			action = "is writing"
-		}
-		if path != "" {
-			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
-		}
-		return fmt.Sprintf("Agent %s file", action)
-
-	case "replace_in_file", "search_replace":
-		if verbTense == "wants to" {
-			action = "wants to edit"
-		} else {
-			action = "is editing"
-		}
-		if path != "" {
-			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
-		}
-		return fmt.Sprintf("Agent %s file", action)
-
-	case "list_directory":
-		if verbTense == "wants to" {
-			action = "wants to list files in"
-		} else {
-			action = "is listing files in"
-		}
-		if path != "" {
-			return fmt.Sprintf("Agent %s %s", action, tr.renderer.Dim(path))
-		}
-		return fmt.Sprintf("Agent %s directory", action)
-
-	case "execute_command", "execute_program":
-		if command, ok := args["command"].(string); ok {
-			if verbTense == "wants to" {
-				return fmt.Sprintf("Agent wants to run %s", tr.renderer.Cyan("`"+command+"`"))
-			}
-			return fmt.Sprintf("Agent is running %s", tr.renderer.Cyan("`"+command+"`"))
-		}
-		if program, ok := args["program"].(string); ok {
-			if verbTense == "wants to" {
-				return fmt.Sprintf("Agent wants to run %s", tr.renderer.Cyan("`"+program+"`"))
-			}
-			return fmt.Sprintf("Agent is running %s", tr.renderer.Cyan("`"+program+"`"))
-		}
-		if verbTense == "wants to" {
-			return "Agent wants to run command"
-		}
-		return "Agent is running command"
-
-	case "grep_search", "search_files":
-		if pattern, ok := args["pattern"].(string); ok {
-			if verbTense == "wants to" {
-				return fmt.Sprintf("Agent wants to search for %s", tr.renderer.Cyan("`"+pattern+"`"))
-			}
-			return fmt.Sprintf("Agent is searching for %s", tr.renderer.Cyan("`"+pattern+"`"))
-		}
-		if verbTense == "wants to" {
-			return "Agent wants to search files"
-		}
-		return "Agent is searching files"
-
-	default:
-		if verbTense == "wants to" {
-			return fmt.Sprintf("Agent wants to use %s", tr.renderer.Cyan("`"+toolName+"`"))
-		}
-		return fmt.Sprintf("Agent is using %s", tr.renderer.Cyan("`"+toolName+"`"))
-	}
-}
+// generateToolHeader is defined in tool_renderer_internals.go
 
 // generateToolPreview generates preview content for tool approvals
-func (tr *ToolRenderer) generateToolPreview(toolName string, args map[string]any) string {
-	switch toolName {
-	case "write_file":
-		// Show content preview for write operations
-		if content, ok := args["content"].(string); ok {
-			preview := strings.TrimSpace(content)
-			if len(preview) > 500 {
-				preview = preview[:500] + "..."
-			}
-			previewMd := fmt.Sprintf("```\n%s\n```", preview)
-			if tr.mdRenderer != nil {
-				rendered, err := tr.mdRenderer.Render(previewMd)
-				if err == nil {
-					return rendered
-				}
-			}
-			return previewMd
-		}
-
-	case "replace_in_file", "search_replace":
-		// Show diff preview for edits
-		if oldStr, ok := args["old_string"].(string); ok {
-			if newStr, ok2 := args["new_string"].(string); ok2 {
-				diff := fmt.Sprintf("- %s\n+ %s", oldStr, newStr)
-				diffMd := fmt.Sprintf("```diff\n%s\n```", diff)
-				if tr.mdRenderer != nil {
-					rendered, err := tr.mdRenderer.Render(diffMd)
-					if err == nil {
-						return rendered
-					}
-				}
-				return diffMd
-			}
-		}
-
-	case "execute_command":
-		// Show command in code block
-		if command, ok := args["command"].(string); ok {
-			cmdMd := fmt.Sprintf("```shell\n%s\n```", command)
-			if tr.mdRenderer != nil {
-				rendered, err := tr.mdRenderer.Render(cmdMd)
-				if err == nil {
-					return rendered
-				}
-			}
-			return cmdMd
-		}
-	}
-
-	return ""
-}
+// generateToolPreview is defined in tool_renderer_internals.go
 
 // RenderToolCallDetailed renders a tool call with detailed argument display
 func (tr *ToolRenderer) RenderToolCallDetailed(toolName string, args map[string]any) string {
@@ -364,14 +222,7 @@ func (tr *ToolRenderer) RenderProgress(current, total int, message string) strin
 	)
 }
 
-// createProgressBar creates a progress bar string.
-func (tr *ToolRenderer) createProgressBar(percent float64, width int) string {
-	filled := int(percent / 100 * float64(width))
-	empty := width - filled
-
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", empty)
-	return bar
-}
+// createProgressBar is defined in tool_renderer_internals.go
 
 // RenderTable renders data as a simple table.
 func (tr *ToolRenderer) RenderTable(headers []string, rows [][]string) string {
