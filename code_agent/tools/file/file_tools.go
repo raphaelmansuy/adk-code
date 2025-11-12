@@ -550,3 +550,13 @@ func NewSearchFilesTool() (tool.Tool, error) {
 
 	return t, err
 }
+
+// init registers all file tools automatically at package initialization.
+func init() {
+	// Auto-register all file tools
+	_, _ = NewReadFileTool()
+	_, _ = NewWriteFileTool()
+	_, _ = NewReplaceInFileTool()
+	_, _ = NewListDirectoryTool()
+	_, _ = NewSearchFilesTool()
+}
