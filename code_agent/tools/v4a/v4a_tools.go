@@ -8,7 +8,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/common"
+	"code_agent/tools/base"
 )
 
 // ApplyV4APatchInput defines the input for the apply_v4a_patch tool.

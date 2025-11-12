@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"code_agent/display"
-	"code_agent/session"
+	"code_agent/internal/session"
 )
 
 // GenerateUniqueSessionName creates a unique session name based on timestamp

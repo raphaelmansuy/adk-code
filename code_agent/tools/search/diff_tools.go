@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/common"
+	"code_agent/tools/base"
 )
 
 // PreviewReplaceInput defines the input for previewing a replace operation.

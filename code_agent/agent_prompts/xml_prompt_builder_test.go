@@ -1,5 +1,5 @@
 // Tests for XML prompt builder
-package agent
+package agent_prompts
 
 import (
 	"strings"

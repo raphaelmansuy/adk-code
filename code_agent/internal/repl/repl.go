@@ -14,7 +14,7 @@ import (
 	"google.golang.org/genai"
 
 	"code_agent/display"
-	"code_agent/pkg/cli"
+	"code_agent/internal/cli"
 	"code_agent/pkg/models"
 	"code_agent/tracking"
 )

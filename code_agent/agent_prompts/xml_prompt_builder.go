@@ -1,11 +1,11 @@
 // XML-tagged prompt builder for improved LLM parsing
-package agent
+package agent_prompts
 
 import (
 	"fmt"
 	"strings"
 
-	"code_agent/agent/prompts"
+	"code_agent/agent_prompts/prompts"
 	"code_agent/tools"
 )
 

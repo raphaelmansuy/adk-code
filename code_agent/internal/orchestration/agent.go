@@ -7,13 +7,13 @@ import (
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/model"
 
-	codingagent "code_agent/agent"
+	agentprompts "code_agent/agent_prompts"
 	"code_agent/internal/config"
 )
 
 // InitializeAgentComponent creates the coding agent
 func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM) (agent.Agent, error) {
-	ag, err := codingagent.NewCodingAgent(ctx, codingagent.Config{
+	ag, err := agentprompts.NewCodingAgent(ctx, agentprompts.Config{
 		Model:            llm,
 		WorkingDirectory: cfg.WorkingDirectory,
 		EnableThinking:   cfg.EnableThinking,

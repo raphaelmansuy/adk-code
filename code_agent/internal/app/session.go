@@ -3,7 +3,7 @@ package app
 import (
 	"code_agent/display"
 	"code_agent/internal/orchestration"
-	"code_agent/session"
+	"code_agent/internal/session"
 )
 
 // SessionInitializer is a facade for backward compatibility

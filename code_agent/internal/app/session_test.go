@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"code_agent/display"
-	"code_agent/session"
+	"code_agent/internal/session"
 )
 
 func TestInitializeSession_CreatesNewSessionIfMissing(t *testing.T) {

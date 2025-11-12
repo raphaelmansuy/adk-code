@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"code_agent/display"
-	"code_agent/pkg/cli/commands"
+	clicommands "code_agent/internal/cli/commands"
 	"code_agent/pkg/models"
 	"code_agent/tracking"
 )
@@ -27,11 +27,11 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 			fmt.Println("Usage: code-agent new-session <session-name>")
 			os.Exit(1)
 		}
-		commands.HandleNewSession(ctx, args[1], dbPath)
+		clicommands.HandleNewSession(ctx, args[1], dbPath)
 		return true
 
 	case "list-sessions":
-		commands.HandleListSessions(ctx, dbPath)
+		clicommands.HandleListSessions(ctx, dbPath)
 		return true
 
 	case "delete-session":
@@ -39,7 +39,7 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 			fmt.Println("Usage: code-agent delete-session <session-name>")
 			os.Exit(1)
 		}
-		commands.HandleDeleteSession(ctx, args[1], dbPath)
+		clicommands.HandleDeleteSession(ctx, args[1], dbPath)
 		return true
 
 	default:
@@ -51,5 +51,5 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in repl.go to break the loop
 func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config) bool {
-	return commands.HandleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, currentModel)
+	return clicommands.HandleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, currentModel)
 }

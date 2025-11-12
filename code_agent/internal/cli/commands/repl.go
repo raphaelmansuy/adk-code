@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	codingagent "code_agent/agent"
+	agentprompts "code_agent/agent_prompts"
 	"code_agent/display"
 	"code_agent/pkg/models"
 	"code_agent/tools"
@@ -60,14 +60,14 @@ func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 func handlePromptCommand(renderer *display.Renderer) {
 	// Show the XML-structured prompt with minimal context
 	registry := tools.GetRegistry()
-	ctx := codingagent.PromptContext{
+	ctx := agentprompts.PromptContext{
 		HasWorkspace:         false,
 		WorkspaceRoot:        "",
 		WorkspaceSummary:     "(Context not available in REPL)",
 		EnvironmentMetadata:  "",
 		EnableMultiWorkspace: false,
 	}
-	xmlPrompt := codingagent.BuildEnhancedPromptWithContext(registry, ctx)
+	xmlPrompt := agentprompts.BuildEnhancedPromptWithContext(registry, ctx)
 
 	// Clean up excessive blank lines in the output
 	cleanedPrompt := cleanupPromptOutput(xmlPrompt)

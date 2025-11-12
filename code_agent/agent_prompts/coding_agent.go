@@ -1,5 +1,5 @@
 // Package agent provides the coding agent configuration and system prompt.
-package agent
+package agent_prompts
 
 import (
 	"context"

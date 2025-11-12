@@ -17,7 +17,7 @@
 package tools
 
 import (
-	"code_agent/tools/common"
+	"code_agent/tools/base"
 	"code_agent/tools/display"
 	"code_agent/tools/edit"
 	"code_agent/tools/exec"

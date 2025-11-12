@@ -12,8 +12,8 @@ import (
 	"code_agent/display"
 	"code_agent/internal/config"
 	"code_agent/internal/runtime"
+	"code_agent/internal/session"
 	"code_agent/pkg/models"
-	"code_agent/session"
 	"code_agent/tracking"
 )
 

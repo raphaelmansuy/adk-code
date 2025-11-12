@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	clicommands "code_agent/internal/cli/commands"
 	"code_agent/internal/config"
-	"code_agent/pkg/cli/commands"
 )
 
 // HandleSpecialCommands processes special CLI commands (new-session, list-sessions, etc.)
@@ -25,11 +25,11 @@ func HandleSpecialCommands(ctx context.Context, args []string, cfg *config.Confi
 			fmt.Println("Usage: code-agent new-session <session-name>")
 			os.Exit(1)
 		}
-		commands.HandleNewSession(ctx, args[1], cfg.DBPath)
+		clicommands.HandleNewSession(ctx, args[1], cfg.DBPath)
 		return true
 
 	case "list-sessions":
-		commands.HandleListSessions(ctx, cfg.DBPath)
+		clicommands.HandleListSessions(ctx, cfg.DBPath)
 		return true
 
 	case "delete-session":
@@ -37,7 +37,7 @@ func HandleSpecialCommands(ctx context.Context, args []string, cfg *config.Confi
 			fmt.Println("Usage: code-agent delete-session <session-name>")
 			os.Exit(1)
 		}
-		commands.HandleDeleteSession(ctx, args[1], cfg.DBPath)
+		clicommands.HandleDeleteSession(ctx, args[1], cfg.DBPath)
 		return true
 
 	default:

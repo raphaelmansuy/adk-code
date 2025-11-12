@@ -5,13 +5,13 @@
 // that LLMs can parse more effectively.
 //
 // These functions are kept only for backward compatibility with existing tests.
-package agent
+package agent_prompts
 
 import (
 	"fmt"
 	"strings"
 
-	"code_agent/agent/prompts"
+	"code_agent/agent_prompts/prompts"
 	"code_agent/tools"
 )
 

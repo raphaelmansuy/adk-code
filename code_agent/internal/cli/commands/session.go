@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"code_agent/session"
+	"code_agent/internal/session"
 )
 
 // HandleNewSession creates a new session

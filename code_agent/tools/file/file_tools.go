@@ -10,7 +10,7 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 
 	"code_agent/pkg/errors"
-	"code_agent/tools/common"
+	"code_agent/tools/base"
 )
 
 // ReplaceInFileInput defines the input parameters for replacing text in a file.

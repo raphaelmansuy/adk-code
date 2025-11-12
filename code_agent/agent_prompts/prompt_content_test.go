@@ -1,7 +1,7 @@
-package agent
+package agent_prompts
 
 import (
-	"code_agent/agent/prompts"
+	"code_agent/agent_prompts/prompts"
 	"strings"
 	"testing"
 )

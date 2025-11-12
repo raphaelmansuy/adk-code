@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"code_agent/cmd/commands"
 	"code_agent/internal/app"
+	"code_agent/internal/commands"
 	"code_agent/internal/config"
 )
 
