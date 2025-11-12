@@ -40,10 +40,12 @@ const (
 
 // AgentError is the standard error type for the code agent
 type AgentError struct {
-	Code    ErrorCode
-	Message string
-	Wrapped error
-	Context map[string]string
+	Code       ErrorCode
+	Message    string
+	Wrapped    error
+	Context    map[string]string
+	Suggestion string                 // Optional suggestion for fixing the error
+	Details    map[string]interface{} // Additional structured details
 }
 
 // Error implements the error interface
@@ -68,12 +70,28 @@ func (e *AgentError) WithContext(key string, value string) *AgentError {
 	return e
 }
 
+// WithSuggestion adds a suggestion for fixing the error
+func (e *AgentError) WithSuggestion(suggestion string) *AgentError {
+	e.Suggestion = suggestion
+	return e
+}
+
+// WithDetail adds a detail to the error
+func (e *AgentError) WithDetail(key string, value interface{}) *AgentError {
+	if e.Details == nil {
+		e.Details = make(map[string]interface{})
+	}
+	e.Details[key] = value
+	return e
+}
+
 // New creates a new AgentError with the given code and message
 func New(code ErrorCode, message string) *AgentError {
 	return &AgentError{
 		Code:    code,
 		Message: message,
 		Context: make(map[string]string),
+		Details: make(map[string]interface{}),
 	}
 }
 
@@ -84,6 +102,7 @@ func Wrap(code ErrorCode, message string, err error) *AgentError {
 		Message: message,
 		Wrapped: err,
 		Context: make(map[string]string),
+		Details: make(map[string]interface{}),
 	}
 }
 
@@ -173,4 +192,11 @@ func InternalError(message string) *AgentError {
 func NotSupportedError(feature string) *AgentError {
 	return New(CodeNotSupported, fmt.Sprintf("not supported: %s", feature)).
 		WithContext("feature", feature)
+}
+
+// OperationFailedError creates an operation failed error (tool-compatible variant)
+// This is used when a general operation fails due to an underlying error
+func OperationFailedError(operation string, err error) *AgentError {
+	return Wrap(CodeExecution, fmt.Sprintf("operation failed: %s - %v", operation, err), err).
+		WithContext("operation", operation)
 }

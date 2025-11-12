@@ -34,13 +34,10 @@ func (f *OpenAIFactory) Create(ctx context.Context, config ModelConfig) (model.L
 
 // ValidateConfig checks if the configuration is valid for OpenAI
 func (f *OpenAIFactory) ValidateConfig(config ModelConfig) error {
-	if config.APIKey == "" {
-		return fmt.Errorf("OpenAI API key is required")
-	}
-	if config.ModelName == "" {
-		return fmt.Errorf("model name is required")
-	}
-	return nil
+	return ValidateAllRequiredFields(
+		NewFieldCheck("OpenAI API key", config.APIKey),
+		NewFieldCheck("model name", config.ModelName),
+	)
 }
 
 // Info returns metadata about the OpenAI factory

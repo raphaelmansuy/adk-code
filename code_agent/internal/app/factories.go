@@ -11,6 +11,7 @@ import (
 	"code_agent/internal/config"
 	"code_agent/pkg/cli"
 	"code_agent/pkg/models"
+	"code_agent/pkg/models/factories"
 )
 
 // DisplayComponentFactory creates display components with consistent configuration
@@ -105,53 +106,11 @@ func (f *ModelComponentFactory) Create(ctx context.Context, displayComponents *D
 	banner := displayComponents.BannerRenderer.RenderStartBanner("1.0.0", displayName, workingDir)
 	fmt.Print(banner)
 
-	// Create LLM model based on backend
+	// Create LLM model using factory registry
 	actualModelID := models.ExtractModelIDFromGemini(selectedModel.ID)
-	var llm model.LLM
-
-	switch selectedModel.Backend {
-	case "vertexai":
-		if f.config.VertexAIProject == "" {
-			return nil, fmt.Errorf("vertex AI backend requires GOOGLE_CLOUD_PROJECT environment variable or --project flag")
-		}
-		if f.config.VertexAILocation == "" {
-			return nil, fmt.Errorf("vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
-		}
-		vertexModel, err := models.CreateVertexAIModel(ctx, models.VertexAIConfig{
-			Project:   f.config.VertexAIProject,
-			Location:  f.config.VertexAILocation,
-			ModelName: actualModelID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Vertex AI model: %w", err)
-		}
-		llm = vertexModel
-
-	case "openai":
-		openaiKey := os.Getenv("OPENAI_API_KEY")
-		if openaiKey == "" {
-			return nil, fmt.Errorf("OpenAI backend requires OPENAI_API_KEY environment variable")
-		}
-		openaiModel, err := models.CreateOpenAIModel(ctx, models.OpenAIConfig{
-			APIKey:    openaiKey,
-			ModelName: actualModelID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create OpenAI model: %w", err)
-		}
-		llm = openaiModel
-
-	case "gemini":
-		fallthrough
-	default:
-		geminiModel, err := models.CreateGeminiModel(ctx, models.GeminiConfig{
-			APIKey:    apiKey,
-			ModelName: actualModelID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Gemini model: %w", err)
-		}
-		llm = geminiModel
+	llm, err := f.createModelUsingFactory(ctx, selectedModel.Backend, actualModelID, apiKey)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ModelComponents{
@@ -159,6 +118,53 @@ func (f *ModelComponentFactory) Create(ctx context.Context, displayComponents *D
 		Selected: selectedModel,
 		LLM:      llm,
 	}, nil
+}
+
+// createModelUsingFactory creates an LLM model using the factory registry
+// This method consolidates model creation logic and validates provider-specific configurations
+func (f *ModelComponentFactory) createModelUsingFactory(ctx context.Context, backend, modelName, apiKey string) (model.LLM, error) {
+	factoryReg := factories.GetRegistry()
+
+	// Build factory config based on backend
+	factoryConfig := factories.ModelConfig{
+		ModelName: modelName,
+	}
+
+	switch backend {
+	case "vertexai":
+		if f.config.VertexAIProject == "" {
+			return nil, fmt.Errorf("vertex AI backend requires GOOGLE_CLOUD_PROJECT environment variable or --project flag")
+		}
+		if f.config.VertexAILocation == "" {
+			return nil, fmt.Errorf("vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
+		}
+		factoryConfig.Project = f.config.VertexAIProject
+		factoryConfig.Location = f.config.VertexAILocation
+
+	case "openai":
+		openaiKey := os.Getenv("OPENAI_API_KEY")
+		if openaiKey == "" {
+			return nil, fmt.Errorf("OpenAI backend requires OPENAI_API_KEY environment variable")
+		}
+		factoryConfig.APIKey = openaiKey
+
+	case "gemini":
+		fallthrough
+	default:
+		if apiKey == "" {
+			return nil, fmt.Errorf("gemini API backend requires GOOGLE_API_KEY environment variable or --api-key flag")
+		}
+		factoryConfig.APIKey = apiKey
+		backend = "gemini"
+	}
+
+	// Use factory registry to create the model
+	llm, err := factoryReg.CreateModel(ctx, backend, factoryConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create %s model: %w", backend, err)
+	}
+
+	return llm, nil
 }
 
 // resolveWorkingDirectory resolves and validates the working directory

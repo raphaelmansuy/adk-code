@@ -35,16 +35,11 @@ func (f *VertexAIFactory) Create(ctx context.Context, config ModelConfig) (model
 
 // ValidateConfig checks if the configuration is valid for Vertex AI
 func (f *VertexAIFactory) ValidateConfig(config ModelConfig) error {
-	if config.Project == "" {
-		return fmt.Errorf("Vertex AI project is required")
-	}
-	if config.Location == "" {
-		return fmt.Errorf("Vertex AI location is required")
-	}
-	if config.ModelName == "" {
-		return fmt.Errorf("model name is required")
-	}
-	return nil
+	return ValidateAllRequiredFields(
+		NewFieldCheck("Vertex AI project", config.Project),
+		NewFieldCheck("Vertex AI location", config.Location),
+		NewFieldCheck("model name", config.ModelName),
+	)
 }
 
 // Info returns metadata about the Vertex AI factory

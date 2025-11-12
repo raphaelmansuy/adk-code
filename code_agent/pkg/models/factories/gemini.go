@@ -31,13 +31,10 @@ func (f *GeminiFactory) Create(ctx context.Context, config ModelConfig) (model.L
 
 // ValidateConfig checks if the configuration is valid for Gemini
 func (f *GeminiFactory) ValidateConfig(config ModelConfig) error {
-	if config.APIKey == "" {
-		return fmt.Errorf("Gemini API key is required")
-	}
-	if config.ModelName == "" {
-		return fmt.Errorf("model name is required")
-	}
-	return nil
+	return ValidateAllRequiredFields(
+		NewFieldCheck("Gemini API key", config.APIKey),
+		NewFieldCheck("model name", config.ModelName),
+	)
 }
 
 // Info returns metadata about the Gemini factory

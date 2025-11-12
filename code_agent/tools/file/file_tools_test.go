@@ -18,16 +18,6 @@ func createTempFile(t *testing.T, content string) string {
 	return tmpFile
 }
 
-// Helper function for int pointer
-func intPtr(i int) *int {
-	return &i
-}
-
-// Helper function for bool pointer
-func boolPtr(b bool) *bool {
-	return &b
-}
-
 // ==================== File Validation Tests ====================
 
 func TestValidateFilePath_ValidPath(t *testing.T) {
