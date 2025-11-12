@@ -9,6 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
+	"code_agent/pkg/errors"
 	"code_agent/tools/common"
 )
 
@@ -75,7 +76,7 @@ func NewWriteFileTool() (tool.Tool, error) {
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return WriteFileOutput{
 					Success: false,
-					Error:   fmt.Sprintf("Failed to create directories: %v", err),
+					Error:   errors.Wrap(errors.CodeExecution, "failed to create directories", err).Error(),
 				}
 			}
 		}
@@ -96,7 +97,7 @@ func NewWriteFileTool() (tool.Tool, error) {
 		if err != nil {
 			return WriteFileOutput{
 				Success: false,
-				Error:   fmt.Sprintf("Failed to write file: %v", err),
+				Error:   errors.Wrap(errors.CodeExecution, "failed to write file", err).Error(),
 			}
 		}
 

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
+	"code_agent/pkg/errors"
 	"code_agent/tools/common"
 )
 
@@ -55,7 +56,7 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 		if err != nil {
 			return ReplaceInFileOutput{
 				Success: false,
-				Error:   fmt.Sprintf("Failed to read file: %v", err),
+				Error:   errors.FileNotFoundError(input.Path).Error(),
 			}
 		}
 
@@ -97,7 +98,7 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 		if err != nil {
 			return ReplaceInFileOutput{
 				Success: false,
-				Error:   fmt.Sprintf("Failed to write file: %v", err),
+				Error:   errors.Wrap(errors.CodeExecution, "failed to write file", err).Error(),
 			}
 		}
 

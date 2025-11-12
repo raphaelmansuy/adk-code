@@ -1,612 +1,511 @@
-# Code Agent Deep Analysis - Working Log
+# Code Agent Architecture Analysis & Refactoring Assessment
 
-**Date:** November 12, 2025
-**Objective:** Analyze code_agent/ structure for potential refactoring opportunities while maintaining pragmatism and Go best practices.
+**Date:** November 12, 2025  
+**Status:** In-depth code analysis  
+**Focus:** Modularity, organization, best practices, and zero-regression refactoring strategy
 
-## Initial Structure Overview
+---
 
-### Top-Level Organization
+## 1. Project Overview
+
+**adk_training_go/code_agent** is a sophisticated CLI coding assistant built with:
+- **Go 1.24.4** with ADK llmagent framework
+- **Gemini 2.5 Flash** (primary model) + OpenAI + Vertex AI support
+- **Rich terminal UI** with real-time streaming, pagination, and interactive REPL
+- **Tool ecosystem**: 20+ tools across file ops, editing, execution, search, and workspace management
+- **Persistent sessions** via SQLite with ADK's session management framework
+
+### High-Level Architecture
 ```
-code_agent/
-├── main.go                    # Entry point (33 lines) - Clean and minimal ✓
-├── agent/                     # Agent configuration & prompts
-├── display/                   # UI/terminal rendering
-├── internal/app/              # Application lifecycle
-├── persistence/               # Session storage (SQLite)
-├── pkg/                       # Public packages (cli, models)
-├── tools/                     # Tool implementations
-├── tracking/                  # Token tracking
-└── workspace/                 # Workspace management
-```
+main.go
+  └─> internal/app
+       ├─> Application (lifecycle orchestrator)
+       ├─> Components (Display, Model, Agent, Session)
+       ├─> REPL (interactive loop)
+       └─> SignalHandler (Ctrl+C handling)
+  
+agent/
+  └─> CodingAgent (LLM + Tool registry)
+       ├─> Dynamic prompt builder (XML-structured)
+       ├─> Tool auto-registration (init() functions)
+       └─> Workspace context injection
 
-### Package Dependencies Analysis
-
-**main.go** → `internal/app` + `pkg/cli`
-- Clean separation ✓
-- No business logic in main ✓
-
-**internal/app** → Everything (orchestrator role)
-- Acts as composition root
-- Dependencies: agent, display, persistence, pkg/cli, pkg/models, tracking
-
-**agent/** → tools, workspace
-- Creates agent with system prompt
-- Registers tools dynamically
-- Good separation ✓
-
-**tools/** → Hierarchical structure
-```
 tools/
-├── tools.go              # Re-export facade
-├── common/               # Registry + shared types
-├── display/              # Display tools (message, task list)
-├── edit/                 # Code editing tools
-├── exec/                 # Command execution
-├── file/                 # File operations
-├── search/               # Search operations
-├── v4a/                  # V4A patch format
-└── workspace/            # Workspace tools
-```
+  ├─> file/ (read, write, list, search)
+  ├─> edit/ (patch, search/replace, line-edit)
+  ├─> exec/ (command execution, grep)
+  ├─> search/ (preview replace)
+  ├─> workspace/ (context builder)
+  ├─> display/ (user messages, task lists)
+  ├─> v4a/ (structured patch format)
+  └─> common/ (registry, metadata, error handling)
 
-**Key Observations:**
-1. Tools use init() for auto-registration via registry pattern
-2. Good separation by functionality
-3. Clear re-export pattern in tools.go for backward compatibility
-
-**display/** → Complex structure
-```
 display/
-├── Core rendering
-│   ├── renderer.go
-│   ├── markdown_renderer.go
-│   ├── ansi.go
-│   └── styles/
-├── Specialized renderers
-│   ├── banner.go
-│   ├── tool_renderer.go
-│   ├── tool_renderer_internals.go
-│   └── tool_result_parser.go
-├── Interactive components
-│   ├── spinner.go
-│   ├── typewriter.go
-│   ├── paginator.go
-│   └── streaming_display.go
-├── Components library
-│   └── components/
-└── Utilities
-    ├── deduplicator.go
-    ├── event.go
-    └── formatters/
+  ├─> renderer/ (Rich/Plain/JSON formatting)
+  ├─> components/ (timeline, events)
+  ├─> formatters/ (agent, tool, error, metrics)
+  ├─> styles/ (ANSI theming)
+  └─> terminal/ (pagination, streaming)
+
+workspace/
+  └─> Multi-workspace support with VCS detection (Git/Mercurial)
+
+session/
+  └─> SQLite-backed session persistence
+
+pkg/
+  ├─> cli/ (CLI flags, commands, model syntax parsing)
+  ├─> models/ (Provider abstraction: Gemini, OpenAI, Vertex AI)
+  └─> tracking/ (Token counting)
 ```
-
-## Test Coverage Status
-
-**Total test files:** 28 *_test.go files
-
-**Well-tested packages:**
-- agent/ (3 test files)
-- display/ (5 test files)
-- internal/app/ (7 test files)
-- persistence/ (3 test files)
-- tools/file/ (1 test file)
-- workspace/ (2 test files)
-
-**Less tested:**
-- tools/search/ (1 test file)
-- tools/exec/ (0 explicit test files)
-- tools/edit/ (0 explicit test files)
-- tracking/ (1 test file)
-
-## Architecture Patterns Identified
-
-### 1. **Registry Pattern** (tools/common/)
-- Global registry for tool registration
-- init() functions for auto-registration
-- Good for extensibility ✓
-
-### 2. **Facade Pattern** (tools/tools.go)
-- Re-exports from subpackages
-- Maintains backward compatibility
-- Simplifies imports for consumers ✓
-
-### 3. **Factory Pattern** (pkg/models/)
-- Model creation abstraction
-- Provider-specific factories (Gemini, OpenAI, VertexAI)
-- Good separation ✓
-
-### 4. **Component Pattern** (internal/app/components.go)
-- Groups related fields
-- DisplayComponents, ModelComponents, SessionComponents
-- Reduces struct clutter ✓
-
-### 5. **Adapter Pattern** (pkg/models/openai_adapter.go)
-- OpenAI to ADK model.LLM interface
-- Clean abstraction ✓
-
-## Potential Issues Identified
-
-### 1. **Display Package Complexity**
-- **Issue:** 20+ files in single package
-- **Impact:** Hard to navigate, understand boundaries
-- **Files involved:**
-  - Core: renderer.go, markdown_renderer.go, ansi.go
-  - Tools: tool_renderer.go, tool_renderer_internals.go, tool_result_parser.go
-  - Interactive: spinner.go, typewriter.go, paginator.go, streaming_display.go
-  - Utilities: deduplicator.go, event.go, factory.go
-
-**Subpackages exist but underutilized:**
-- components/ (only 2 files)
-- formatters/ (minimal)
-- styles/ (minimal)
-
-### 2. **Tool Renderer Split**
-- tool_renderer.go + tool_renderer_internals.go
-- Artificial split that doesn't add value
-- Could be merged or better organized
-
-### 3. **Agent Package Structure**
-- Multiple prompt files (dynamic_prompt.go, prompt_guidance.go, prompt_pitfalls.go, prompt_workflow.go)
-- Could benefit from prompts/ subdirectory
-
-### 4. **Internal/App God Object Risk**
-- Application struct coordinates everything
-- 327 lines in app.go
-- Many initialization methods
-- Risk of becoming monolithic
-
-### 5. **Persistence Package Naming**
-- Contains session management
-- Could be renamed to "session" for clarity
-- Current name is too generic
-
-### 6. **CLI Commands Structure**
-- pkg/cli/commands/ subdirectory exists but underutilized
-- commands.go in parent directory
-- Inconsistent organization
-
-## Go Best Practices Assessment
-
-### ✓ Following Best Practices:
-
-1. **Package Organization**
-   - internal/ for private code
-   - pkg/ for public libraries
-   - Clear separation
-
-2. **Error Handling**
-   - Proper error wrapping with fmt.Errorf
-   - Error returns checked
-
-3. **Context Usage**
-   - Context passed through call chains
-   - Cancellation support
-
-4. **Testing**
-   - Test files colocated with code
-   - Use of table-driven tests (seen in several _test.go files)
-
-5. **Interface Usage**
-   - model.LLM interface
-   - agent.Agent interface
-   - Good abstraction
-
-### ⚠ Areas for Improvement:
-
-1. **Package Size**
-   - display/ package too large (20+ files)
-   - Should be split into logical subpackages
-
-2. **File Naming**
-   - tool_renderer_internals.go is a code smell
-   - "internals" usually means poor separation
-
-3. **Init Functions**
-   - Heavy use of init() for registration
-   - Makes testing harder
-   - Better: explicit registration
-
-4. **Global State**
-   - Tool registry is global
-   - Could make testing parallel tests difficult
-
-5. **Documentation**
-   - Need to verify godoc coverage
-   - Package-level documentation
-
-## Dependencies Analysis
-
-### External Dependencies (from go.mod):
-- google.golang.org/adk (local replace) - Core framework
-- google.golang.org/genai - Gemini AI
-- github.com/charmbracelet/glamour - Markdown rendering
-- github.com/charmbracelet/lipgloss - Terminal styling
-- github.com/chzyer/readline - REPL
-- gorm.io/gorm + sqlite - Persistence
-
-**Assessment:**
-- Dependencies are well-chosen ✓
-- Not over-dependent on external libs ✓
-- Local ADK dependency manageable ✓
-
-## Performance Considerations
-
-### Potential Bottlenecks:
-1. **Display rendering** - Multiple formatting passes
-2. **Tool registry lookups** - Map-based, should be fine
-3. **Session persistence** - SQLite, adequate for single-user
-4. **File operations** - Direct file I/O, no caching
-
-### Memory Usage:
-- Streaming display minimizes buffering ✓
-- Session history in memory during run
-- Token tracking accumulates data
-
-## Security Considerations
-
-### Current State:
-1. **File operations** - Uses filepath.Clean ✓
-2. **Command execution** - Direct exec, needs sandboxing review
-3. **API keys** - Environment variables ✓
-4. **SQL injection** - GORM handles parameterization ✓
-
-### Potential Risks:
-- Command execution could be dangerous
-- No workspace boundary enforcement mentioned
-- File path traversal risks
-
-## Modularity Assessment
-
-### Well-Modularized:
-1. **tools/** - Clear separation by function
-2. **pkg/models** - Provider abstraction
-3. **workspace/** - Self-contained
-4. **tracking/** - Single responsibility
-
-### Needs Improvement:
-1. **display/** - Too monolithic
-2. **agent/** - Prompts could be separated
-3. **internal/app** - Too many responsibilities
-
-## Code Quality Indicators
-
-### Positive Signs:
-- Makefile with quality checks (fmt, vet, lint)
-- Test coverage targets
-- Clear build process
-- Version management
-
-### To Verify:
-- Linting results
-- Test coverage percentage
-- Cyclomatic complexity
-- Code duplication
-
-## Next Steps for Analysis
-
-1. **Run make check** - See current quality status
-2. **Check test coverage** - Identify gaps
-3. **Review cyclomatic complexity** - Find complex functions
-4. **Examine tool_renderer** - Understand split rationale
-5. **Review error handling patterns** - Consistency check
-
-## Initial Refactoring Opportunities
-
-### Priority 1 (High Value, Low Risk):
-1. Merge tool_renderer.go + tool_renderer_internals.go
-2. Move agent prompts to prompts/ subdirectory
-3. Add package-level documentation
-4. Consolidate CLI commands structure
-
-### Priority 2 (Medium Value, Medium Risk):
-1. Split display/ into subpackages
-2. Rename persistence/ to session/
-3. Reduce init() usage in tools
-4. Add interfaces for testability
-
-### Priority 3 (Long-term, Higher Risk):
-1. Refactor internal/app to reduce coupling
-2. Add plugin system for tools
-3. Improve error types and handling
-4. Add metrics/observability
-
-## Principles to Maintain
-
-1. **Pragmatism over perfection**
-2. **No breaking changes to public APIs**
-3. **Maintain test coverage**
-4. **Incremental improvements**
-5. **Clear migration path**
-6. **Documentation updates with changes**
 
 ---
 
-## Detailed Metrics Analysis
+## 2. Detailed Component Analysis
 
-### Package Line Counts (Non-Test Code)
-```
-3808 lines - display/          (26% of codebase)
-3652 lines - tools/            (24% of codebase)
-2489 lines - pkg/              (17% of codebase)
-1392 lines - workspace/        (9% of codebase)
-1334 lines - persistence/      (9% of codebase)
-1006 lines - agent/            (7% of codebase)
-766 lines  - internal/app/     (5% of codebase)
-335 lines  - tracking/         (2% of codebase)
------------------------------------
-14940 lines total (excluding tests)
-```
+### 2.1 Application Lifecycle (internal/app/app.go)
 
-**Key Insights:**
-- display/ is the largest package (26%) - justifies refactoring priority
-- tools/ is well-structured despite size (good subpackage organization)
-- pkg/ is appropriate size for a public API package
-- workspace/ and persistence/ are moderately sized
+**Current Structure:**
+- `Application` struct: ~327 lines, acts as orchestrator for all components
+- Composition pattern: Groups `DisplayComponents`, `ModelComponents`, `SessionComponents`
+- Initialization: Explicit sequential steps (`initializeDisplay` → `Model` → `Agent` → `Session` → `REPL`)
 
-### Largest Individual Files
-```
-570 lines - persistence/sqlite.go
-440 lines - pkg/models/openai_adapter_helpers.go
-369 lines - tools/edit/search_replace_tools.go
-361 lines - display/tool_result_parser.go
-359 lines - workspace/manager.go
-358 lines - workspace/detection.go
-342 lines - pkg/models/openai.go
-341 lines - persistence/models.go
-332 lines - tools/exec/terminal_tools.go
-326 lines - internal/app/app.go
-```
+**Strengths:**
+✅ Clear separation of concerns via component structs  
+✅ Structured initialization with error propagation  
+✅ Flexible model resolution (Gemini/OpenAI/Vertex AI)  
+✅ Well-named initialization methods  
 
-**Key Insights:**
-- Most files are under 400 lines (good)
-- No files exceed 600 lines (excellent)
-- Largest files are in domain logic (expected)
-- No obvious "god classes"
+**Issues:**
+❌ `Application` struct is a "god object" — manages too many responsibilities  
+❌ Component initialization scattered across multiple functions (no factory pattern)  
+❌ Complex setup logic embedded in `initializeModel()` (130+ lines of backend resolution)  
+❌ Hard to test individual initialization steps in isolation  
+❌ No clear dependency injection pattern — tightly coupled to concrete types  
 
-### Test Coverage Summary
-```
-✓ Tested packages:
-  - agent/ (3 test files)
-  - display/ (5 test files)
-  - internal/app/ (7 test files) 
-  - persistence/ (3 test files)
-  - pkg/cli/ (1 test file)
-  - pkg/models/ (1 test file)
-  - tools/display/ (passing tests)
-  - tools/file/ (1 test file)
-  - tools/v4a/ (passing tests)
-  - tracking/ (1 test file)
-  - workspace/ (2 test files)
-
-✗ No test files:
-  - tools/common/
-  - tools/edit/
-  - tools/exec/
-  - tools/search/
-  - tools/workspace/
-  - display/components/
-  - display/formatters/
-  - display/styles/
-  - pkg/cli/commands/
-
-All tests pass: ✓
-No TODOs/FIXMEs found: ✓
-```
-
-## Architectural Patterns Deep Dive
-
-### Pattern 1: Registry + Init Pattern (tools/common/)
-**Implementation:**
-```go
-// Global registry
-var globalRegistry = NewToolRegistry()
-
-func GetRegistry() *ToolRegistry { return globalRegistry }
-
-// Each tool package has init()
-func init() {
-    Register(ToolMetadata{
-        Tool: NewReadFileTool(),
-        Category: CategoryFileOperations,
-        Priority: 1,
-    })
-}
-```
-
-**Pros:**
-- Automatic tool registration
-- Extensible design
-- Clear categorization
-
-**Cons:**
-- Global state (testing challenges)
-- init() side effects
-- Hard to control execution order
-
-**Verdict:** Keep for now, consider explicit registration in v2.0
-
-### Pattern 2: Facade Pattern (display/renderer.go)
-**Implementation:**
-```go
-type Renderer struct {
-    styleFormatter   *styles.Formatter
-    toolFormatter    *formatters.ToolFormatter
-    agentFormatter   *formatters.AgentFormatter
-    errorFormatter   *formatters.ErrorFormatter
-    metricsFormatter *formatters.MetricsFormatter
-}
-```
-
-**Assessment:**
-- Good separation of concerns ✓
-- Clean delegation to formatters ✓
-- Backward compatibility maintained ✓
-- Could benefit from interface definitions
-
-### Pattern 3: Component Grouping (internal/app/)
-**Implementation:**
-```go
-type DisplayComponents struct {
-    Renderer       *display.Renderer
-    BannerRenderer *display.BannerRenderer
-    Typewriter     *display.TypewriterPrinter
-    StreamDisplay  *display.StreamingDisplay
-}
-```
-
-**Assessment:**
-- Reduces parameter passing ✓
-- Logical grouping ✓
-- Makes testing easier ✓
-- Good pattern to follow elsewhere
-
-### Pattern 4: Factory Pattern (pkg/models/)
-**Assessment:**
-- Clean provider abstraction ✓
-- Model-agnostic API ✓
-- Easy to add new providers ✓
-- Well-implemented
-
-## Code Quality Assessment
-
-### Strengths
-1. **No technical debt markers** - Zero TODOs/FIXMEs
-2. **Comprehensive testing** - 28 test files, all passing
-3. **Clean entry point** - main.go is minimal (33 lines)
-4. **Good error handling** - Consistent error wrapping
-5. **Context usage** - Proper cancellation support
-6. **Documentation** - Most packages have comments
-7. **Build automation** - Good Makefile with quality gates
-8. **Dependency management** - Reasonable external deps
-
-### Weaknesses
-1. **Package size imbalance** - display/ is 26% of codebase
-2. **Test coverage gaps** - Some tool packages untested
-3. **Global registry** - Testing complexity
-4. **File naming** - tool_renderer_internals.go is a smell
-5. **Package naming** - persistence/ could be session/
-
-## Design Principles Observed
-
-### Good Practices
-- **Separation of concerns** - Clear package boundaries
-- **Interface usage** - agent.Agent, model.LLM
-- **Composition over inheritance** - Component grouping
-- **Context propagation** - Consistent ctx parameter
-- **Error wrapping** - fmt.Errorf with %w
-- **Clean architecture** - internal/ vs pkg/ separation
-
-### Anti-patterns to Address
-- **God package risk** - display/ approaching this
-- **Split files** - tool_renderer + tool_renderer_internals
-- **Implicit initialization** - init() functions
-- **Global state** - Tool registry
-
-## Refactoring Risk Assessment
-
-### Zero Risk (Quick Wins)
-1. Merge tool_renderer.go + tool_renderer_internals.go
-2. Add package documentation
-3. Reorganize agent/prompts into subdirectory
-4. Consolidate CLI commands
-
-### Low Risk (Structural)
-1. Split display/ into subpackages
-2. Rename persistence/ to session/
-3. Add missing tests
-4. Extract interfaces for testing
-
-### Medium Risk (Behavioral)
-1. Reduce init() usage
-2. Make registry injectable
-3. Refactor internal/app coupling
-4. Add plugin architecture
-
-### High Risk (Breaking Changes)
-1. Change public APIs
-2. Modify tool interfaces
-3. Change session format
-4. Alter configuration structure
-
-## Performance Observations
-
-### Current State
-- **No obvious bottlenecks** in code structure
-- **Streaming display** minimizes memory
-- **Session persistence** uses SQLite (adequate)
-- **File operations** are direct (no caching)
-- **Markdown rendering** on-demand (good)
-
-### Potential Optimizations (Low Priority)
-- Cache workspace detection results
-- Pool markdown renderer instances
-- Batch tool registry lookups
-- Add metrics/profiling hooks
-
-## Security Review
-
-### Current State
-- **API keys** from environment ✓
-- **File operations** use filepath.Clean ✓
-- **SQL** uses GORM parameterization ✓
-- **Command execution** direct exec (review needed)
-- **Path traversal** basic protection (verify)
-
-### Recommendations
-- Add workspace boundary checks
-- Implement command allow-listing
-- Add rate limiting for API calls
-- Document security model
-
-## Maintainability Score
-
-**Overall: 8/10** (Very Good)
-
-Breakdown:
-- Code organization: 8/10
-- Test coverage: 7/10
-- Documentation: 8/10
-- Error handling: 9/10
-- Build process: 9/10
-- Dependency management: 9/10
-- Code duplication: 8/10
-- Naming clarity: 8/10
-
-## Final Recommendations Priority Matrix
-
-### Priority 1: High Value, Low Risk (DO FIRST)
-1. **Split display package** - Reduce complexity
-2. **Merge tool_renderer files** - Eliminate artificial split
-3. **Add missing tests** - Improve coverage
-4. **Organize agent prompts** - Better structure
-
-### Priority 2: Medium Value, Low Risk (DO NEXT)
-1. **Rename persistence to session** - Improve clarity
-2. **Add package documentation** - Better godoc
-3. **Consolidate CLI commands** - Consistency
-4. **Extract display interfaces** - Testability
-
-### Priority 3: High Value, Medium Risk (PLAN CAREFULLY)
-1. **Reduce init() usage** - Better testability
-2. **Make registry injectable** - Avoid global state
-3. **Add plugin architecture** - Extensibility
-4. **Improve error types** - Better error handling
-
-### Priority 4: Medium Value, Medium Risk (NICE TO HAVE)
-1. **Add metrics/observability** - Debugging
-2. **Implement caching** - Performance
-3. **Security hardening** - Production readiness
-4. **API versioning** - Future-proofing
+**Refactoring Opportunity:**
+- Extract component factories (e.g., `DisplayComponentFactory`, `ModelComponentFactory`)
+- Move model resolution logic to `pkg/models` (higher-level package)
+- Implement dependency injection container pattern
+- Add validation layer before initialization
 
 ---
 
-## Conclusion
+### 2.2 Agent Package (agent/)
 
-The codebase is **well-structured and maintainable** with clear architecture patterns. The main issues are:
+**Current Structure:**
+- `coding_agent.go` (~130 lines): Main agent creation, dynamic prompt builder
+- `dynamic_prompt.go` (~200+ lines): XML-structured system prompt generation
+- `prompt_*.go` (5 files): Specialized prompt sections (guidance, workflow, pitfalls)
+- `xml_prompt_builder.go`: XML construction utilities
 
-1. **Display package size** (3808 lines) - needs splitting
-2. **Test coverage gaps** - some packages untested  
-3. **Minor organizational issues** - file splits, naming
+**Strengths:**
+✅ Well-organized prompt system with XML schemas  
+✅ Dynamic tool registration via global registry  
+✅ Workspace context injection into prompts  
+✅ Multi-workspace support abstraction  
 
-The refactoring should focus on **structural improvements** without changing behavior. All changes must maintain **100% backward compatibility** and **zero regressions**.
+**Issues:**
+❌ Prompt logic highly coupled to `BuildEnhancedPromptWithContext()` function  
+❌ Multiple prompt files (guidance, workflow, pitfalls) — no clear interface or abstraction  
+❌ `PromptContext` struct passed through 4+ levels without validation  
+❌ No abstraction layer for prompt builders — difficult to swap implementations  
+❌ Tool metadata duplicated between registration and prompt sections  
+❌ Testing prompt output requires end-to-end test (expensive)  
 
-The code demonstrates **good Go practices** overall and has a solid foundation for growth.
+**Refactoring Opportunity:**
+- Create `PromptBuilder` interface with concrete implementations (`XMLPromptBuilder`, `PlainTextPromptBuilder`)
+- Move prompt sections into composable `PromptSection` implementations
+- Centralize tool metadata — avoid duplication between registry and prompts
+- Add `PromptValidator` interface for testing/validation without full agent
+- Extract prompt constants to separate `prompts/` subpackage
+
+---
+
+### 2.3 Tools Package (tools/)
+
+**Current Structure:**
+- `tools.go`: Central re-export facade (145 lines, pure re-exports)
+- `common/registry.go`: Dynamic tool registry with categorization
+- 7 subpackages: `file/`, `edit/`, `exec/`, `search/`, `workspace/`, `display/`, `v4a/`
+- Each tool follows pattern: Input struct → Output struct → `NewTool()` function → auto-register via `init()`
+
+**Strengths:**
+✅ Excellent modularity — clean subpackage separation by domain  
+✅ Consistent tool patterns across all 20+ implementations  
+✅ Global registry with category-based organization  
+✅ Type-safe input/output structures with JSON schema tags  
+✅ Auto-registration via `init()` functions eliminates manual wiring  
+✅ Well-tested patterns (file tools, exec tools)  
+
+**Issues:**
+❌ Re-export facade (`tools.go`) is 145 lines of pure imports — verbose and not DRY  
+❌ Tool builders don't follow consistent naming (some use `New*Tool`, others use `*New*`)  
+❌ Error handling varies across tools — no unified error strategy  
+❌ No interface abstraction layer — tools are tightly coupled to `tool.Tool` interface  
+❌ Tool validation happens late (during execution, not at registration time)  
+❌ Context parameter in handlers is often unused — adds boilerplate  
+❌ No clear lifecycle for stateful tools (e.g., exec tools with working directory context)  
+
+**Refactoring Opportunity:**
+- Create `ToolBuilder` interface to abstract tool creation patterns
+- Consolidate re-export facades using Go's embedding patterns
+- Establish unified error handling strategy (wrapped errors, consistent error codes)
+- Add pre-registration validation hooks
+- Consider lazy tool registration (on-demand instead of all at init time)
+- Create tool lifecycle hooks for setup/teardown
+
+---
+
+### 2.4 Display Package (display/)
+
+**Current Structure:**
+- `renderer/`: Rich/Plain/JSON text rendering with ANSI themes
+- `components/`: Timeline events and event formatting
+- `formatters/`: Agent, tool, error, metrics formatters
+- `styles/`: ANSI color/styling theming
+- `terminal/`: Pagination, streaming display
+- `typewriter.go`, `spinner.go`, `deduplicator.go`: Animation/effect components
+- `tool_renderer.go`, `tool_result_parser.go`: Tool execution display logic
+
+**Strengths:**
+✅ Clean separation of rendering concerns (Renderer, Formatter, Styles)  
+✅ Multiple output format support (Rich/Plain/JSON)  
+✅ Streaming display with real-time updates  
+✅ Well-organized sub-packages by responsibility  
+✅ Rich terminal UI with pagination and timeline  
+
+**Issues:**
+❌ **Major coupling issue:** `tool_renderer.go` (~200+ lines) tightly couples tool execution display to rendering  
+❌ Display facade (`facade.go`) re-exports nested types, hiding true package structure  
+❌ `StreamingDisplay` mixes concerns — combines rendering + streaming + state management  
+❌ Formatter implementations duplicate logic across files  
+❌ No clear abstraction for output formatters — implementations are tightly coupled  
+❌ Pagination and streaming logic mixed within terminal code  
+❌ Tests sparse for complex components like `ToolRenderer`  
+❌ No registry pattern for formatters — hard to extend or swap implementations  
+
+**Refactoring Opportunity:**
+- Extract `ToolDisplayAdapter` interface to decouple tool execution display from rendering
+- Separate `StreamingDisplay` into `StreamBuffer` + `StreamRenderer` + `StreamManager`
+- Create `OutputFormatter` interface with swappable implementations
+- Implement formatter registry (similar to tool registry)
+- Move tool-specific display logic into tools subpackage (self-contained)
+- Add hooks for tool lifecycle events (start, step, complete, error)
+
+---
+
+### 2.5 Workspace Package (workspace/)
+
+**Current Structure:**
+- `types.go`: Core types (WorkspaceRoot, WorkspaceContext, VCS metadata)
+- `manager.go`: Main WorkspaceManager interface (~100 lines)
+- `detection.go`: VCS auto-detection (Git/Mercurial)
+- `config.go`: Workspace configuration loading
+- `resolver.go`: Path resolution across multi-workspace roots
+- `vcs.go`: VCS-specific metadata extraction
+
+**Strengths:**
+✅ Clean types with clear semantics  
+✅ Good separation between detection, resolution, and configuration  
+✅ VCS-aware (Git/Mercurial metadata extraction)  
+✅ Multi-workspace support well-architected  
+
+**Issues:**
+❌ `Manager` struct is a kitchen sink — combines detection, resolution, context building  
+❌ Path resolution complex and not well-tested (only 2 tests)  
+❌ No clear error types — uses generic `error` interface  
+❌ Configuration loading couples to file system operations  
+❌ VCS detection embedded in manager — hard to mock for testing  
+❌ No clear boundaries between public/private responsibilities  
+
+**Refactoring Opportunity:**
+- Split `Manager` into focused interfaces: `WorkspaceDetector`, `PathResolver`, `ContextBuilder`
+- Create `WorkspaceConfig` loader as separate component
+- Extract `VCSDetector` interface to enable easier testing/mocking
+- Add detailed error types for path resolution failures
+- Document path resolution algorithm in clear comments
+
+---
+
+### 2.6 Session Package (session/)
+
+**Current Structure:**
+- `manager.go`: Session orchestrator (~118 lines)
+- `sqlite.go`: SQLite-backed persistence
+- `models.go`: Session and event data models
+
+**Strengths:**
+✅ Clean abstraction over ADK's session service  
+✅ Persistence handled consistently via SQLite  
+✅ Simple interface — most operations straightforward  
+
+**Issues:**
+❌ Minimal abstraction — mostly thin wrapper around ADK's session service  
+❌ SQLite implementation details leak into manager  
+❌ Limited error context — errors lack helpful messages  
+❌ No retry logic for concurrent access  
+❌ No validation of session state transitions  
+
+**Refactoring Opportunity:**
+- Create `SessionService` interface to abstract persistence layer
+- Add session lifecycle validation (state machine)
+- Implement retry logic for transient database errors
+- Document expected session states and transitions
+
+---
+
+### 2.7 CLI Package (pkg/cli/)
+
+**Current Structure:**
+- `flags.go`: Command-line flag parsing
+- `config.go`: CLIConfig struct definition
+- `commands.go`: CLI command handlers (new-session, list-sessions, etc.)
+- `commands/`: Subcommands (REPL, set-model, etc.)
+- `syntax.go`: Provider/model syntax parsing
+
+**Strengths:**
+✅ Well-separated concerns (flags, config, commands)  
+✅ Flexible provider syntax (`provider/model`)  
+✅ Command handlers grouped in subpackage  
+
+**Issues:**
+❌ **Inconsistent error handling:** Commands print directly with `fmt.Print`, no error channel  
+❌ Flag parsing uses ad-hoc string parsing (not standardized library)  
+❌ No unified command interface — each command is standalone function  
+❌ Command context not consistently passed — some commands need re-parsing  
+❌ No subcommand registry — difficult to add new commands  
+❌ REPL command implementation mixed with REPL logic (REPL is in internal/app, not cli)  
+
+**Refactoring Opportunity:**
+- Create `Command` interface for consistent command pattern
+- Implement command registry for extensibility
+- Centralize command error handling
+- Use standard `flag` package or `urfave/cli` for parsing
+- Extract REPL commands from internal/app into pkg/cli/commands
+
+---
+
+### 2.8 Models Package (pkg/models/)
+
+**Current Structure:**
+- `factory.go`: Concrete model factories (Gemini, OpenAI, Vertex AI)
+- `provider.go`: Provider metadata and registry
+- `registry.go`: Model resolution and listing
+- `types.go`: Capability and Config definitions
+- `openai_adapter.go` (~300 lines): Adapter to make OpenAI compatible with ADK's model interface
+- `openai_adapter_helpers.go` (~400 lines): Helper functions for OpenAI integration
+
+**Strengths:**
+✅ Good abstraction over provider differences  
+✅ Unified interface via ADK's `model.LLM`  
+✅ Provider metadata well-structured  
+✅ Registry pattern for model discovery  
+
+**Issues:**
+❌ **Massive code duplication:** OpenAI adapter is 700+ lines of complex integration logic  
+❌ OpenAI integration tightly coupled to specific response format conversions  
+❌ No clear strategy for adding new providers (would require another 700-line adapter)  
+❌ Helper functions in `openai_adapter_helpers.go` lack documentation  
+❌ Type conversions between OpenAI and genai formats are error-prone  
+❌ Tool parameter mapping logic duplicated across adapter and helpers  
+❌ No abstraction for provider adapter pattern — makes next provider harder  
+
+**Refactoring Opportunity:**
+- Extract `ProviderAdapter` interface to standardize provider integration
+- Create `ResponseConverter` and `RequestConverter` interfaces
+- Separate OpenAI tool mapping logic into `ToolParameterMapper` interface
+- Document response format assumptions for each provider
+- Plan adapter architecture to reduce duplication for future providers
+
+---
+
+### 2.9 Internal/App: REPL (repl.go)
+
+**Current Structure:**
+- `repl.go` (~400 lines): Interactive loop for user prompts and agent execution
+- `repl_test.go`: Basic test coverage
+
+**Strengths:**
+✅ Clean separation of REPL loop from application
+✅ Streaming display integration
+✅ History management
+
+**Issues:**
+❌ **Large monolithic file:** 400+ lines in single file with multiple responsibilities  
+❌ Command parsing embedded in REPL loop (history, help, set-model, etc.)  
+❌ No clear interface for REPL commands — all handled inline  
+❌ History formatting tied to specific display format  
+❌ Error handling inconsistent (some errors logged, some printed)  
+❌ Agent interaction tightly coupled (hard to swap runner)  
+
+**Refactoring Opportunity:**
+- Extract REPL commands into command interface/registry
+- Create `REPLCommand` interface with implementations (HistoryCommand, HelpCommand, etc.)
+- Separate command parsing into `REPLCommandParser`
+- Move session integration to dedicated component
+
+---
+
+## 3. Cross-Cutting Concerns
+
+### 3.1 Error Handling
+
+**Current State:**
+- No unified error strategy
+- Mix of custom error types (`common.ToolError`) and generic `error`
+- Errors inconsistently wrapped and propagated
+- No structured error codes or categories
+
+**Impact:** Makes debugging difficult, inconsistent error recovery
+
+**Recommendation:**
+- Create `errors.go` with standard error types and codes
+- Use `fmt.Errorf()` with `%w` consistently
+- Add error context at package boundaries
+
+---
+
+### 3.2 Dependency Injection
+
+**Current State:**
+- Tightly coupled concrete dependencies throughout
+- No abstraction layers for external systems (file I/O, execution)
+- Components initialized sequentially with implicit dependencies
+
+**Impact:** Hard to test, difficult to swap implementations, brittle initialization order
+
+**Recommendation:**
+- Create component factories with explicit dependency graphs
+- Consider lightweight DI pattern (not full container, stay pragmatic)
+- Add interfaces at system boundaries
+
+---
+
+### 3.3 Testing Strategy
+
+**Current State:**
+- 30-40 unit tests across codebase
+- Heavy reliance on integration tests
+- Limited test coverage for complex components (display, REPL, agent)
+- No test fixtures for common scenarios
+
+**Impact:** Regressions can escape detection, refactoring is risky
+
+**Recommendation:**
+- Add unit tests for newly refactored components
+- Create test fixtures for display rendering
+- Mock external dependencies (file I/O, execution)
+
+---
+
+### 3.4 Documentation & Comments
+
+**Current State:**
+- Package-level documentation present
+- Inline comments sparse in complex logic
+- ADK framework usage patterns not documented
+- No architecture decision records
+
+**Impact:** Hard for newcomers to understand design decisions
+
+**Recommendation:**
+- Add detailed comments in complex algorithms (path resolution, prompt building)
+- Document ADK pattern usage (tool registration, session management)
+- Add decision records for major architecture choices
+
+---
+
+## 4. Modularity Assessment
+
+### Current Modularity Score: 6/10
+
+| Aspect | Score | Notes |
+|--------|-------|-------|
+| Package Organization | 8/10 | Good separation, but some packages have too many concerns |
+| Interface Design | 5/10 | Few interfaces, tight coupling to concrete types |
+| Dependency Management | 5/10 | Complex implicit dependencies, sequential initialization |
+| Code Reuse | 6/10 | Some duplication (OpenAI adapter, tool patterns) |
+| Testability | 6/10 | Testable but requires many mocks |
+| Documentation | 7/10 | Good package docs, sparse implementation comments |
+| Extensibility | 6/10 | Adding new tools easy, new providers hard |
+
+---
+
+## 5. Identified Refactoring Targets (Priority Order)
+
+### High Priority (High Impact, Low Risk)
+1. **Extract display tool rendering** — Decouple tool execution from display
+2. **Consolidate tool re-exports** — Reduce facade verbosity
+3. **Create model provider adapter interface** — Prepare for future providers
+4. **Improve error handling consistency** — Add unified error types and codes
+
+### Medium Priority (Good Impact, Medium Risk)
+5. **Extract component factories** — Make initialization testable
+6. **Create REPL command interface** — Break up monolithic REPL file
+7. **Formalize tool lifecycle hooks** — Better state management
+8. **Separate prompt building concerns** — Extract composable prompt builders
+
+### Low Priority (Specialized Improvements)
+9. **Lazy tool registration** — Performance optimization, marginal impact
+10. **Command interface in CLI** — Nice-to-have for extensibility
+11. **Session state machine** — Defensive improvement, low current pain
+
+---
+
+## 6. Code Quality Observations
+
+### Strengths (What's Working Well)
+✅ **Excellent tool framework:** Auto-registration pattern is elegant and scalable  
+✅ **Rich display system:** Multiple output formats, real-time streaming  
+✅ **Good package organization:** Clear domain boundaries  
+✅ **Consistent naming:** Most files and functions follow clear conventions  
+✅ **Comprehensive tool coverage:** 20+ tools well-implemented  
+✅ **Working multi-workspace support:** Non-trivial feature implemented cleanly  
+✅ **Test coverage exists:** Most packages have some tests  
+
+### Weaknesses (Where Refactoring Helps)
+❌ **Tightly coupled components:** Display, tools, agent interdependencies  
+❌ **God objects:** Application, Manager, StreamingDisplay doing too much  
+❌ **Duplicated logic:** OpenAI adapter is 700+ lines; unclear how to add providers  
+❌ **Limited abstraction layers:** Few interfaces, many concrete type dependencies  
+❌ **Missing error types:** Generic error handling makes debugging harder  
+❌ **Monolithic REPL:** 400+ lines of mixed concerns  
+❌ **Facade re-exports:** tools.go is verbose and doesn't add value  
+
+---
+
+## 7. Pragmatic Go Best Practices Checklist
+
+| Practice | Current | Target | Status |
+|----------|---------|--------|--------|
+| Package organization | Good | Excellent | Improve |
+| Interface design | Minimal | Moderate | Add strategically |
+| Error handling | Mixed | Unified | Standardize |
+| Dependency injection | Implicit | Explicit | Formalize |
+| Testing patterns | Present | More thorough | Expand |
+| Documentation | Good | Complete | Improve |
+| Code duplication | Moderate | Low | Reduce |
+| Abstraction layers | Few | Strategic | Add at boundaries |
+| SOLID principles | Partial | More consistent | Improve |
+
+---
+
+## Summary
+
+The codebase is **well-organized at the package level** but has **moderate coupling between components**. The tool framework is particularly strong, while the display/tool integration and model provider abstraction need attention.
+
+**Key Strategy for Refactoring:**
+1. Extract interfaces at system boundaries (display, models, tools)
+2. Break up god objects into focused components
+3. Consolidate duplicated patterns (OpenAI adapter, REPL commands)
+4. Improve error handling and testing infrastructure
+5. Keep pragmatic — avoid over-engineering, focus on high-impact changes
+6. Use composition over inheritance
+7. Maintain existing public APIs where possible to avoid breaking changes
+
+**Risk Profile:** LOW for careful, incremental refactoring. Each change can be tested independently.
+
+---
+
+*End of Analysis*

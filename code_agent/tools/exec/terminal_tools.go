@@ -12,6 +12,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
+	"code_agent/pkg/errors"
 	"code_agent/tools/common"
 )
 
@@ -78,7 +79,7 @@ func NewExecuteCommandTool() (tool.Tool, error) {
 			} else {
 				return ExecuteCommandOutput{
 					Success: false,
-					Error:   fmt.Sprintf("Failed to execute command: %v", err),
+					Error:   errors.ExecutionError(input.Command, err).Error(),
 				}
 			}
 		}
