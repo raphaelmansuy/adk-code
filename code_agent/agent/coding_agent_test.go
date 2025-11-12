@@ -94,6 +94,117 @@ func TestConfig_Fields(t *testing.T) {
 	}
 }
 
+func TestConfig_Default(t *testing.T) {
+	// Test that Config can be created with zero values
+	cfg := Config{}
+
+	if cfg.Model != nil {
+		t.Errorf("expected Model=nil for empty config, got %v", cfg.Model)
+	}
+	if cfg.WorkingDirectory != "" {
+		t.Errorf("expected WorkingDirectory='', got '%s'", cfg.WorkingDirectory)
+	}
+	if cfg.EnableMultiWorkspace {
+		t.Error("expected EnableMultiWorkspace=false for empty config")
+	}
+	if cfg.EnableThinking {
+		t.Error("expected EnableThinking=false for empty config")
+	}
+	if cfg.ThinkingBudget != 0 {
+		t.Errorf("expected ThinkingBudget=0, got %d", cfg.ThinkingBudget)
+	}
+}
+
+func TestConfig_WithThinkingBudget(t *testing.T) {
+	// Test Config with thinking enabled
+	cfg := Config{
+		EnableThinking: true,
+		ThinkingBudget: 50000,
+	}
+
+	if !cfg.EnableThinking {
+		t.Error("expected EnableThinking=true")
+	}
+	if cfg.ThinkingBudget != 50000 {
+		t.Errorf("expected ThinkingBudget=50000, got %d", cfg.ThinkingBudget)
+	}
+}
+
+func TestPromptContext_Empty(t *testing.T) {
+	// Test PromptContext with no workspace
+	ctx := PromptContext{
+		HasWorkspace: false,
+	}
+
+	if ctx.HasWorkspace {
+		t.Error("expected HasWorkspace=false")
+	}
+	if ctx.WorkspaceRoot != "" {
+		t.Errorf("expected WorkspaceRoot='', got '%s'", ctx.WorkspaceRoot)
+	}
+}
+
+func TestPromptContext_WithWorkspace(t *testing.T) {
+	// Test PromptContext with workspace info
+	ctx := PromptContext{
+		HasWorkspace:        true,
+		WorkspaceRoot:       "/home/user/project",
+		WorkspaceSummary:    "Project with Go files",
+		EnvironmentMetadata: "Git: main branch, 10 commits",
+	}
+
+	if !ctx.HasWorkspace {
+		t.Error("expected HasWorkspace=true")
+	}
+	if ctx.WorkspaceRoot != "/home/user/project" {
+		t.Errorf("expected WorkspaceRoot=/home/user/project, got %s", ctx.WorkspaceRoot)
+	}
+	if ctx.WorkspaceSummary != "Project with Go files" {
+		t.Errorf("expected proper WorkspaceSummary, got %s", ctx.WorkspaceSummary)
+	}
+}
+
+func TestConfig_WorkingDirectoryCanBeEmpty(t *testing.T) {
+	// Working directory should be able to be empty (will use current dir)
+	cfg := Config{
+		WorkingDirectory: "",
+	}
+
+	if cfg.WorkingDirectory != "" {
+		t.Errorf("expected empty WorkingDirectory, got '%s'", cfg.WorkingDirectory)
+	}
+}
+
+func TestConfig_MultiWorkspaceIndependent(t *testing.T) {
+	// MultiWorkspace and thinking should be independent flags
+	tests := []struct {
+		name                 string
+		enableMultiWorkspace bool
+		enableThinking       bool
+	}{
+		{"both enabled", true, true},
+		{"only multi-workspace", true, false},
+		{"only thinking", false, true},
+		{"both disabled", false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{
+				EnableMultiWorkspace: tt.enableMultiWorkspace,
+				EnableThinking:       tt.enableThinking,
+			}
+
+			if cfg.EnableMultiWorkspace != tt.enableMultiWorkspace {
+				t.Errorf("expected EnableMultiWorkspace=%v, got %v", tt.enableMultiWorkspace, cfg.EnableMultiWorkspace)
+			}
+			if cfg.EnableThinking != tt.enableThinking {
+				t.Errorf("expected EnableThinking=%v, got %v", tt.enableThinking, cfg.EnableThinking)
+			}
+		})
+	}
+}
+
 func TestGetProjectRoot_FindsGoMod(t *testing.T) {
 	// Get current working directory
 	workDir, err := os.Getwd()
