@@ -3,10 +3,11 @@ package app
 import (
 	"testing"
 
-	"code_agent/display"
+	"code_agent/internal/display"
+	intrepl "code_agent/internal/repl"
 )
 
-// TestNewREPL_CreatesAndCloses tests the facade
+// TestNewREPL_CreatesAndCloses tests REPL creation
 func TestNewREPL_CreatesAndCloses(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
@@ -16,14 +17,14 @@ func TestNewREPL_CreatesAndCloses(t *testing.T) {
 		t.Fatalf("failed to create renderer: %v", err)
 	}
 
-	cfg := REPLConfig{
+	cfg := intrepl.Config{
 		Renderer:       renderer,
 		BannerRenderer: display.NewBannerRenderer(renderer),
 	}
 
-	r, err := NewREPL(cfg)
+	r, err := intrepl.New(cfg)
 	if err != nil {
-		t.Fatalf("NewREPL error: %v", err)
+		t.Fatalf("repl.New error: %v", err)
 	}
 
 	if r == nil {

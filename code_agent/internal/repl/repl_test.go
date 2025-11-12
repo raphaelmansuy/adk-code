@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"code_agent/display"
+	"code_agent/internal/display"
 )
 
 func TestNew_CreatesAndCloses(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"code_agent/display"
 	"code_agent/internal/config"
+	"code_agent/internal/display"
 )
 
 func TestDisplayComponentFactory(t *testing.T) {

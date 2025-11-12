@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"code_agent/display"
+	"code_agent/internal/display"
 	"code_agent/pkg/models"
 	"code_agent/tracking"
 )

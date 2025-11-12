@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"code_agent/internal/app"
-	"code_agent/internal/commands"
+	clicommands "code_agent/internal/cli/commands"
 	"code_agent/internal/config"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	cfg, args := config.LoadFromEnv()
 
 	// Handle special commands (new-session, list-sessions, etc.)
-	if commands.HandleSpecialCommands(ctx, args, &cfg) {
+	if clicommands.HandleSpecialCommands(ctx, args, &cfg) {
 		os.Exit(0)
 	}
 

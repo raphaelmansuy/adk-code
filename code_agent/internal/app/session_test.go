@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"code_agent/display"
+	"code_agent/internal/display"
 	"code_agent/internal/session"
 )
 

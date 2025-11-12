@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"code_agent/display"
+	"code_agent/internal/display"
 	"code_agent/internal/session"
 )
 

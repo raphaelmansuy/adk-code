@@ -4,7 +4,7 @@ import (
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/runner"
 
-	"code_agent/display"
+	"code_agent/internal/display"
 	"code_agent/internal/session"
 	"code_agent/pkg/models"
 	"code_agent/tracking"

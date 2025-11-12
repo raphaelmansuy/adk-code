@@ -9,8 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"code_agent/display"
 	"code_agent/internal/config"
+	"code_agent/internal/display"
+	"code_agent/internal/orchestration"
+	intrepl "code_agent/internal/repl"
 	"code_agent/internal/runtime"
 	"code_agent/internal/session"
 	"code_agent/pkg/models"
@@ -19,9 +21,9 @@ import (
 
 func TestInitializeDisplay_SetsFields(t *testing.T) {
 	cfg := &config.Config{OutputFormat: display.OutputFormatPlain, TypewriterEnabled: true}
-	display, err := initializeDisplayComponents(cfg)
+	display, err := orchestration.InitializeDisplayComponents(cfg)
 	if err != nil {
-		t.Fatalf("initializeDisplayComponents failed: %v", err)
+		t.Fatalf("InitializeDisplayComponents failed: %v", err)
 	}
 	if display == nil || display.Renderer == nil || display.BannerRenderer == nil || display.Typewriter == nil || display.StreamDisplay == nil {
 		t.Fatalf("display components not initialized")
@@ -34,7 +36,7 @@ func TestInitializeDisplay_SetsFields(t *testing.T) {
 func TestInitializeREPL_Setup(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfg := &config.Config{SessionName: "sess1", WorkingDirectory: tmpDir}
-	displayComp, err := initializeDisplayComponents(cfg)
+	displayComp, err := orchestration.InitializeDisplayComponents(cfg)
 	if err != nil {
 		t.Fatalf("init display err: %v", err)
 	}
@@ -63,7 +65,7 @@ func TestApplicationClose_Completes(t *testing.T) {
 	}
 	// Create minimal application with a display and session manager
 	cfg := &config.Config{OutputFormat: display.OutputFormatPlain}
-	displayComp, _ := initializeDisplayComponents(cfg)
+	displayComp, _ := orchestration.InitializeDisplayComponents(cfg)
 	a := &Application{config: cfg, session: &SessionComponents{Manager: sm}, display: displayComp}
 	// Create a minimal REPL to ensure Close calls don't panic
 	a.session.Tokens = tracking.NewSessionTokens()
@@ -97,8 +99,8 @@ func TestNew_GeminiMissingAPIKeyReturnsError(t *testing.T) {
 func TestInitializeAgent_ReturnsErrorWhenMissingModel(t *testing.T) {
 	cfg := &config.Config{WorkingDirectory: t.TempDir()}
 	// nil LLM should cause error
-	if _, err := initializeAgentComponent(context.Background(), cfg, nil); err == nil {
-		t.Fatalf("expected initializeAgentComponent to error when LLM model is nil")
+	if _, err := orchestration.InitializeAgentComponent(context.Background(), cfg, nil); err == nil {
+		t.Fatalf("expected InitializeAgentComponent to error when LLM model is nil")
 	}
 }
 
@@ -130,10 +132,10 @@ type mockAgent struct{}
 
 func TestREPL_Run_ExitsOnCanceledContext(t *testing.T) {
 	renderer, _ := display.NewRenderer(display.OutputFormatPlain)
-	cfg := REPLConfig{Renderer: renderer, BannerRenderer: display.NewBannerRenderer(renderer)}
-	r, err := NewREPL(cfg)
+	cfg := intrepl.Config{Renderer: renderer, BannerRenderer: display.NewBannerRenderer(renderer)}
+	r, err := intrepl.New(cfg)
 	if err != nil {
-		t.Fatalf("NewREPL failed: %v", err)
+		t.Fatalf("repl.New failed: %v", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -156,10 +158,10 @@ func TestREPL_Run_ExitsOnCanceledContext(t *testing.T) {
 
 func TestApplicationRun_ExitsWhenContextCanceled(t *testing.T) {
 	renderer, _ := display.NewRenderer(display.OutputFormatPlain)
-	cfg := REPLConfig{Renderer: renderer, BannerRenderer: display.NewBannerRenderer(renderer)}
-	repl, err := NewREPL(cfg)
+	cfg := intrepl.Config{Renderer: renderer, BannerRenderer: display.NewBannerRenderer(renderer)}
+	repl, err := intrepl.New(cfg)
 	if err != nil {
-		t.Fatalf("NewREPL failed: %v", err)
+		t.Fatalf("repl.New failed: %v", err)
 	}
 
 	// Build application with a canceled signal handler

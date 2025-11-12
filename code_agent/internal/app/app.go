@@ -12,6 +12,7 @@ import (
 
 	"code_agent/internal/config"
 	"code_agent/internal/orchestration"
+	"code_agent/internal/repl"
 	"code_agent/internal/runtime"
 )
 
@@ -26,7 +27,7 @@ type Application struct {
 	model         *ModelComponents
 	agent         agent.Agent
 	session       *SessionComponents
-	repl          *REPL
+	repl          *repl.REPL
 }
 
 // New creates a new Application instance using the builder pattern
@@ -99,7 +100,7 @@ func (a *Application) resolveWorkingDirectory() string {
 // initializeREPL sets up the REPL
 func (a *Application) initializeREPL() error {
 	var err error
-	a.repl, err = NewREPL(REPLConfig{
+	a.repl, err = repl.New(repl.Config{
 		UserID:           "user1",
 		SessionName:      a.config.SessionName,
 		Renderer:         a.display.Renderer,

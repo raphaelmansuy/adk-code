@@ -3,8 +3,8 @@ package orchestration
 import (
 	"fmt"
 
-	"code_agent/display"
 	"code_agent/internal/config"
+	"code_agent/internal/display"
 )
 
 // displayInitializer handles display component setup

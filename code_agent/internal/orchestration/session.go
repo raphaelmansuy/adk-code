@@ -7,8 +7,8 @@ import (
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
 
-	"code_agent/display"
 	"code_agent/internal/config"
+	"code_agent/internal/display"
 	"code_agent/internal/session"
 	"code_agent/tracking"
 )

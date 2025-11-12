@@ -13,8 +13,8 @@ import (
 	sessionpkg "google.golang.org/adk/session"
 	"google.golang.org/genai"
 
-	"code_agent/display"
 	"code_agent/internal/cli"
+	"code_agent/internal/display"
 	"code_agent/pkg/models"
 	"code_agent/tracking"
 )

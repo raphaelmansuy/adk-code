@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/adk/model"
 
-	"code_agent/display"
 	"code_agent/internal/cli"
 	"code_agent/internal/config"
+	"code_agent/internal/display"
 	"code_agent/pkg/models"
 	"code_agent/pkg/models/factories"
 )

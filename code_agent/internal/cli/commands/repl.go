@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	agentprompts "code_agent/agent_prompts"
-	"code_agent/display"
+	"code_agent/internal/display"
 	"code_agent/pkg/models"
 	"code_agent/tools"
 	"code_agent/tracking"

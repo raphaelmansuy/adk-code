@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"code_agent/display"
 	clicommands "code_agent/internal/cli/commands"
+	"code_agent/internal/display"
 	"code_agent/pkg/models"
 	"code_agent/tracking"
 )

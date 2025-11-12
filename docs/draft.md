@@ -48,6 +48,97 @@ Starting deep analysis of code_agent/ to understand current architecture and ide
    - Streaming display
    - ~4000+ LOC in this package alone
 
+---
+
+## Deep Dive Analysis - November 12, 2025 (Continued)
+
+### Directory Structure Deep Dive
+
+```
+code_agent/
+├── main.go                  # Entry point (32 lines) - CLEAN
+├── go.mod                   # Dependencies
+├── agent_prompts/          # Agent system prompts
+├── cmd/                    # CLI special commands
+│   └── commands/
+│       └── handlers.go     # Special command handlers
+├── display/                # Terminal UI rendering (ROOT LEVEL - QUESTION)
+├── internal/               # Private application code
+│   ├── app/               # Application orchestration
+│   │   ├── app.go         # Main Application struct
+│   │   ├── components.go  # Type aliases
+│   │   ├── factories.go   # Component factories
+│   │   ├── orchestration.go # OLD orchestration logic
+│   │   ├── repl.go        # REPL implementation
+│   │   ├── session.go     # Session initialization
+│   │   ├── signals.go     # Signal handling
+│   │   └── utils.go       # Utilities
+│   ├── cli/               # CLI utilities
+│   │   └── commands/      # CLI command implementations
+│   ├── commands/          # DUPLICATE? Command handlers
+│   ├── config/            # Configuration management
+│   ├── llm/               # LLM client factories (Gemini, OpenAI, Vertex)
+│   ├── orchestration/     # NEW orchestration pattern (builder)
+│   │   ├── agent.go
+│   │   ├── builder.go     # Orchestrator builder
+│   │   ├── components.go  # Component structs
+│   │   ├── display.go
+│   │   ├── model.go
+│   │   ├── session.go
+│   │   └── utils.go
+│   ├── repl/              # REPL package (separate from app/repl.go?)
+│   ├── runtime/           # Signal handling
+│   └── session/           # Session management
+├── pkg/                    # Public packages
+│   ├── errors/            # Error types
+│   ├── models/            # Data models
+│   └── testutil/          # Test utilities
+├── tools/                  # Agent tools
+│   ├── base/              # Base common types (was "common")
+│   ├── display/           # Display tools
+│   ├── edit/              # Edit tools
+│   ├── exec/              # Execution tools
+│   ├── file/              # File tools
+│   ├── search/            # Search tools
+│   ├── v4a/               # V4A patch tools
+│   ├── workspace/         # Workspace tools
+│   └── tools.go           # Public facade
+├── tracking/               # Task/todo tracking
+└── workspace/              # Workspace resolution
+```
+
+### Issues Identified
+
+#### 1. **Orchestration Confusion** ⚠️ HIGH PRIORITY
+- **OLD**: `internal/app/orchestration.go` has initialization functions
+- **NEW**: `internal/orchestration/` package has builder pattern
+- The new builder is cleaner but both exist causing confusion
+- `internal/app/app.go` uses the NEW orchestration builder ✓
+- Solution: Remove old orchestration.go from app/
+
+#### 2. **Command Duplication** ⚠️ MEDIUM PRIORITY  
+- `cmd/commands/handlers.go` - special commands (new-session, list-sessions)
+- `internal/commands/` package - exists but what does it contain?
+- `internal/cli/commands/` - CLI command implementations
+- THREE different command-related locations!
+
+#### 3. **Display Package Location** ⚠️ LOW-MEDIUM PRIORITY
+- `display/` at root level seems like internal concern
+- Should it be `internal/display/`?
+- Counter-argument: If it's meant to be reusable, keep at root
+- BUT it's tightly coupled to agent application
+
+#### 4. **REPL Duplication** ⚠️ MEDIUM PRIORITY
+- `internal/app/repl.go` has REPL struct and implementation
+- `internal/repl/` package exists - what's in there?
+- Potential overlap/confusion
+
+#### 5. **Tools Package Structure** ✓ GOOD
+- Well organized by category
+- Clean auto-registration pattern
+- Public facade pattern works well
+- Keep this as-is!
+
 5. **Data Layer** (`internal/data/`)
    - Repository pattern
    - SQLite and in-memory implementations
@@ -207,6 +298,108 @@ Starting deep analysis of code_agent/ to understand current architecture and ide
 - **Phase 2** (Display): Medium risk - many files and imports to update
 - **Phase 3** (App): High risk - core application flow changes
 - **Phase 4** (Session): Medium risk - data persistence changes
+
+---
+
+## FINAL ANALYSIS COMPLETE - November 12, 2025
+
+### Comprehensive Audit Created
+
+**Document:** `docs/audit.md` (1000+ lines)
+
+**Includes:**
+1. Executive summary with key findings
+2. Detailed package structure analysis (~23K LOC breakdown)
+3. Current architecture patterns assessment
+4. 4 critical issues identified with solutions:
+   - Display Package Monolith (5440 LOC) - decomposition plan
+   - Deprecated facades - removal strategy
+   - Command handler duplication - consolidation plan
+   - Session management split - documentation improvement
+5. Go best practices assessment (strengths & weaknesses)
+6. 6-phase refactoring plan with timelines
+7. Validation strategy for 0% regression
+8. Risk mitigation strategies
+9. Success criteria (quantitative & qualitative)
+10. Detailed checklists and rollback procedures
+
+### Key Recommendations (Priority Order)
+
+**HIGH PRIORITY (Week 1-2):**
+1. Remove deprecated orchestration.go and repl.go facades
+2. Consolidate command handlers (3 locations → 1)
+3. Begin display package decomposition
+
+**MEDIUM PRIORITY (Week 3-4):**
+4. Complete display package decomposition
+5. Update all documentation
+6. Add integration tests
+
+**LOW PRIORITY (Week 5+):**
+7. Optional enhancements (performance, explicit tool registration)
+
+### What NOT to Change ✓
+
+Keep as-is (works well):
+- tools/ package structure and auto-registration
+- workspace/ package design
+- pkg/errors/ error handling
+- internal/orchestration/ builder pattern
+- agent_prompts/ core logic
+- internal/llm/ provider abstraction
+
+### Validation Strategy
+
+Every phase requires:
+- ✅ `make fmt` - code formatting
+- ✅ `make vet` - static analysis
+- ✅ `make test` - all tests pass
+- ✅ `make build` - build succeeds
+- ✅ Integration testing - manual verification
+
+### Estimated Effort
+
+- **Timeline:** 5-7 weeks
+- **Effort:** 58-92 hours
+- **Resource:** 1 FTE or 2 part-time developers
+- **Risk:** Low-Medium with proper validation
+
+### Success Metrics
+
+**Quantitative:**
+- No package > 2000 LOC
+- Display split into ~6 subpackages (500-1000 LOC each)
+- All tests pass (100%)
+- No performance regression
+
+**Qualitative:**
+- Clearer package boundaries
+- Better code discoverability
+- Easier maintenance
+- Reduced cognitive load
+
+### Analysis Methodology
+
+1. ✅ Explored all 167 Go files
+2. ✅ Analyzed package structure (LOC breakdown)
+3. ✅ Identified architectural patterns
+4. ✅ Found duplicate/deprecated code
+5. ✅ Assessed against Go best practices
+6. ✅ Created pragmatic refactoring plan
+7. ✅ Designed validation strategy
+8. ✅ Planned risk mitigation
+9. ✅ Documented everything in audit.md
+
+### Confidence Level: HIGH
+
+This plan is:
+- **Pragmatic** - Focus on high-impact changes
+- **Safe** - Incremental with validation gates
+- **Reversible** - Easy rollback at any point
+- **Zero-regression** - All tests must pass always
+- **Well-documented** - Comprehensive checklists and guides
+
+**Ready for review and approval.**
 - **Phase 5** (Tools): Medium risk - initialization flow changes
 - **Phase 6-9**: Low risk - mostly additive or organizational
 
