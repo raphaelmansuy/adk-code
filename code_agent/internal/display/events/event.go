@@ -10,7 +10,7 @@ import (
 	rdr "code_agent/internal/display/renderer"
 	"code_agent/internal/display/streaming"
 	"code_agent/internal/display/tools"
-	"code_agent/tracking"
+	"code_agent/internal/tracking"
 
 	"google.golang.org/adk/session"
 )

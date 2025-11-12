@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"code_agent/agent_prompts/prompts"
+	"code_agent/internal/prompts/prompts"
 	"code_agent/tools"
 )
 

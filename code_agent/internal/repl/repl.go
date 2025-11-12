@@ -15,8 +15,8 @@ import (
 
 	"code_agent/internal/cli"
 	"code_agent/internal/display"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
-	"code_agent/tracking"
 )
 
 // Config holds configuration for the REPL

@@ -1,7 +1,7 @@
 package agent_prompts
 
 import (
-	"code_agent/agent_prompts/prompts"
+	"code_agent/internal/prompts/prompts"
 	"strings"
 	"testing"
 )

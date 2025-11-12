@@ -15,8 +15,8 @@ import (
 	intrepl "code_agent/internal/repl"
 	"code_agent/internal/runtime"
 	"code_agent/internal/session"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
-	"code_agent/tracking"
 )
 
 func TestInitializeDisplay_SetsFields(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 
 	"code_agent/internal/display"
 	"code_agent/internal/session"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
-	"code_agent/tracking"
 )
 
 // DisplayComponents groups all display-related fields

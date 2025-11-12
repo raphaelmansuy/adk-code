@@ -8,8 +8,8 @@ import (
 
 	clicommands "code_agent/internal/cli/commands"
 	"code_agent/internal/display"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
-	"code_agent/tracking"
 )
 
 // HandleCLICommands processes special CLI commands (new-session, list-sessions, etc.)

@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"code_agent/internal/display"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
-	"code_agent/tracking"
 )
 
 // REPLCommand defines the interface for REPL commands

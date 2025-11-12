@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	agentprompts "code_agent/agent_prompts"
 	"code_agent/internal/display"
+	agentprompts "code_agent/internal/prompts"
+	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
 	"code_agent/tools"
-	"code_agent/tracking"
 )
 
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.

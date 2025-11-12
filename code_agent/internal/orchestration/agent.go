@@ -7,8 +7,8 @@ import (
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/model"
 
-	agentprompts "code_agent/agent_prompts"
 	"code_agent/internal/config"
+	agentprompts "code_agent/internal/prompts"
 )
 
 // InitializeAgentComponent creates the coding agent

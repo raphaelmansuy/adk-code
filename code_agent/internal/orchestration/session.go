@@ -10,7 +10,7 @@ import (
 	"code_agent/internal/config"
 	"code_agent/internal/display"
 	"code_agent/internal/session"
-	"code_agent/tracking"
+	"code_agent/internal/tracking"
 )
 
 // sessionInitializer handles session and runner setup

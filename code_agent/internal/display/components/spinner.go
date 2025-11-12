@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"code_agent/internal/display/core"
-	"code_agent/tracking"
+	"code_agent/internal/tracking"
 )
 
 // SpinnerStyle defines the animation style for a spinner

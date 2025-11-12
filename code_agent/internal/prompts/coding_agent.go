@@ -11,8 +11,8 @@ import (
 	"google.golang.org/genai"
 
 	pkgerrors "code_agent/pkg/errors"
+	"code_agent/pkg/workspace"
 	"code_agent/tools"
-	"code_agent/workspace"
 )
 
 // Config holds the configuration for creating the coding agent.
