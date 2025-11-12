@@ -80,13 +80,32 @@ if not os.path.exists(folder):
     os.makedirs(folder) # Creates intermediate directories if needed
     print(f"Created directory: {folder}")
 
-# Deleting a file (use with caution!)
-# Example: os.remove("path/to/my_file.txt")
-# This would delete the file if it exists.
+# Deleting and Renaming Files (Use with caution!)
+# Ensure the 'my_data' directory exists from previous examples
+if not os.path.exists(folder):
+    os.makedirs(folder)
+
+temp_file = os.path.join(folder, "temp_delete.txt")
+renamed_file = os.path.join(folder, "renamed_file.txt")
+
+# Create a dummy file for demonstration
+with open(temp_file, "w") as f:
+    f.write("This is a temporary file.")
+print(f"\nCreated dummy file: {temp_file}")
 
 # Renaming a file
-# Example: os.rename("old_name.txt", "new_name.txt")
-# This would rename 'old_name.txt' to 'new_name.txt'.
+if os.path.exists(temp_file):
+    os.rename(temp_file, renamed_file)
+    print(f"Renamed {os.path.basename(temp_file)} to {os.path.basename(renamed_file)}")
+else:
+    print(f"File {temp_file} not found for renaming.")
+
+# Deleting a file
+if os.path.exists(renamed_file):
+    os.remove(renamed_file)
+    print(f"Deleted file: {os.path.basename(renamed_file)}")
+else:
+    print(f"File {renamed_file} not found for deletion.")
 ```
 
 ### Writing to Files (Using the `with` statement)

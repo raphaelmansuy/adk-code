@@ -19,8 +19,8 @@ type ReadFileInput struct {
 	Path string `json:"path" jsonschema:"Path to the file to read"`
 	// Offset is the starting line number (1-indexed, optional).
 	Offset *int `json:"offset,omitempty" jsonschema:"Start line number (1-indexed, default: 1)"`
-	// Limit is the maximum number of lines to read (optional, 0 = all).
-	Limit *int `json:"limit,omitempty" jsonschema:"Number of lines to read (default: all)"`
+	// Limit is the maximum number of lines to read (optional, default: 1000).
+	Limit *int `json:"limit,omitempty" jsonschema:"Number of lines to read (default: 1000)"`
 }
 
 // ReadFileOutput defines the output of reading a file.
@@ -65,7 +65,11 @@ func NewReadFileTool() (tool.Tool, error) {
 			offset = *input.Offset
 		}
 
-		limit := totalLines
+		// Default limit is 1000 lines to prevent reading excessively large files
+		limit := 1000
+		if totalLines < 1000 {
+			limit = totalLines
+		}
 		if input.Limit != nil && *input.Limit > 0 {
 			limit = *input.Limit
 		}
@@ -107,7 +111,7 @@ func NewReadFileTool() (tool.Tool, error) {
 
 	t, err := functiontool.New(functiontool.Config{
 		Name:        "read_file",
-		Description: "Reads the content of a file from the filesystem with optional line range support. Use this to examine code, configuration files, or any text files.",
+		Description: "Reads the content of a file from the filesystem with optional line range support. By default, returns up to 1000 lines from the file. Use offset to start at a specific line number (1-indexed, default: 1) and limit to control the maximum number of lines returned (omit to use default of 1000). Use this to examine code, configuration files, or any text files.",
 	}, handler)
 
 	if err == nil {

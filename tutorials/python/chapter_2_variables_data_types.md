@@ -444,8 +444,7 @@ Create variables for different data types (string, integer, float, boolean) and 
 ### Exercise 3: Movie List
 Create a list of your top 5 favorite movies and print it.
 
-### Exercise 4: Squares with List Comprehension
-Use list comprehension to generate a list of squares from 0 to 9 and print the result.
+
 
 ### Exercise 5: Student Profile
 

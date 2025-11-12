@@ -248,20 +248,16 @@ for index, fruit in enumerate(fruits):
 # Item at index 1: banana
 # Item at index 2: cherry
 
-# Real-world example: Displaying a leaderboard with ranks
-players = ["Alice", "Bob", "Charlie", "David"]
-scores = [1500, 1200, 1800, 900]
+# Real-world example: Displaying a ranked list of items
+items = ["Gold Medal", "Silver Trophy", "Bronze Plaque"]
 
-# To get a ranked list, we might sort first (covered in Chapter 2, but useful here)
-# For simplicity, let's assume players are already ordered by score for this example
-print("\n--- Leaderboard ---")
-for rank, player in enumerate(players, start=1): # start=1 makes rank 1-indexed
-    print(f"Rank {rank}: {player} (Score: {scores[rank-1]}) ") # Access score using adjusted index
-# Output (assuming scores are already implicitly ordered with players):
-# Rank 1: Alice (Score: 1500)
-# Rank 2: Bob (Score: 1200)
-# Rank 3: Charlie (Score: 1800)
-# Rank 4: David (Score: 900)
+print("\n--- Award Ceremony ---")
+for rank, item in enumerate(items, start=1): # start=1 makes rank 1-indexed
+    print(f"Rank {rank}: {item}")
+# Output:
+# Rank 1: Gold Medal
+# Rank 2: Silver Trophy
+# Rank 3: Bronze Plaque
 ```
 
 #### Iterating with `zip()`
@@ -351,7 +347,7 @@ for i in range(1, 4):
 ```
 
 ### `else` with Loops (Optional Advanced Concept)
-Both `for` and `while` loops can have an optional `else` block. This `else` block executes *only if the loop completes without encountering a `break` statement*.
+Both `for` and `while` loops can have an optional `else` block. This `else` block executes *only if the loop completes without encountering a `break` statement*. This is often useful in "search" scenarios where you want to perform an action if an item was *not* found after checking all possibilities in the loop.
 
 ```python
 # Example with for-else

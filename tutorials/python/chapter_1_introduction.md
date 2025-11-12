@@ -20,7 +20,7 @@ For most general programming tasks and for **absolute beginners, the recommended
 
 **Installation Steps:**
 
-*   **Windows:** Run the installer. **Crucially, make sure to check the box "Add Python X.X to PATH"** during installation. This allows you to run Python from any command prompt. After installation, you should primarily use `python3` for all Python commands in your terminal.
+*   **Windows:** Run the installer. **Crucially, make sure to check the box "Add Python X.X to PATH"** during installation. This allows you to run Python from any command prompt. On Windows, the `python` command (after checking "Add Python to PATH") will typically invoke Python 3. You can use `python` or `py` in your terminal, and `python3` may or may not be directly available as a separate command depending on your setup.
 *   **macOS:** While macOS often comes with an older Python version, it's highly recommended to install the latest Python 3 using either [Homebrew](https://brew.sh/) (`brew install python3`) or the official installer from the Python website. You'll typically use `python3` for all Python commands in your terminal.
 *   **Linux:** Python 3 is usually pre-installed on most modern Linux distributions. You can verify its presence by typing `python3 --version` in your terminal. Always use `python3` for your Python commands.
 
@@ -32,9 +32,9 @@ For most general programming tasks and for **absolute beginners, the recommended
 - If you encounter issues during installation, check the official Python documentation or community forums for solutions.
 - Ensure that your system meets the requirements for the latest Python version.
 
-### 3. Verifying Your Installation, Setting Up a Virtual Environment, and Running Your First Program
+### 3. Verifying Your Installation and Running Your First Program
 
-Let's confirm your Python installation, set up a virtual environment, and then write and run your first program.
+Let's confirm your Python installation and then write and run your first program.
 
 1.  **Verify Python Installation:** Open your terminal or command prompt and type:
     ```bash
@@ -45,49 +45,7 @@ Let's confirm your Python installation, set up a virtual environment, and then w
     **Important: `python` vs `python3`**
     It's crucial to understand that on some systems, especially older ones, the command `python` might still invoke an outdated Python 2 installation. Python 2 is no longer supported and should not be used for new development. For all modern Python development, **always explicitly use `python3`** in your terminal to ensure you're running the correct, up-to-date version of Python 3.
 
-2.  **Understanding and Setting Up Virtual Environments:**
-    Before we dive into creating one, let's understand *why* virtual environments are so important. Imagine you're working on two different Python projects. Project A needs an older version of a library (e.g., `requests` version 1.0), while Project B requires a newer one (e.g., `requests` version 2.0). If both projects use the global Python installation, installing `requests` 2.0 for Project B would break Project A. Virtual environments solve this by creating isolated spaces for each project, allowing you to manage dependencies independently without conflicts. This ensures your projects run smoothly and predictably.
-
-    To create a simple virtual environment (recommended for every new project):
-    ```bash
-    python3 -m venv myproject_env
-    ```
-    To activate the environment:
-    ```bash
-    # On macOS/Linux/Git Bash
-    source myproject_env/bin/activate
-    # On Windows
-    .\myproject_env\Scripts\activate
-    ```
-    You'll see `(myproject_env)` in your terminal prompt, indicating the environment is active. You can deactivate it by typing `deactivate`. While we won't delve deeper into `venv` management in this introductory chapter, understanding its importance is key for future development.
-
-3.  **Understanding `pip` (Python's Package Installer):**
-    `pip` is the standard package manager for Python. It allows you to install and manage additional libraries and dependencies that are not part of the Python standard library. You'll use `pip` extensively to add functionality to your projects, such as web frameworks, data analysis tools, or machine learning libraries.
-
-    **Key `pip` Commands:**
-    *   `pip install <package_name>`: Installs a package.
-    *   `pip install --upgrade <package_name>`: Upgrades an installed package to its latest version. It's good practice to keep `pip` itself up-to-date: `pip install --upgrade pip`
-    *   `pip uninstall <package_name>`: Removes a package.
-    *   `pip list`: Shows all installed packages in the current environment.
-
-    **Mini-Example: Installing and Using a Package with `pip`**
-    Let's install a popular package called `requests`, which is used for making HTTP requests (e.g., fetching data from websites).
-    First, ensure your virtual environment is active. Then, in your terminal:
-    ```bash
-    pip install requests
-    ```
-    You should see output indicating the successful installation of `requests` and its dependencies. Now, you can use it in a Python script:
-    ```python
-    # save this as fetch_data.py
-    import requests
-
-    response = requests.get("https://api.github.com/events")
-    print(f"Status Code: {response.status_code}")
-    print(f"First 200 characters of response: {response.text[:200]}")
-    ```
-    Run this script using `python3 fetch_data.py` (ensure you are in your activated virtual environment). This demonstrates how `pip` allows you to extend Python's capabilities.
-
-4.  **Your First Python Program: "Hello, World!"**
+2.  **Your First Python Program: "Hello, World!"**
     Now, let's write and run a classic "Hello, World!" program.
 
     *   **Choose an Editor/IDE:** While any text editor works, a powerful Integrated Development Environment (IDE) like [VS Code](https://code.visualstudio.com/) is highly recommended for beginners due to its excellent Python extension, integrated terminal, debugging capabilities, and rich ecosystem of extensions.
@@ -104,7 +62,6 @@ Let's confirm your Python installation, set up a virtual environment, and then w
         ```
         Hello, World!
         ```
-
     Here's how the execution flow works:
 
     ```mermaid
@@ -132,7 +89,51 @@ Let's confirm your Python installation, set up a virtual environment, and then w
     ```
     To exit the interactive shell, type `exit()` or press `Ctrl+D` (on macOS/Linux) or `Ctrl+Z` followed by `Enter` (on Windows).
 
-Congratulations! You've just run your first Python program.
+    Congratulations! You've just run your first Python program.
+
+### 4. Understanding and Setting Up Virtual Environments
+
+Before we dive into creating one, let's understand *why* virtual environments are so important. Imagine you're working on two different Python projects. Project A needs an older version of a library (e.g., `requests` version 1.0), while Project B requires a newer one (e.g., `requests` version 2.0). If both projects use the global Python installation, installing `requests` 2.0 for Project B would break Project A. Virtual environments solve this by creating isolated spaces for each project, allowing you to manage dependencies independently without conflicts. This ensures your projects run smoothly and predictably.
+
+To create a simple virtual environment (recommended for every new project):
+```bash
+python3 -m venv myproject_env
+```
+To activate the environment:
+```bash
+# On macOS/Linux/Git Bash
+source myproject_env/bin/activate
+# On Windows
+.\myproject_env\Scripts\activate
+```
+You'll see `(myproject_env)` in your terminal prompt, indicating the environment is active. You can deactivate it by typing `deactivate`. While we won't delve deeper into `venv` management in this introductory chapter, understanding its importance is key for future development.
+
+### 5. Understanding `pip` (Python's Package Installer)
+
+`pip` is the standard package manager for Python. It allows you to install and manage additional libraries and dependencies that are not part of the Python standard library. You'll use `pip` extensively to add functionality to your projects, such as web frameworks, data analysis tools, or machine learning libraries.
+
+**Key `pip` Commands:**
+*   `pip install <package_name>`: Installs a package.
+*   `pip install --upgrade <package_name>`: Upgrades an installed package to its latest version. It's good practice to keep `pip` itself up-to-date: `pip install --upgrade pip`
+*   `pip uninstall <package_name>`: Removes a package.
+*   `pip list`: Shows all installed packages in the current environment.
+
+**Mini-Example: Installing and Using a Package with `pip`**
+Let's install a popular package called `requests`, which is used for making HTTP requests (e.g., fetching data from websites).
+First, ensure your virtual environment is active. Then, in your terminal:
+```bash
+pip install requests
+```
+You should see output indicating the successful installation of `requests` and its dependencies. Now, you can use it in a Python script:
+```python
+# save this as fetch_data.py
+import requests
+
+response = requests.get("https://api.github.com/events")
+print(f"Status Code: {response.status_code}")
+print(f"First 200 characters of response: {response.text[:200]}")
+```
+Run this script using `python3 fetch_data.py` (ensure you are in your activated virtual environment). This demonstrates how `pip` allows you to extend Python's capabilities.ram.
 
 5.  **Recommended IDEs (Integrated Development Environments)**
     While you can write Python code in any text editor, using an IDE significantly enhances your development experience with features like code auto-completion, debugging tools, and syntax highlighting.
