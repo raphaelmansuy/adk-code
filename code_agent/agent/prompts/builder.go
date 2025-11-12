@@ -1,11 +1,10 @@
 // XML-tagged prompt builder for improved LLM parsing
-package agent
+package prompts
 
 import (
 	"fmt"
 	"strings"
 
-	"code_agent/agent/prompts"
 	"code_agent/tools"
 )
 
@@ -64,17 +63,17 @@ func (pb *PromptBuilder) BuildXMLPrompt(ctx PromptContext) string {
 	// Guidance section (decision trees and best practices)
 	// Note: Don't escape this content as it contains intentional markdown formatting
 	buf.WriteString("\n<guidance><![CDATA[\n")
-	buf.WriteString(prompts.GuidanceSection)
+	buf.WriteString(GuidanceSection)
 	buf.WriteString("\n]]></guidance>\n")
 
 	// Critical rules (extracted from pitfalls)
 	buf.WriteString("\n<critical_rules priority=\"must_follow\"><![CDATA[\n")
-	buf.WriteString(prompts.PitfallsSection)
+	buf.WriteString(PitfallsSection)
 	buf.WriteString("\n]]></critical_rules>\n")
 
 	// Workflow patterns
 	buf.WriteString("\n<workflow_patterns><![CDATA[\n")
-	buf.WriteString(prompts.WorkflowSection)
+	buf.WriteString(WorkflowSection)
 	buf.WriteString("\n]]></workflow_patterns>\n")
 
 	buf.WriteString("</agent_system_prompt>")
@@ -160,37 +159,6 @@ func (pb *PromptBuilder) renderToolsXML() string {
 	return buf.String()
 }
 
-// ValidatePromptStructure validates that XML tags are properly balanced
-// Note: This is a simple validator that handles basic XML structure.
-// It processes tags inline and handles escaped content (&lt;, &gt;, etc.) and CDATA sections
-func ValidatePromptStructure(prompt string) error {
-	return prompts.ValidatePromptStructure(prompt)
-}
-
-// BuildEnhancedPromptV2 is a backward-compatible wrapper that uses XML tagging.
-// This was created during Phase 1 migration but is now deprecated.
-//
-// Deprecated: Use BuildEnhancedPromptWithContext() directly with a proper PromptContext
-func BuildEnhancedPromptV2(registry *tools.ToolRegistry) string {
-	builder := NewPromptBuilder(registry)
-
-	// Build with minimal context for backward compatibility
-	ctx := PromptContext{
-		HasWorkspace: false, // Will be filled in by caller
-	}
-
-	return builder.BuildXMLPrompt(ctx)
-}
-
-// BuildEnhancedPromptWithContext builds an XML-structured prompt with full context information.
-// This is the primary function for generating system prompts with:
-// - XML tags for hierarchical structure
-// - Conditional sections based on context (workspace, environment, etc.)
-// - CDATA sections for content with special characters
-// - Proper escaping for tool descriptions
-//
-// Use this function instead of the deprecated BuildEnhancedPrompt or BuildEnhancedPromptV2.
-func BuildEnhancedPromptWithContext(registry *tools.ToolRegistry, ctx PromptContext) string {
-	builder := NewPromptBuilder(registry)
-	return builder.BuildXMLPrompt(ctx)
-}
+// ValidatePromptStructure is implemented in _builder_cont.go to keep the
+// main builder file focused on prompt construction and rendering helpers.
+// The full implementation lives in _builder_cont.go in the same package.

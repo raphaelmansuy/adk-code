@@ -1,5 +1,5 @@
 // Workflow patterns and best practices for ADK Code Agent
-package agent
+package prompts
 
 const WorkflowSection = `## Workflow Pattern
 
@@ -40,7 +40,9 @@ Use update_task_list to show all steps upfront:
   - Keep descriptions brief but clear
   - This gives users visibility into the full scope
 
-Example: "- [ ] Add JWT library\n- [ ] Create token service\n- [ ] Update handlers"
+Example: "- [ ] Add JWT library
+- [ ] Create token service
+- [ ] Update handlers"
 
 **Step 4 - Execute with Progress Updates:**
 - Do first major step (may involve multiple tool calls)
@@ -112,7 +114,7 @@ Your workflow:
 4. **Execute step 1**: Add dependency
    - write_file or search_replace to add import
    - execute_command("go mod tidy")
-   - update_task_list: "- [x] Add go-jwt library\n- [ ] Create TokenService\n..."
+   - update_task_list: "- [x] Add go-jwt library\n- [ ] Create TokenService\n- ..."
 
 5. **Execute step 2**: Create TokenService
    - write_file for new service file
@@ -167,7 +169,9 @@ Your workflow:
    display_message(type="success",
      content="CSV export endpoint added! GET /api/export returns user data. All tests pass.")
 
-## Response Style & Communication Principles
+Total: ~8-12 tool calls for this change, depending on the complexity.
+
+### Response Style & Communication Principles
 
 ### Core Principles:
 

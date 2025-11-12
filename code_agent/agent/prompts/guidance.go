@@ -1,5 +1,5 @@
 // Decision trees and best practices for ADK Code Agent
-package agent
+package prompts
 
 const GuidanceSection = `## Communication & Transparency
 
@@ -81,7 +81,7 @@ For "Refactor UserService class":
 → Best for: fixing braces/brackets, adding imports at specific positions, inserting error handling blocks
 
 **Multiple related changes across same file:**
-→ Use **ONE search_replace call** with multiple SEARCH/REPLACE blocks (see "Batching" section)
+→ Use **ONE search_replace call** with MULTIPLE SEARCH/REPLACE blocks (see "Batching" section)
 → NOT multiple separate calls (inefficient and risks line number shifts)
 
 ### When to Execute Programs:
@@ -167,7 +167,7 @@ Both support dry_run mode - always preview first!
 ❌ execute_command: "ls -la | grep test"
    → Wrong tool, no shell interpretation
 
-### AUTO-FORMATTING AWARENESS (Critical for SEARCH Blocks)
+### AUTO-FORMATTING AWARENESS (Critical for SEARCH BLOCKS)
 
 After using write_file or search_replace, the user's editor may **automatically format the file**. This is CRITICAL to understand:
 
@@ -178,7 +178,6 @@ After using write_file or search_replace, the user's editor may **automatically 
 - Organizing imports (sorting alphabetically, grouping by type)
 - Adding/removing trailing commas in objects/arrays
 - Standardizing brace style (same-line vs new-line)
-- Adding/removing semicolons based on style guide
 
 **CRITICAL RULE:** Tool responses include the **FINAL state** after auto-formatting.
 **YOU MUST use this final state as your reference** for any subsequent SEARCH blocks.
@@ -196,7 +195,7 @@ After using write_file or search_replace, the user's editor may **automatically 
 
 When making several changes to the same file, prefer efficiency:
 
-✅ **DO: Use ONE search_replace call with MULTIPLE SEARCH/REPLACE blocks**
+✅ **DO: Use ONE search_replace call with MULTIPLE SEARCH/REPLACE BLOCKS**
 
     search_replace(path="file.go", diff="
     ------- SEARCH

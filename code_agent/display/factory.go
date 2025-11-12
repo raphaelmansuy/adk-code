@@ -1,6 +1,6 @@
 package display
 
-import "fmt"
+import pkgerrors "code_agent/pkg/errors"
 
 // ComponentsConfig holds configuration for creating display components
 type ComponentsConfig struct {
@@ -22,7 +22,7 @@ func NewComponents(cfg ComponentsConfig) (*Components, error) {
 	// Create renderer
 	renderer, err := NewRenderer(cfg.OutputFormat)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create renderer: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create renderer", err)
 	}
 
 	// Create typewriter with optional custom config

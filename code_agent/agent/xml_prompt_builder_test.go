@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	pkgerrors "code_agent/pkg/errors"
 	"code_agent/tools"
 )
 
@@ -184,6 +185,17 @@ Final content
 				t.Errorf("ValidatePromptStructure() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidatePromptStructure_CDATAUnclosed(t *testing.T) {
+	invalid := "<agent_system_prompt><![CDATA[Unclosed content"
+	err := ValidatePromptStructure(invalid)
+	if err == nil {
+		t.Fatalf("expected error for unclosed CDATA section")
+	}
+	if !pkgerrors.Is(err, pkgerrors.CodeInvalidInput) {
+		t.Fatalf("expected invalid input code; got: %v", err)
 	}
 }
 

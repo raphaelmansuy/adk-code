@@ -3,7 +3,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	agentiface "google.golang.org/adk/agent"
@@ -11,6 +10,7 @@ import (
 	"google.golang.org/adk/model"
 	"google.golang.org/genai"
 
+	pkgerrors "code_agent/pkg/errors"
 	"code_agent/tools"
 	"code_agent/workspace"
 )
@@ -42,7 +42,7 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	// Most tools auto-register via init() functions in their packages.
 	// V4A patch tool requires working directory parameter, so we register it explicitly.
 	if _, err := tools.NewApplyV4APatchTool(cfg.WorkingDirectory); err != nil {
-		return nil, fmt.Errorf("failed to create apply_v4a_patch tool: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create apply_v4a_patch tool", err)
 	}
 
 	// Get all registered tools from the registry
@@ -55,13 +55,13 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		var err error
 		projectRoot, err = os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get current working directory: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to get current working directory", err)
 		}
 	}
 
 	actualProjectRoot, err := GetProjectRoot(projectRoot)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine project root: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to determine project root", err)
 	}
 
 	// Create workspace manager with smart initialization
@@ -74,13 +74,13 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		// Use smart initialization for multi-workspace support
 		wsManager, err = workspace.SmartWorkspaceInitialization(actualProjectRoot)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize workspace manager: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to initialize workspace manager", err)
 		}
 	} else {
 		// Use single-directory mode (backward compatible)
 		wsManager, err = workspace.FromSingleDirectory(actualProjectRoot)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create workspace manager: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create workspace manager", err)
 		}
 	}
 
@@ -125,7 +125,7 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		GenerateContentConfig: generateConfig,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create coding agent: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create coding agent", err)
 	}
 
 	return codingAgent, nil

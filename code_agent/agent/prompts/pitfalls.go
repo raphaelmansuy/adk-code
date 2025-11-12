@@ -1,5 +1,5 @@
 // Common pitfalls and solutions for ADK Code Agent
-package agent
+package prompts
 
 const PitfallsSection = `## Common Pitfalls & Solutions
 

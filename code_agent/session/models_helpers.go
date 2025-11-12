@@ -4,8 +4,9 @@ package session
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
+
+	pkgerrors "code_agent/pkg/errors"
 
 	"github.com/google/uuid"
 	"google.golang.org/adk/model"
@@ -59,43 +60,43 @@ func convertStorageEventToSessionEvent(se *storageEvent) (*session.Event, error)
 	var actions session.EventActions
 	if len(se.Actions) > 0 {
 		if err := json.Unmarshal(se.Actions, &actions); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal actions: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal actions", err)
 		}
 	}
 	var content *genai.Content
 	if len(se.Content) > 0 {
 		if err := json.Unmarshal(se.Content, &content); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal content", err)
 		}
 	}
 	var groundingMetadata *genai.GroundingMetadata
 	if len(se.GroundingMetadata) > 0 {
 		if err := json.Unmarshal(se.GroundingMetadata, &groundingMetadata); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grounding metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal grounding metadata", err)
 		}
 	}
 	var customMetadata map[string]any
 	if len(se.CustomMetadata) > 0 {
 		if err := json.Unmarshal(se.CustomMetadata, &customMetadata); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal custom metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal custom metadata", err)
 		}
 	}
 	var usageMetadata *genai.GenerateContentResponseUsageMetadata
 	if len(se.UsageMetadata) > 0 {
 		if err := json.Unmarshal(se.UsageMetadata, &usageMetadata); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal usage metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal usage metadata", err)
 		}
 	}
 	var citationMetadata *genai.CitationMetadata
 	if len(se.CitationMetadata) > 0 {
 		if err := json.Unmarshal(se.CitationMetadata, &citationMetadata); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal citation metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal citation metadata", err)
 		}
 	}
 	var toolIDs []string
 	if se.LongRunningToolIDsJSON != nil {
 		if err := json.Unmarshal([]byte(se.LongRunningToolIDsJSON), &toolIDs); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal tool IDs: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to unmarshal tool IDs", err)
 		}
 	}
 	branch := ""
@@ -130,13 +131,13 @@ func convertSessionEventToStorageEvent(sess *localSession, event *session.Event)
 	storageEv := &storageEvent{ID: event.ID, InvocationID: event.InvocationID, Author: event.Author, SessionID: sess.sessionID, AppName: sess.appName, UserID: sess.userID, Timestamp: event.Timestamp}
 	actionsJSON, err := json.Marshal(event.Actions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal actions: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal actions", err)
 	}
 	storageEv.Actions = actionsJSON
 	if len(event.LongRunningToolIDs) > 0 {
 		toolIDsJSON, err := json.Marshal(event.LongRunningToolIDs)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal tool IDs: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal tool IDs", err)
 		}
 		storageEv.LongRunningToolIDsJSON = toolIDsJSON
 	}
@@ -155,35 +156,35 @@ func convertSessionEventToStorageEvent(sess *localSession, event *session.Event)
 	if event.Content != nil {
 		contentJSON, err := json.Marshal(event.Content)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal content: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal content", err)
 		}
 		storageEv.Content = contentJSON
 	}
 	if event.GroundingMetadata != nil {
 		groundingJSON, err := json.Marshal(event.GroundingMetadata)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal grounding metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal grounding metadata", err)
 		}
 		storageEv.GroundingMetadata = groundingJSON
 	}
 	if len(event.CustomMetadata) > 0 {
 		customJSON, err := json.Marshal(event.CustomMetadata)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal custom metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal custom metadata", err)
 		}
 		storageEv.CustomMetadata = customJSON
 	}
 	if event.UsageMetadata != nil {
 		usageJSON, err := json.Marshal(event.UsageMetadata)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal usage metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal usage metadata", err)
 		}
 		storageEv.UsageMetadata = usageJSON
 	}
 	if event.CitationMetadata != nil {
 		citationJSON, err := json.Marshal(event.CitationMetadata)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal citation metadata: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to marshal citation metadata", err)
 		}
 		storageEv.CitationMetadata = citationJSON
 	}

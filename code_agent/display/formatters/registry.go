@@ -1,10 +1,10 @@
 package formatters
 
 import (
-	"fmt"
 	"sync"
 
 	"code_agent/display/styles"
+	pkgerrors "code_agent/pkg/errors"
 )
 
 // Formatter is a common interface for all formatter types
@@ -71,7 +71,7 @@ func (fr *FormatterRegistry) RegisterCustomFormatter(name string, formatter Form
 	defer fr.mu.Unlock()
 
 	if _, exists := fr.customFormatters[name]; exists {
-		return fmt.Errorf("formatter already registered: %s", name)
+		return pkgerrors.InvalidInputError("formatter already registered: " + name)
 	}
 
 	fr.customFormatters[name] = formatter
@@ -85,7 +85,7 @@ func (fr *FormatterRegistry) GetCustomFormatter(name string) (Formatter, error) 
 
 	formatter, ok := fr.customFormatters[name]
 	if !ok {
-		return nil, fmt.Errorf("formatter not found: %s", name)
+		return nil, pkgerrors.InvalidInputError("formatter not found: " + name)
 	}
 
 	return formatter, nil

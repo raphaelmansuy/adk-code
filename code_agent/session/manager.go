@@ -2,9 +2,10 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
+
+	pkgerrors "code_agent/pkg/errors"
 
 	"google.golang.org/adk/session"
 )
@@ -22,14 +23,14 @@ func NewSessionManager(appName, dbPath string) (*SessionManager, error) {
 	if dbPath == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to get home directory", err)
 		}
 		dbPath = filepath.Join(home, ".code_agent", "sessions.db")
 	}
 
 	sessionSvc, err := NewSQLiteSessionService(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create session service: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create session service", err)
 	}
 
 	return &SessionManager{

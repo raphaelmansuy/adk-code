@@ -1,12 +1,13 @@
 package agent
 
 import (
+	"code_agent/agent/prompts"
 	"strings"
 	"testing"
 )
 
 func TestGuidanceSection_NotEmpty(t *testing.T) {
-	if GuidanceSection == "" {
+	if prompts.GuidanceSection == "" {
 		t.Fatal("expected GuidanceSection to not be empty")
 	}
 }
@@ -22,25 +23,25 @@ func TestGuidanceSection_HasExpectedContent(t *testing.T) {
 
 	found := 0
 	for _, check := range checks {
-		if strings.Contains(strings.ToLower(GuidanceSection), check) {
+		if strings.Contains(strings.ToLower(prompts.GuidanceSection), check) {
 			found++
 		}
 	}
 
 	if found == 0 {
-		t.Logf("Warning: GuidanceSection might not contain expected keywords. Content length: %d", len(GuidanceSection))
+		t.Logf("Warning: GuidanceSection might not contain expected keywords. Content length: %d", len(prompts.GuidanceSection))
 	}
 }
 
 func TestGuidanceSection_MinimumLength(t *testing.T) {
 	// Guidance should be substantial
-	if len(GuidanceSection) < 100 {
-		t.Errorf("expected GuidanceSection to have at least 100 characters, got %d", len(GuidanceSection))
+	if len(prompts.GuidanceSection) < 100 {
+		t.Errorf("expected GuidanceSection to have at least 100 characters, got %d", len(prompts.GuidanceSection))
 	}
 }
 
 func TestPitfallsSection_NotEmpty(t *testing.T) {
-	if PitfallsSection == "" {
+	if prompts.PitfallsSection == "" {
 		t.Fatal("expected PitfallsSection to not be empty")
 	}
 }
@@ -56,25 +57,25 @@ func TestPitfallsSection_HasExpectedContent(t *testing.T) {
 
 	found := 0
 	for _, check := range checks {
-		if strings.Contains(strings.ToLower(PitfallsSection), check) {
+		if strings.Contains(strings.ToLower(prompts.PitfallsSection), check) {
 			found++
 		}
 	}
 
 	if found == 0 {
-		t.Logf("Warning: PitfallsSection might not contain expected keywords. Content length: %d", len(PitfallsSection))
+		t.Logf("Warning: PitfallsSection might not contain expected keywords. Content length: %d", len(prompts.PitfallsSection))
 	}
 }
 
 func TestPitfallsSection_MinimumLength(t *testing.T) {
 	// Pitfalls should be substantial
-	if len(PitfallsSection) < 100 {
-		t.Errorf("expected PitfallsSection to have at least 100 characters, got %d", len(PitfallsSection))
+	if len(prompts.PitfallsSection) < 100 {
+		t.Errorf("expected PitfallsSection to have at least 100 characters, got %d", len(prompts.PitfallsSection))
 	}
 }
 
 func TestWorkflowSection_NotEmpty(t *testing.T) {
-	if WorkflowSection == "" {
+	if prompts.WorkflowSection == "" {
 		t.Fatal("expected WorkflowSection to not be empty")
 	}
 }
@@ -90,26 +91,26 @@ func TestWorkflowSection_HasExpectedContent(t *testing.T) {
 
 	found := 0
 	for _, check := range checks {
-		if strings.Contains(strings.ToLower(WorkflowSection), check) {
+		if strings.Contains(strings.ToLower(prompts.WorkflowSection), check) {
 			found++
 		}
 	}
 
 	if found == 0 {
-		t.Logf("Warning: WorkflowSection might not contain expected keywords. Content length: %d", len(WorkflowSection))
+		t.Logf("Warning: WorkflowSection might not contain expected keywords. Content length: %d", len(prompts.WorkflowSection))
 	}
 }
 
 func TestWorkflowSection_MinimumLength(t *testing.T) {
 	// Workflow should be substantial
-	if len(WorkflowSection) < 100 {
-		t.Errorf("expected WorkflowSection to have at least 100 characters, got %d", len(WorkflowSection))
+	if len(prompts.WorkflowSection) < 100 {
+		t.Errorf("expected WorkflowSection to have at least 100 characters, got %d", len(prompts.WorkflowSection))
 	}
 }
 
 func TestPromptSections_Consistency(t *testing.T) {
 	// Sections should not be the same - verify they're all different
-	values := []string{GuidanceSection, PitfallsSection, WorkflowSection}
+	values := []string{prompts.GuidanceSection, prompts.PitfallsSection, prompts.WorkflowSection}
 	for i, v1 := range values {
 		for j, v2 := range values {
 			if i != j && v1 == v2 {
@@ -122,9 +123,9 @@ func TestPromptSections_Consistency(t *testing.T) {
 func TestPromptSections_ProperFormatting(t *testing.T) {
 	// Sections should use proper formatting for readability
 	tests := map[string]string{
-		"GuidanceSection": GuidanceSection,
-		"PitfallsSection": PitfallsSection,
-		"WorkflowSection": WorkflowSection,
+		"GuidanceSection": prompts.GuidanceSection,
+		"PitfallsSection": prompts.PitfallsSection,
+		"WorkflowSection": prompts.WorkflowSection,
 	}
 
 	for name, content := range tests {
@@ -149,7 +150,7 @@ func TestPromptSections_ProperFormatting(t *testing.T) {
 
 func TestGuidanceSection_IncludesKeyPrinciples(t *testing.T) {
 	// Guidance should include core principles
-	content := strings.ToLower(GuidanceSection)
+	content := strings.ToLower(prompts.GuidanceSection)
 
 	// Check for problem-solving approach
 	if !strings.Contains(content, "read") && !strings.Contains(content, "understand") {
@@ -159,7 +160,7 @@ func TestGuidanceSection_IncludesKeyPrinciples(t *testing.T) {
 
 func TestPitfallsSection_InclusCommonMistakes(t *testing.T) {
 	// Pitfalls should warn about common mistakes
-	content := strings.ToLower(PitfallsSection)
+	content := strings.ToLower(prompts.PitfallsSection)
 
 	// Should warn about something
 	if len(content) < 50 {
@@ -169,7 +170,7 @@ func TestPitfallsSection_InclusCommonMistakes(t *testing.T) {
 
 func TestWorkflowSection_IncludesSteps(t *testing.T) {
 	// Workflow should have structured steps
-	content := WorkflowSection
+	content := prompts.WorkflowSection
 
 	// Should contain some form of step indication
 	hasSteps := strings.Contains(content, "1.") || strings.Contains(content, "Step") || strings.Contains(content, "step")

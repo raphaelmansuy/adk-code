@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	pkgerrors "code_agent/pkg/errors"
+
 	"google.golang.org/adk/session"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -27,7 +29,7 @@ func NewSQLiteSessionService(dbPath string) (*SQLiteSessionService, error) {
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create database directory: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodePermission, "failed to create database directory", err)
 	}
 
 	// Configure GORM logger to only show errors (not warnings like "record not found")
@@ -43,14 +45,14 @@ func NewSQLiteSessionService(dbPath string) (*SQLiteSessionService, error) {
 	// Open SQLite connection
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{Logger: gormLogger})
 	if err != nil {
-		return nil, fmt.Errorf("failed to open SQLite database: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to open SQLite database", err)
 	}
 
 	service := &SQLiteSessionService{db: db}
 
 	// Run migrations to ensure schema exists
 	if err := service.migrate(); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to run migrations", err)
 	}
 
 	return service, nil
@@ -69,7 +71,7 @@ func (s *SQLiteSessionService) migrate() error {
 // Create creates a new session
 func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRequest) (*session.CreateResponse, error) {
 	if req.AppName == "" || req.UserID == "" {
-		return nil, fmt.Errorf("app_name and user_id are required")
+		return nil, pkgerrors.InvalidInputError("app_name and user_id are required")
 	}
 
 	sessionID := req.SessionID
@@ -82,9 +84,9 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 	if err := s.db.WithContext(ctx).
 		Where("app_name = ? AND user_id = ? AND id = ?", req.AppName, req.UserID, sessionID).
 		First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("session already exists")
+		return nil, pkgerrors.InvalidInputError("session already exists")
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to check if session exists: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to check if session exists", err)
 	}
 
 	// Prepare session state
@@ -96,7 +98,7 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 	// Start transaction
 	tx := s.db.WithContext(ctx).Begin()
 	if tx.Error != nil {
-		return nil, fmt.Errorf("failed to start transaction: %w", tx.Error)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to start transaction", tx.Error)
 	}
 
 	// Extract state deltas
@@ -110,11 +112,11 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 			appState = storageAppState{AppName: req.AppName, State: make(stateMap), UpdateTime: time.Now()}
 			if err := tx.Create(&appState).Error; err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to create app state: %w", err)
+				return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create app state", err)
 			}
 		} else {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to fetch app state: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch app state", err)
 		}
 	}
 
@@ -128,7 +130,7 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 	appState.UpdateTime = time.Now()
 	if err := tx.Save(&appState).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("failed to save app state: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to save app state", err)
 	}
 
 	// Get or create user state
@@ -139,11 +141,11 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 			userState = storageUserState{AppName: req.AppName, UserID: req.UserID, State: make(stateMap), UpdateTime: time.Now()}
 			if err := tx.Create(&userState).Error; err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to create user state: %w", err)
+				return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create user state", err)
 			}
 		} else {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to fetch user state: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch user state", err)
 		}
 	}
 
@@ -157,7 +159,7 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 	userState.UpdateTime = time.Now()
 	if err := tx.Save(&userState).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("failed to save user state: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to save user state", err)
 	}
 
 	// Create session
@@ -165,12 +167,12 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 	storageSession := &storageSession{AppName: req.AppName, UserID: req.UserID, ID: sessionID, State: sessionState, CreateTime: now, UpdateTime: now}
 	if err := tx.Create(storageSession).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("failed to create session: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create session", err)
 	}
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to commit transaction", err)
 	}
 
 	// Create response session
@@ -182,28 +184,28 @@ func (s *SQLiteSessionService) Create(ctx context.Context, req *session.CreateRe
 // Get retrieves a session
 func (s *SQLiteSessionService) Get(ctx context.Context, req *session.GetRequest) (*session.GetResponse, error) {
 	if req.AppName == "" || req.UserID == "" || req.SessionID == "" {
-		return nil, fmt.Errorf("app_name, user_id, and session_id are required")
+		return nil, pkgerrors.InvalidInputError("app_name, user_id, and session_id are required")
 	}
 	var storageSession storageSession
 	if err := s.db.WithContext(ctx).
 		Where("app_name = ? AND user_id = ? AND id = ?", req.AppName, req.UserID, req.SessionID).
 		First(&storageSession).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("session not found")
+			return nil, pkgerrors.InvalidInputError("session not found")
 		}
-		return nil, fmt.Errorf("failed to fetch session: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch session", err)
 	}
 	var appState storageAppState
 	if err := s.db.WithContext(ctx).
 		Where("app_name = ?", req.AppName).
 		First(&appState).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to fetch app state: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch app state", err)
 	}
 	var userState storageUserState
 	if err := s.db.WithContext(ctx).
 		Where("app_name = ? AND user_id = ?", req.AppName, req.UserID).
 		First(&userState).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to fetch user state: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch user state", err)
 	}
 	var events []storageEvent
 	eventQuery := s.db.WithContext(ctx).
@@ -217,7 +219,7 @@ func (s *SQLiteSessionService) Get(ctx context.Context, req *session.GetRequest)
 		eventQuery = eventQuery.Order("timestamp ASC")
 	}
 	if err := eventQuery.Find(&events).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch events: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch events", err)
 	}
 	if req.NumRecentEvents > 0 {
 		for i := len(events)/2 - 1; i >= 0; i-- {
@@ -229,7 +231,7 @@ func (s *SQLiteSessionService) Get(ctx context.Context, req *session.GetRequest)
 	for i, e := range events {
 		evt, err := convertStorageEventToSessionEvent(&e)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert event: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to convert event", err)
 		}
 		localSession.events[i] = evt
 	}
@@ -239,7 +241,7 @@ func (s *SQLiteSessionService) Get(ctx context.Context, req *session.GetRequest)
 // List lists sessions
 func (s *SQLiteSessionService) List(ctx context.Context, req *session.ListRequest) (*session.ListResponse, error) {
 	if req.AppName == "" {
-		return nil, fmt.Errorf("app_name is required")
+		return nil, pkgerrors.InvalidInputError("app_name is required")
 	}
 	var sessions []storageSession
 	query := s.db.WithContext(ctx).Where("app_name = ?", req.AppName)
@@ -247,28 +249,28 @@ func (s *SQLiteSessionService) List(ctx context.Context, req *session.ListReques
 		query = query.Where("user_id = ?", req.UserID)
 	}
 	if err := query.Find(&sessions).Error; err != nil {
-		return nil, fmt.Errorf("failed to list sessions: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to list sessions", err)
 	}
 	var appState storageAppState
 	if err := s.db.WithContext(ctx).Where("app_name = ?", req.AppName).First(&appState).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to fetch app state: %w", err)
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch app state", err)
 	}
 	response := &session.ListResponse{Sessions: make([]session.Session, len(sessions))}
 	for i, sess := range sessions {
 		var userState storageUserState
 		if err := s.db.WithContext(ctx).Where("app_name = ? AND user_id = ?", req.AppName, sess.UserID).First(&userState).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("failed to fetch user state: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch user state", err)
 		}
 
 		var events []storageEvent
 		if err := s.db.WithContext(ctx).Where("app_name = ? AND user_id = ? AND session_id = ?", req.AppName, sess.UserID, sess.ID).Order("timestamp ASC").Find(&events).Error; err != nil {
-			return nil, fmt.Errorf("failed to fetch events: %w", err)
+			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch events", err)
 		}
 		sessionEvents := make([]*session.Event, len(events))
 		for j, e := range events {
 			evt, err := convertStorageEventToSessionEvent(&e)
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert event: %w", err)
+				return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to convert event", err)
 			}
 			sessionEvents[j] = evt
 		}
@@ -288,22 +290,22 @@ func (s *SQLiteSessionService) List(ctx context.Context, req *session.ListReques
 // Delete deletes a session
 func (s *SQLiteSessionService) Delete(ctx context.Context, req *session.DeleteRequest) error {
 	if req.AppName == "" || req.UserID == "" || req.SessionID == "" {
-		return fmt.Errorf("app_name, user_id, and session_id are required")
+		return pkgerrors.InvalidInputError("app_name, user_id, and session_id are required")
 	}
 	tx := s.db.WithContext(ctx).Begin()
 	if tx.Error != nil {
-		return fmt.Errorf("failed to start transaction: %w", tx.Error)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to start transaction", tx.Error)
 	}
 	if err := tx.Where("app_name = ? AND user_id = ? AND session_id = ?", req.AppName, req.UserID, req.SessionID).Delete(&storageEvent{}).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to delete events: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to delete events", err)
 	}
 	if err := tx.Where("app_name = ? AND user_id = ? AND id = ?", req.AppName, req.UserID, req.SessionID).Delete(&storageSession{}).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to delete session: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to delete session", err)
 	}
 	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to commit transaction", err)
 	}
 	return nil
 }
@@ -311,10 +313,10 @@ func (s *SQLiteSessionService) Delete(ctx context.Context, req *session.DeleteRe
 // AppendEvent appends an event to a session and updates session/app/user state
 func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Session, event *session.Event) error {
 	if sess == nil {
-		return fmt.Errorf("session is nil")
+		return pkgerrors.InvalidInputError("session is nil")
 	}
 	if event == nil {
-		return fmt.Errorf("event is nil")
+		return pkgerrors.InvalidInputError("event is nil")
 	}
 	if event.Partial {
 		return nil
@@ -322,23 +324,23 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 	trimTempDeltaState(event)
 	localSession, ok := sess.(*localSession)
 	if !ok {
-		return fmt.Errorf("unexpected session type: %T", sess)
+		return pkgerrors.InternalError(fmt.Sprintf("unexpected session type: %T", sess))
 	}
 	if err := localSession.appendEvent(event); err != nil {
-		return fmt.Errorf("failed to append event to in-memory session: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to append event to in-memory session", err)
 	}
 	tx := s.db.WithContext(ctx).Begin()
 	if tx.Error != nil {
-		return fmt.Errorf("failed to start transaction: %w", tx.Error)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to start transaction", tx.Error)
 	}
 	storageEvent, err := convertSessionEventToStorageEvent(localSession, event)
 	if err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to convert event: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to convert event", err)
 	}
 	if err := tx.Create(storageEvent).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to append event: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to append event", err)
 	}
 	if len(event.Actions.StateDelta) > 0 {
 		appDelta, userDelta, sessionDelta := extractStateDeltas(event.Actions.StateDelta)
@@ -349,11 +351,11 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 					appState = storageAppState{AppName: localSession.appName, State: make(stateMap), UpdateTime: time.Now()}
 					if err := tx.Create(&appState).Error; err != nil {
 						tx.Rollback()
-						return fmt.Errorf("failed to create app state: %w", err)
+						return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create app state", err)
 					}
 				} else {
 					tx.Rollback()
-					return fmt.Errorf("failed to fetch app state: %w", err)
+					return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch app state", err)
 				}
 			}
 			if appState.State == nil {
@@ -365,7 +367,7 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 			appState.UpdateTime = time.Now()
 			if err := tx.Save(&appState).Error; err != nil {
 				tx.Rollback()
-				return fmt.Errorf("failed to update app state: %w", err)
+				return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to update app state", err)
 			}
 		}
 		if len(userDelta) > 0 {
@@ -375,11 +377,11 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 					userState = storageUserState{AppName: localSession.appName, UserID: localSession.userID, State: make(stateMap), UpdateTime: time.Now()}
 					if err := tx.Create(&userState).Error; err != nil {
 						tx.Rollback()
-						return fmt.Errorf("failed to create user state: %w", err)
+						return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create user state", err)
 					}
 				} else {
 					tx.Rollback()
-					return fmt.Errorf("failed to fetch user state: %w", err)
+					return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch user state", err)
 				}
 			}
 			if userState.State == nil {
@@ -391,14 +393,14 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 			userState.UpdateTime = time.Now()
 			if err := tx.Save(&userState).Error; err != nil {
 				tx.Rollback()
-				return fmt.Errorf("failed to update user state: %w", err)
+				return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to update user state", err)
 			}
 		}
 		if len(sessionDelta) > 0 {
 			var currentSession storageSession
 			if err := tx.Where("app_name = ? AND user_id = ? AND id = ?", localSession.appName, localSession.userID, localSession.sessionID).First(&currentSession).Error; err != nil {
 				tx.Rollback()
-				return fmt.Errorf("failed to fetch session for state update: %w", err)
+				return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to fetch session for state update", err)
 			}
 			if currentSession.State == nil {
 				currentSession.State = make(stateMap)
@@ -408,16 +410,16 @@ func (s *SQLiteSessionService) AppendEvent(ctx context.Context, sess session.Ses
 			}
 			if err := tx.Model(&storageSession{}).Where("app_name = ? AND user_id = ? AND id = ?", localSession.appName, localSession.userID, localSession.sessionID).Update("state", currentSession.State).Error; err != nil {
 				tx.Rollback()
-				return fmt.Errorf("failed to update session state: %w", err)
+				return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to update session state", err)
 			}
 		}
 	}
 	if err := tx.Model(&storageSession{}).Where("app_name = ? AND user_id = ? AND id = ?", localSession.appName, localSession.userID, localSession.sessionID).Update("update_time", time.Now()).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update session timestamp: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to update session timestamp", err)
 	}
 	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to commit transaction", err)
 	}
 	return nil
 }

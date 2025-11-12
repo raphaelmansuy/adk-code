@@ -9,6 +9,8 @@ import (
 	"iter"
 	"time"
 
+	pkgerrors "code_agent/pkg/errors"
+
 	"google.golang.org/adk/session"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -63,7 +65,7 @@ func (sm *stateMap) Scan(value any) error {
 	case string:
 		bytes = []byte(v)
 	default:
-		return fmt.Errorf("failed to unmarshal JSON value: %T", value)
+		return pkgerrors.InternalError(fmt.Sprintf("failed to unmarshal JSON value: %T", value))
 	}
 
 	if len(bytes) == 0 {
@@ -112,11 +114,11 @@ func (j *dynamicJSON) Scan(value any) error {
 		}
 		bytes = []byte(v)
 	default:
-		return fmt.Errorf("failed to unmarshal JSON value: %T", value)
+		return pkgerrors.InternalError(fmt.Sprintf("failed to unmarshal JSON value: %T", value))
 	}
 
 	if !json.Valid(bytes) {
-		return fmt.Errorf("invalid JSON received from database: %s", string(bytes))
+		return pkgerrors.InvalidInputError(fmt.Sprintf("invalid JSON received from database: %s", string(bytes)))
 	}
 	*j = dynamicJSON(bytes)
 	return nil
@@ -307,7 +309,7 @@ func (s *localSession) appendEvent(event *session.Event) error {
 	}
 	processedEvent := trimTempDeltaState(event)
 	if err := updateSessionState(s, processedEvent); err != nil {
-		return fmt.Errorf("error updating session state from event: %w", err)
+		return pkgerrors.Wrap(pkgerrors.CodeInternal, "error updating session state from event", err)
 	}
 	s.events = append(s.events, event)
 	s.updatedAt = event.Timestamp
