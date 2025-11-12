@@ -38,21 +38,14 @@ const AppVersion = "1.0.0"
 
 // Application manages the entire code agent application lifecycle
 type Application struct {
-	config         *cli.CLIConfig
-	ctx            context.Context
-	signalHandler  *SignalHandler
-	renderer       *display.Renderer
-	bannerRenderer *display.BannerRenderer
-	typewriter     *display.TypewriterPrinter
-	streamDisplay  *display.StreamingDisplay
-	modelRegistry  *models.Registry
-	selectedModel  models.Config
-	llmModel       model.LLM
-	codingAgent    agent.Agent
-	sessionManager *persistence.SessionManager
-	agentRunner    *runner.Runner
-	sessionTokens  *tracking.SessionTokens
-	repl           *REPL
+	config        *cli.CLIConfig
+	ctx           context.Context
+	signalHandler *SignalHandler
+	display       *DisplayComponents
+	model         *ModelComponents
+	agent         agent.Agent
+	session       *SessionComponents
+	repl          *REPL
 }
 
 // New creates a new Application instance
@@ -92,27 +85,34 @@ func New(ctx context.Context, config *cli.CLIConfig) (*Application, error) {
 // initializeDisplay sets up display components
 func (a *Application) initializeDisplay() error {
 	var err error
-	a.renderer, err = display.NewRenderer(a.config.OutputFormat)
+	renderer, err := display.NewRenderer(a.config.OutputFormat)
 	if err != nil {
 		return fmt.Errorf("failed to create renderer: %w", err)
 	}
 
-	a.bannerRenderer = display.NewBannerRenderer(a.renderer)
-	a.typewriter = display.NewTypewriterPrinter(display.DefaultTypewriterConfig())
-	a.typewriter.SetEnabled(a.config.TypewriterEnabled)
-	a.streamDisplay = display.NewStreamingDisplay(a.renderer, a.typewriter)
+	typewriter := display.NewTypewriterPrinter(display.DefaultTypewriterConfig())
+	typewriter.SetEnabled(a.config.TypewriterEnabled)
+	streamDisplay := display.NewStreamingDisplay(renderer, typewriter)
+
+	a.display = &DisplayComponents{
+		Renderer:       renderer,
+		BannerRenderer: display.NewBannerRenderer(renderer),
+		Typewriter:     typewriter,
+		StreamDisplay:  streamDisplay,
+	}
 
 	return nil
 }
 
 // initializeModel sets up the LLM model
 func (a *Application) initializeModel() error {
-	a.modelRegistry = models.NewRegistry()
+	registry := models.NewRegistry()
 
 	// Resolve which model to use
+	var selectedModel models.Config
 	var err error
 	if a.config.Model == "" {
-		a.selectedModel = a.modelRegistry.GetDefaultModel()
+		selectedModel = registry.GetDefaultModel()
 	} else {
 		parsedProvider, parsedModel, parseErr := cli.ParseProviderModelSyntax(a.config.Model)
 		if parseErr != nil {
@@ -124,12 +124,12 @@ func (a *Application) initializeModel() error {
 			defaultProvider = "gemini"
 		}
 
-		a.selectedModel, err = a.modelRegistry.ResolveFromProviderSyntax(parsedProvider, parsedModel, defaultProvider)
+		selectedModel, err = registry.ResolveFromProviderSyntax(parsedProvider, parsedModel, defaultProvider)
 		if err != nil {
 			// Print available models and return error
 			fmt.Printf("❌ Error: %v\n\nAvailable models:\n", err)
-			for _, providerName := range a.modelRegistry.ListProviders() {
-				models := a.modelRegistry.GetProviderModels(providerName)
+			for _, providerName := range registry.ListProviders() {
+				models := registry.GetProviderModels(providerName)
 				fmt.Printf("\n%s:\n", strings.ToUpper(providerName[:1])+strings.ToLower(providerName[1:]))
 				for _, m := range models {
 					fmt.Printf("  • %s/%s\n", providerName, m.ID)
@@ -141,7 +141,7 @@ func (a *Application) initializeModel() error {
 
 	// Get API key
 	apiKey := a.config.APIKey
-	if apiKey == "" && a.selectedModel.Backend == "gemini" {
+	if apiKey == "" && selectedModel.Backend == "gemini" {
 		return fmt.Errorf("Gemini API backend requires GOOGLE_API_KEY environment variable or --api-key flag")
 	}
 
@@ -149,14 +149,15 @@ func (a *Application) initializeModel() error {
 	a.config.WorkingDirectory = a.resolveWorkingDirectory()
 
 	// Print welcome banner
-	displayName := a.selectedModel.DisplayName
-	banner := a.bannerRenderer.RenderStartBanner(AppVersion, displayName, a.config.WorkingDirectory)
+	displayName := selectedModel.DisplayName
+	banner := a.display.BannerRenderer.RenderStartBanner(AppVersion, displayName, a.config.WorkingDirectory)
 	fmt.Print(banner)
 
 	// Create LLM model
-	actualModelID := models.ExtractModelIDFromGemini(a.selectedModel.ID)
+	actualModelID := models.ExtractModelIDFromGemini(selectedModel.ID)
+	var llm model.LLM
 
-	switch a.selectedModel.Backend {
+	switch selectedModel.Backend {
 	case "vertexai":
 		if a.config.VertexAIProject == "" {
 			return fmt.Errorf("Vertex AI backend requires GOOGLE_CLOUD_PROJECT environment variable or --project flag")
@@ -164,7 +165,7 @@ func (a *Application) initializeModel() error {
 		if a.config.VertexAILocation == "" {
 			return fmt.Errorf("Vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
 		}
-		a.llmModel, err = models.CreateVertexAIModel(a.ctx, models.VertexAIConfig{
+		llm, err = models.CreateVertexAIModel(a.ctx, models.VertexAIConfig{
 			Project:   a.config.VertexAIProject,
 			Location:  a.config.VertexAILocation,
 			ModelName: actualModelID,
@@ -175,7 +176,7 @@ func (a *Application) initializeModel() error {
 		if openaiKey == "" {
 			return fmt.Errorf("OpenAI backend requires OPENAI_API_KEY environment variable")
 		}
-		a.llmModel, err = models.CreateOpenAIModel(a.ctx, models.OpenAIConfig{
+		llm, err = models.CreateOpenAIModel(a.ctx, models.OpenAIConfig{
 			APIKey:    openaiKey,
 			ModelName: actualModelID,
 		})
@@ -183,7 +184,7 @@ func (a *Application) initializeModel() error {
 	case "gemini":
 		fallthrough
 	default:
-		a.llmModel, err = models.CreateGeminiModel(a.ctx, models.GeminiConfig{
+		llm, err = models.CreateGeminiModel(a.ctx, models.GeminiConfig{
 			APIKey:    apiKey,
 			ModelName: actualModelID,
 		})
@@ -191,6 +192,12 @@ func (a *Application) initializeModel() error {
 
 	if err != nil {
 		return fmt.Errorf("failed to create LLM model: %w", err)
+	}
+
+	a.model = &ModelComponents{
+		Registry: registry,
+		Selected: selectedModel,
+		LLM:      llm,
 	}
 
 	return nil
@@ -222,8 +229,8 @@ func (a *Application) resolveWorkingDirectory() string {
 // initializeAgent creates the coding agent
 func (a *Application) initializeAgent() error {
 	var err error
-	a.codingAgent, err = codingagent.NewCodingAgent(a.ctx, codingagent.Config{
-		Model:            a.llmModel,
+	a.agent, err = codingagent.NewCodingAgent(a.ctx, codingagent.Config{
+		Model:            a.model.LLM,
 		WorkingDirectory: a.config.WorkingDirectory,
 		EnableThinking:   a.config.EnableThinking,
 		ThinkingBudget:   a.config.ThinkingBudget,
@@ -238,7 +245,7 @@ func (a *Application) initializeAgent() error {
 // initializeSession sets up session management
 func (a *Application) initializeSession() error {
 	var err error
-	a.sessionManager, err = persistence.NewSessionManager("code_agent", a.config.DBPath)
+	sessionManager, err := persistence.NewSessionManager("code_agent", a.config.DBPath)
 	if err != nil {
 		return fmt.Errorf("failed to create session manager: %w", err)
 	}
@@ -249,16 +256,16 @@ func (a *Application) initializeSession() error {
 	}
 
 	// Initialize the session
-	sessionInit := NewSessionInitializer(a.sessionManager, a.bannerRenderer)
+	sessionInit := NewSessionInitializer(sessionManager, a.display.BannerRenderer)
 	if err := sessionInit.InitializeSession(a.ctx, "user1", a.config.SessionName); err != nil {
 		return err
 	}
 
 	// Create agent runner
-	sessionService := a.sessionManager.GetService()
-	a.agentRunner, err = runner.New(runner.Config{
+	sessionService := sessionManager.GetService()
+	agentRunner, err := runner.New(runner.Config{
 		AppName:        "code_agent",
-		Agent:          a.codingAgent,
+		Agent:          a.agent,
 		SessionService: sessionService,
 	})
 	if err != nil {
@@ -266,7 +273,13 @@ func (a *Application) initializeSession() error {
 	}
 
 	// Initialize token tracking
-	a.sessionTokens = tracking.NewSessionTokens()
+	sessionTokens := tracking.NewSessionTokens()
+
+	a.session = &SessionComponents{
+		Manager: sessionManager,
+		Runner:  agentRunner,
+		Tokens:  sessionTokens,
+	}
 
 	return nil
 }
@@ -277,14 +290,14 @@ func (a *Application) initializeREPL() error {
 	a.repl, err = NewREPL(REPLConfig{
 		UserID:           "user1",
 		SessionName:      a.config.SessionName,
-		Renderer:         a.renderer,
-		BannerRenderer:   a.bannerRenderer,
-		StreamingDisplay: a.streamDisplay,
-		TypewriterPrint:  a.typewriter,
-		Runner:           a.agentRunner,
-		SessionTokens:    a.sessionTokens,
-		ModelRegistry:    a.modelRegistry,
-		SelectedModel:    a.selectedModel,
+		Renderer:         a.display.Renderer,
+		BannerRenderer:   a.display.BannerRenderer,
+		StreamingDisplay: a.display.StreamDisplay,
+		TypewriterPrint:  a.display.Typewriter,
+		Runner:           a.session.Runner,
+		SessionTokens:    a.session.Tokens,
+		ModelRegistry:    a.model.Registry,
+		SelectedModel:    a.model.Selected,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create REPL: %w", err)
@@ -304,8 +317,8 @@ func (a *Application) Close() {
 	if a.repl != nil {
 		a.repl.Close()
 	}
-	if a.sessionManager != nil {
-		a.sessionManager.Close()
+	if a.session != nil && a.session.Manager != nil {
+		a.session.Manager.Close()
 	}
 	if a.signalHandler != nil {
 		a.signalHandler.Cancel()
