@@ -50,9 +50,9 @@ func (sd *StreamingDisplay) HandleTextMessage(text string, isThinking bool) {
 	if sd.activeSegment == nil {
 		sd.activeSegment = NewStreamingSegment(
 			msgType,
-			sd.renderer.mdRenderer,
+			sd.renderer.MarkdownRenderer(),
 			sd.typewriter,
-			sd.renderer.outputFormat,
+			sd.renderer.OutputFormat(),
 		)
 	}
 

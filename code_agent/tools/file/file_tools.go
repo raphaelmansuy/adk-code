@@ -124,10 +124,3 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 
 	return t, err
 }
-
-// init registers file tools automatically at package initialization.
-func init() {
-	// Tools are auto-registered via their respective files
-	_, _ = NewWriteFileTool()
-	_, _ = NewReplaceInFileTool()
-}

@@ -28,9 +28,9 @@ import (
 
 	codingagent "code_agent/agent"
 	"code_agent/display"
-	"code_agent/persistence"
 	"code_agent/pkg/cli"
 	"code_agent/pkg/models"
+	"code_agent/session"
 	"code_agent/tracking"
 )
 
@@ -245,7 +245,7 @@ func (a *Application) initializeAgent() error {
 // initializeSession sets up session management
 func (a *Application) initializeSession() error {
 	var err error
-	sessionManager, err := persistence.NewSessionManager("code_agent", a.config.DBPath)
+	sessionManager, err := session.NewSessionManager("code_agent", a.config.DBPath)
 	if err != nil {
 		return fmt.Errorf("failed to create session manager: %w", err)
 	}

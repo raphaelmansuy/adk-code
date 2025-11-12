@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"code_agent/display"
-	"code_agent/persistence"
 	"code_agent/pkg/cli"
 	"code_agent/pkg/models"
+	"code_agent/session"
 	"code_agent/tracking"
 )
 
@@ -55,7 +55,7 @@ func TestInitializeREPL_Setup(t *testing.T) {
 func TestApplicationClose_Completes(t *testing.T) {
 	tmp := t.TempDir()
 	dbPath := filepath.Join(tmp, "test.db")
-	sm, err := persistence.NewSessionManager("test_app", dbPath)
+	sm, err := session.NewSessionManager("test_app", dbPath)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

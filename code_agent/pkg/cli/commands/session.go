@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 
-	"code_agent/persistence"
+	"code_agent/session"
 )
 
 // HandleNewSession creates a new session
 func HandleNewSession(ctx context.Context, sessionName string, dbPath string) {
-	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	manager, err := session.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -28,7 +28,7 @@ func HandleNewSession(ctx context.Context, sessionName string, dbPath string) {
 
 // HandleListSessions lists all sessions
 func HandleListSessions(ctx context.Context, dbPath string) {
-	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	manager, err := session.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -54,7 +54,7 @@ func HandleListSessions(ctx context.Context, dbPath string) {
 
 // HandleDeleteSession deletes a session
 func HandleDeleteSession(ctx context.Context, sessionName string, dbPath string) {
-	manager, err := persistence.NewSessionManager("code_agent", dbPath)
+	manager, err := session.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)
 	}

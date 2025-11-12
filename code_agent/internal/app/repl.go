@@ -24,6 +24,7 @@ import (
 	"github.com/chzyer/readline"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
+	sessionpkg "google.golang.org/adk/session"
 	"google.golang.org/genai"
 
 	"code_agent/display"
@@ -156,30 +157,59 @@ func (r *REPL) processUserMessage(ctx context.Context, input string) {
 	toolRunning := false
 	requestID := fmt.Sprintf("req_%d", r.config.SessionTokens.GetSummary().RequestCount+1)
 
+	// Run the agent in a goroutine and receive results through a channel
+	// This allows us to respond to context cancellation while the agent is thinking
+	type eventResult struct {
+		event *sessionpkg.Event
+		err   error
+	}
+
+	eventChan := make(chan eventResult, 1)
+	go func() {
+		for evt, err := range r.config.Runner.Run(ctx, r.config.UserID, r.config.SessionName, userMsg, agent.RunConfig{
+			StreamingMode: agent.StreamingModeNone,
+		}) {
+			// Send result through channel (non-blocking due to buffer)
+			eventChan <- eventResult{evt, err}
+
+			// Check if context was cancelled - if so, stop processing more events
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+		}
+		close(eventChan)
+	}()
+
 agentLoop:
-	for event, err := range r.config.Runner.Run(ctx, r.config.UserID, r.config.SessionName, userMsg, agent.RunConfig{
-		StreamingMode: agent.StreamingModeNone,
-	}) {
-		// Check if context was cancelled (Ctrl+C)
+	for {
+		// Check for context cancellation and event arrival at the same level
+		// This ensures we respond immediately to Ctrl+C during reasoning
 		select {
 		case <-ctx.Done():
 			spinner.StopWithError("Task interrupted")
 			fmt.Printf("\n%s\n", r.config.Renderer.Yellow("⚠️  Task cancelled by user"))
 			hasError = true
 			break agentLoop
-		default:
-		}
+		case result, ok := <-eventChan:
+			// Channel closed - agent finished
+			if !ok {
+				break agentLoop
+			}
 
-		if err != nil {
-			spinner.StopWithError("Error occurred")
-			errMsg := r.config.Renderer.RenderError(err)
-			fmt.Print(errMsg)
-			hasError = true
-			break agentLoop
-		}
+			// Handle the result
+			if result.err != nil {
+				spinner.StopWithError("Error occurred")
+				errMsg := r.config.Renderer.RenderError(result.err)
+				fmt.Print(errMsg)
+				hasError = true
+				break agentLoop
+			}
 
-		if event != nil {
-			display.PrintEventEnhanced(r.config.Renderer, r.config.StreamingDisplay, event, spinner, &activeToolName, &toolRunning, r.config.SessionTokens, requestID, timeline)
+			if result.event != nil {
+				display.PrintEventEnhanced(r.config.Renderer, r.config.StreamingDisplay, result.event, spinner, &activeToolName, &toolRunning, r.config.SessionTokens, requestID, timeline)
+			}
 		}
 	}
 

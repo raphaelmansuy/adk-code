@@ -19,17 +19,17 @@ import (
 	"fmt"
 
 	"code_agent/display"
-	"code_agent/persistence"
+	"code_agent/session"
 )
 
 // SessionInitializer handles session creation and retrieval
 type SessionInitializer struct {
-	manager        *persistence.SessionManager
+	manager        *session.SessionManager
 	bannerRenderer *display.BannerRenderer
 }
 
 // NewSessionInitializer creates a new session initializer
-func NewSessionInitializer(manager *persistence.SessionManager, bannerRenderer *display.BannerRenderer) *SessionInitializer {
+func NewSessionInitializer(manager *session.SessionManager, bannerRenderer *display.BannerRenderer) *SessionInitializer {
 	return &SessionInitializer{
 		manager:        manager,
 		bannerRenderer: bannerRenderer,

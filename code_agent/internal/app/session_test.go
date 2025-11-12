@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"code_agent/display"
-	"code_agent/persistence"
+	"code_agent/session"
 )
 
 func TestInitializeSession_CreatesNewSessionIfMissing(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
-	manager, err := persistence.NewSessionManager("test_app", dbPath)
+	manager, err := session.NewSessionManager("test_app", dbPath)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestInitializeSession_CreatesNewSessionIfMissing(t *testing.T) {
 func TestInitializeSession_ResumesExistingSession(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
-	manager, err := persistence.NewSessionManager("test_app", dbPath)
+	manager, err := session.NewSessionManager("test_app", dbPath)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

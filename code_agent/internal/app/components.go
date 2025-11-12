@@ -19,8 +19,8 @@ import (
 	"google.golang.org/adk/runner"
 
 	"code_agent/display"
-	"code_agent/persistence"
 	"code_agent/pkg/models"
+	"code_agent/session"
 	"code_agent/tracking"
 )
 
@@ -41,7 +41,7 @@ type ModelComponents struct {
 
 // SessionComponents groups all session-related fields
 type SessionComponents struct {
-	Manager *persistence.SessionManager
+	Manager *session.SessionManager
 	Runner  *runner.Runner
 	Tokens  *tracking.SessionTokens
 }
