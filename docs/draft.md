@@ -1,877 +1,506 @@
-# Code Analysis Draft - code_agent/
+# Code Agent - Deep Analysis Notes
 
-## Session: 2025-11-12
-## Task: Deep analysis of code_agent/ for refactoring recommendations
-
----
-
-## Executive Summary
-
-**Project Stats:**
-- Total Go files: 161
-- Total lines of code: ~23,000
-- Total packages: 41
-- Test pass rate: 100%
-- Build warnings: 0
-- Circular dependencies: 0
-
-**Architecture Quality: 7.5/10**
-- ✅ Clean layered architecture
-- ✅ Good separation of concerns (mostly)
-- ✅ Strong test coverage in some areas
-- ⚠️ Some packages are overly large
-- ⚠️ Inconsistent abstraction levels
-- ⚠️ Tool registration complexity
+**Date**: November 12, 2025  
+**Status**: In Progress - Core Analysis Phase  
+**Scope**: Comprehensive codebase analysis with focus on architecture, patterns, and design decisions
 
 ---
 
-## Phase 1: Initial Structure Analysis
+## 1. PROJECT OVERVIEW
 
-### Directory Structure
+### What is Code Agent?
+A CLI-based AI coding assistant powered by Google's ADK (Agent Development Kit) Go framework. It provides an interactive REPL for developers to ask coding questions, request code generation, and execute commands with AI assistance.
+
+**Key Stat**: ~140 lines main.go + orchestrated component architecture (~12 internal packages, ~8 tool categories)
+
+### Core Value Proposition
+- **Multi-model support**: Gemini 2.5 Flash, OpenAI GPT-4o, Vertex AI
+- **Rich terminal UI**: Glamour markdown rendering, typewriter effects, spinners
+- **Agent-driven**: Uses Google ADK llmagent pattern for autonomous tool execution
+- **Session persistence**: SQLite-backed session management
+- **Extensive tooling**: 30+ tools across 8 categories (file ops, code editing, execution, workspace)
+
+---
+
+## 2. ARCHITECTURE PATTERNS
+
+### 2.1 Builder Pattern with Orchestrator
+The application uses a sophisticated builder pattern via `Orchestration.Orchestrator`:
+
 ```
-code_agent/
-├── Makefile
-├── agent_prompts/        # Agent prompt engineering
-├── docs/                 # Architecture docs
-├── examples/             # Demo programs
-├── go.mod
-├── go.sum
-├── internal/             # Application-specific code
-│   ├── app/             # Application lifecycle (8 files)
-│   ├── cli/             # CLI commands (6 files)
-│   ├── config/          # Configuration (1 file)
-│   ├── display/         # UI/rendering (23+ subpackages)
-│   ├── llm/             # LLM provider abstraction
-│   ├── orchestration/   # Component orchestration (7 files)
-│   ├── repl/            # Interactive REPL
-│   ├── runtime/         # Signal handling
-│   └── session/         # Session persistence
-├── main.go              # Entry point (32 lines)
-├── pkg/                 # Reusable packages
-│   ├── errors/          # Error types
-│   ├── models/          # Model factories & registry
-│   └── testutil/        # Test helpers
-├── tools/               # Agent tools (7 categories)
-├── tracking/            # Task tracking
-└── workspace/           # Workspace management (11 files)
+Main.go
+  └─> App.New(ctx, cfg)
+        └─> Orchestrator.NewOrchestrator(ctx, cfg)
+              ├─> WithDisplay()    [creates 4 display components]
+              ├─> WithModel()      [initializes LLM + registry]
+              ├─> WithAgent()      [creates ADK agent]
+              ├─> WithSession()    [session + runner]
+              └─> Build()          [returns composite Components]
 ```
 
-### Dependencies (go.mod)
-- Go 1.24.4
-- ADK framework (local replace: ../research/adk-go)
-- Key deps: glamour, lipgloss, readline, genai, gorm
-- Uses: charmbracelet for UI, Google GenAI, SQLite for persistence
-
-### Recent Refactoring History (from logs/)
-The codebase has undergone significant refactoring:
-1. **Phase 1**: Foundation & documentation
-2. **Phase 2**: Display package refactoring
-3. **Phase 3.1-3.2**: Display relocation & decomposition (resolved circular dependencies)
-4. **Phase 3C-3D**: Builder pattern introduction
-5. **Phase 4**: LLM abstraction layer
-6. **Phase 5A-5B**: Tool file extraction
-
-Key achievements:
-- Zero circular dependencies
-- 100% backward compatibility maintained
-- Test coverage improvements
+**Pattern Benefits**:
 - Clear separation of concerns
+- Lazy initialization (only built what's needed)
+- Error propagation at each step
+- Dependency ordering enforced
+
+### 2.2 Component Composition (NOT Inheritance)
+Four major component groups orchestrated together:
+
+| Component | Package | Key Types | Responsibility |
+|-----------|---------|-----------|-----------------|
+| **Display** | `internal/display/*` | Renderer, BannerRenderer, StreamingDisplay, TypewriterPrinter | Terminal UI, markdown rendering, rich output |
+| **Model** | `pkg/models/*` | Registry, Config, Capabilities | LLM abstraction, provider handling, model selection |
+| **Agent** | ADK framework | agent.Agent (from google.golang.org/adk) | Tool execution, agentic loop, context management |
+| **Session** | `internal/session/*` | SessionManager, Runner, SessionTokens | Session persistence, token tracking, history |
+
+### 2.3 Application Lifecycle
+
+```
+main()
+  ├─> config.LoadFromEnv()           [env vars + CLI flags]
+  ├─> clicommands.HandleSpecialCmds() [e.g., /new-session]
+  ├─> app.New(ctx, cfg)              [orchestrate all components]
+  ├─> application.Run()
+  │    └─> repl.Run(ctx)
+  │          ├─> readline loop (interactive)
+  │          ├─> cli.HandleBuiltinCommand() [/help, /models, etc.]
+  │          └─> processUserMessage()
+  │               └─> agent.Run(ctx, userMsg)
+  │                    └─> [agentic loop: think → tool call → result]
+  └─> application.Close()            [cleanup resources]
+```
 
 ---
 
-## Phase 2: Detailed Architecture Analysis
+## 3. TOOL ECOSYSTEM
 
-### 2.1 Package Organization
+### 3.1 Tool Registration Pattern
 
-#### ✅ Well-Organized Packages
+Every tool follows a 4-step pattern:
 
-**pkg/errors**
-- Clean error abstraction
-- Error codes and wrapped errors
-- Reusable across projects
-
-**pkg/models**
-- Model factory pattern
-- Provider adapters (OpenAI, Gemini, VertexAI)
-- Registry with aliases
-- 218 lines (appropriate size)
-
-**internal/config**
-- Single responsibility
-- Environment + CLI flag loading
-- Simple and focused
-
-**internal/runtime**
-- Signal handling
-- Context management
-- Clean interface
-
-**workspace/**
-- Multi-root workspace support
-- VCS detection (Git/Mercurial)
-- Path resolution
-- Well-tested (project_root_test.go, workspace_test.go)
-
-#### ⚠️ Packages That Need Attention
-
-**internal/app (8 files, ~600+ lines)**
-Files:
-- app.go (main app struct)
-- components.go (type aliases)
-- factories.go (component factories)
-- session.go (session handling)
-- signals.go (signal setup)
-- utils.go (utilities)
-- Multiple test files
-
-**Issues:**
-- Mixed responsibilities (lifecycle + factories + session + utils)
-- Component factories could be closer to what they create
-- Type aliases in components.go feel like a band-aid
-
-**internal/orchestration (7 files, ~400+ lines)**
-Files:
-- builder.go (orchestrator builder)
-- components.go (component types)
-- agent.go (agent initialization)
-- display.go (display initialization)
-- model.go (model initialization)
-- session.go (session initialization)
-- utils.go (helpers)
-
-**Issues:**
-- Builder pattern with separate initializer functions
-- Each component type has its own initializer
-- Could benefit from more abstraction
-
-**internal/display (23+ subpackages)**
-Structure:
-```
-display/
-├── core/              # Interfaces
-├── components/        # UI components (spinner, banner, typewriter, paginator)
-├── streaming/         # Streaming display logic
-├── styles/            # Color and formatting
-├── formatters/        # Event formatters
-├── renderer/          # Markdown rendering
-├── terminal/          # Terminal primitives
-├── banner/            # Banner generation
-├── events/            # Event types
-├── tools/             # Tool rendering
-└── facade.go          # Public API
-```
-
-**Good:**
-- Well-decomposed into subpackages
-- Clear separation of concerns
-- Interface-based design (core/interfaces.go)
-- Facade pattern for public API
-
-**Issues:**
-- 23+ subpackages might be over-engineered
-- Some duplication between subpackages
-- Test files import subpackages directly (not facade)
-
-**tools/ (7 categories)**
-Structure:
-```
-tools/
-├── base/          # Registry and error types
-├── file/          # File operations (8 files)
-├── edit/          # Code editing (4 files)
-├── search/        # Search tools
-├── exec/          # Command execution (3 files)
-├── display/       # Display tools
-├── workspace/     # Workspace tools
-├── v4a/           # V4A patch format (5 files)
-└── tools.go       # Public API (re-exports)
-```
-
-**Good:**
-- Clear categorization
-- Auto-registration via init()
-- Type re-exports in tools.go
-
-**Issues:**
-- file/ has 8 files (could be better organized)
-- v4a/ is specialized but large (5 files)
-- Tool registration happens in init() (implicit, hard to trace)
-
-### 2.2 Key Interfaces & Abstractions
-
-**Interfaces Found:**
-1. `ProviderAdapter` (pkg/models/adapter.go) - LLM provider abstraction
-2. `ModelFactory` (pkg/models/factories/interface.go) - Model creation
-3. `ToolExecutionListener` (internal/display/tools/tool_adapter.go)
-4. `Formatter` (internal/display/formatters/registry.go)
-5. `StyleRenderer` (internal/display/core/interfaces.go)
-6. `REPLCommand` (internal/cli/commands/interface.go)
-7. `ProviderBackend` (internal/llm/provider.go)
-8. `PathResolver` (workspace/interfaces.go)
-9. `ContextBuilder` (workspace/interfaces.go)
-10. `VCSDetector` (workspace/interfaces.go)
-
-**Observations:**
-- Good use of interfaces for extensibility
-- Some interfaces are small and focused (good)
-- Some interfaces have extended versions (e.g., ContextBuilderWithMetrics)
-- Clear separation between public and internal interfaces
-
-### 2.3 Design Patterns in Use
-
-1. **Builder Pattern** (internal/orchestration/builder.go)
-   - Fluent API for component creation
-   - Proper error accumulation
-   - Dependency checking
-
-2. **Factory Pattern** (pkg/models/factories/)
-   - Model creation abstraction
-   - Registry for lookup
-   - Per-provider factories
-
-3. **Facade Pattern** (internal/display/facade.go, tools/tools.go)
-   - Simplified public API
-   - Type re-exports
-   - Hide internal complexity
-
-4. **Registry Pattern** (pkg/models/registry.go, tools/base/registry.go)
-   - Dynamic tool/model registration
-   - Lookup by ID or name
-   - Alias support
-
-5. **Adapter Pattern** (pkg/models/adapter.go, internal/llm/backends/)
-   - Provider abstraction
-   - Protocol conversion
-   - Backend wrappers
-
-### 2.4 Dependency Analysis
-
-**Key Dependencies:**
-```
-main.go
-  → internal/app
-    → internal/orchestration (builder)
-      → internal/display
-      → internal/llm
-      → internal/session
-      → pkg/models
-    → internal/repl
-    → internal/cli
-    → internal/config
-    → internal/runtime
-
-tools/
-  → workspace/
-  → pkg/errors/
-
-agent_prompts/
-  → tools/ (for tool metadata)
-```
-
-**Observations:**
-- Clean layered architecture
-- internal/app is orchestrator (acceptable)
-- No circular dependencies detected
-- pkg/ is truly reusable (no internal/ imports)
-- workspace/ is independent (good)
-
-### 2.5 Code Quality Metrics
-
-**Test Coverage:**
-- All tests passing (100% pass rate)
-- Good coverage in: workspace/, pkg/errors/, pkg/models/
-- Adequate coverage in: tools/, internal/display/
-- Some packages have comprehensive test files
-
-**Code Organization:**
-- Average file size: ~140 lines (reasonable)
-- Largest files: registry.go (218 lines), manager.go (360 lines)
-- Most files under 200 lines (good)
-- Clear naming conventions
-
-**Technical Debt:**
-- No TODO/FIXME/HACK comments found (clean)
-- No build warnings
-- golangci-lint not run (recommended to install)
-
----
-
-## Phase 3: Identified Issues & Opportunities
-
-### 3.1 Organizational Issues
-
-#### Issue #1: internal/app Package Fragmentation
-**Severity: Medium**
-
-Current state:
-- 8 files with mixed responsibilities
-- factories.go creates components for other packages
-- components.go only contains type aliases
-- session.go, signals.go, utils.go are loosely related
-
-Symptoms:
-- Hard to find where components are created
-- Type aliases suggest architectural mismatch
-- Mixed abstraction levels
-
-#### Issue #2: Tool Registration Complexity
-**Severity: Medium**
-
-Current state:
-- Tools auto-register via init() functions
-- Registration happens in each tool subpackage
-- Hard to see complete tool list
-- Implicit dependencies
-
-Example (tools/file/init.go, tools/exec/init.go, etc.):
 ```go
-func init() {
-    registry.Register(ReadFileTool())
-    registry.Register(WriteFileTool())
-    // ...
+// Step 1: Define Input/Output structs with JSON schema tags
+type ReadFileInput struct {
+    Path   string `json:"path" jsonschema:"..."`
+    Offset *int   `json:"offset,omitempty" jsonschema:"..."`
+    Limit  *int   `json:"limit,omitempty" jsonschema:"..."`
+}
+
+type ReadFileOutput struct {
+    Content      string `json:"content"`
+    Success      bool   `json:"success"`
+    Error        string `json:"error,omitempty"`
+    TotalLines   int    `json:"total_lines"`
+    FilePath     string `json:"file_path"`
+}
+
+// Step 2: Create handler function
+handler := func(ctx tool.Context, input ReadFileInput) ReadFileOutput {
+    // Implementation with proper error handling
+}
+
+// Step 3: Wrap with functiontool.New()
+t, err := functiontool.New(functiontool.Config{
+    Name:        "read_file",
+    Description: "Reads file content with optional offset/limit",
+}, handler)
+
+// Step 4: Register with tool registry
+if err == nil {
+    common.Register(common.ToolMetadata{
+        Tool:      t,
+        Category:  common.CategoryFileOperations,
+        Priority:  1,
+        UsageHint: "...",
+    })
 }
 ```
 
-Problems:
-- Magic initialization order
-- Hard to test in isolation
-- Can't easily disable tools
-- Unclear what tools are available
+### 3.2 Tool Categories (8 Total)
 
-#### Issue #3: internal/orchestration Abstraction Level
-**Severity: Low**
+| Category | Tools | Location | Key Functions |
+|----------|-------|----------|----------------|
+| **File Ops** | ReadFile, WriteFile, ReplaceInFile, ListDirectory, SearchFiles | `tools/file/` | Atomic writes, whitespace normalization |
+| **Code Editing** | ApplyPatch, EditLines, SearchReplace | `tools/edit/` | Multi-format patch support (unified, v4a) |
+| **Search/Discovery** | PreviewReplace, FileSearch | `tools/search/` | Dry-run preview, regex support |
+| **Execution** | ExecuteCommand, ExecuteProgram, GrepSearch | `tools/exec/` | Terminal execution, output capture |
+| **Workspace** | GetFileInfo, ListDirectory, ProjectAnalysis | `tools/workspace/` | VCS-aware path resolution |
+| **Display** | DisplayMessage, UpdateTaskList | `tools/display/` | Agent-to-UI feedback channel |
+| **V4A Patches** | ApplyV4APatch | `tools/v4a/` | Alternative patch format |
+| **Base** | Registry, Error types | `tools/base/` | Tool discovery + error codes |
 
-Current state:
-- Builder pattern is good
-- But initializer functions are separate
-- Each component type has dedicated file
-- Some duplication in error handling
+### 3.3 Tool Safety Features
 
-Files:
-- display.go → InitializeDisplayComponents()
-- model.go → InitializeModelComponents()
-- agent.go → InitializeAgentComponent()
-- session.go → InitializeSessionComponents()
+Observed safeguards across tools:
 
-Could be more generic/reusable.
-
-#### Issue #4: Display Package Complexity
-**Severity: Low-Medium**
-
-Current state:
-- 23+ subpackages
-- Some overlap between packages
-- Test files bypass facade (import cycles)
-- Lots of type re-exports
-
-Good aspects:
-- Clear separation achieved
-- Interfaces for decoupling
-- Facade pattern works
-
-But:
-- Might be over-engineered
-- Some subpackages have single file
-- Navigation difficulty
-
-#### Issue #5: Inconsistent Package Location
-**Severity: Low**
-
-Current state:
-- workspace/ at root (should be in internal/ or pkg/)
-- tracking/ at root (should be in internal/)
-- agent_prompts/ at root (should be in internal/)
-
-Rationale:
-- workspace/ could be reusable (move to pkg/)
-- tracking/ is app-specific (move to internal/)
-- agent_prompts/ is app-specific (move to internal/)
-
-### 3.2 Code Quality Opportunities
-
-#### Opportunity #1: Consolidate Component Creation
-**Impact: High**
-
-Move component factories closer to components:
-- internal/app/factories.go → internal/orchestration/factories/
-- Create dedicated factory package
-- Generic factory interface
-
-Benefits:
-- Clearer ownership
-- Better testability
-- Easier to extend
-
-#### Opportunity #2: Explicit Tool Registration
-**Impact: Medium**
-
-Replace init() auto-registration with explicit:
-```go
-// tools/registry.go
-func RegisterAllTools(reg *base.ToolRegistry) {
-    // File tools
-    reg.Register(file.ReadFileTool())
-    reg.Register(file.WriteFileTool())
-    // ...
-    
-    // Edit tools
-    reg.Register(edit.ApplyPatchTool())
-    // ...
-}
 ```
-
-Benefits:
-- Clear inventory
-- Testable in isolation
-- Can conditionally register
-- Better for debugging
-
-#### Opportunity #3: Simplify Display Package
-**Impact: Low-Medium**
-
-Consolidate small subpackages:
-- Merge banner/ into components/
-- Merge events/ into streaming/
-- Consider merging terminal/ into core/
-
-Benefits:
-- Fewer packages to navigate
-- Less import boilerplate
-- Simpler mental model
-
-#### Opportunity #4: Extract Common Patterns
-**Impact: Medium**
-
-Create reusable abstractions:
-- Generic factory interface
-- Generic registry implementation
-- Common component lifecycle
-
-Current duplication:
-- ModelFactory + ToolRegistry + FormatterRegistry
-- Similar patterns, different implementations
-
-#### Opportunity #5: Improve Package Documentation
-**Impact: Low**
-
-Add package-level doc comments:
-- internal/app - "Application lifecycle management"
-- internal/orchestration - "Component orchestration and dependency injection"
-- tools/ - "Agent tool implementations"
-
-Benefits:
-- Better godoc output
-- Clearer intent
-- Easier onboarding
-
-### 3.3 Architecture Strengths (To Preserve)
-
-✅ **Clean Dependency Graph**
-- No circular dependencies
-- Clear layering
-- Good separation
-
-✅ **Interface-Based Design**
-- Extensible
-- Testable
-- Mockable
-
-✅ **Pattern Consistency**
-- Builder pattern (orchestration)
-- Factory pattern (models)
-- Registry pattern (tools/models)
-- Facade pattern (display/tools)
-
-✅ **Test Coverage**
-- 100% pass rate
-- Good coverage in critical areas
-- Backward compatibility tests
-
-✅ **Recent Refactoring Quality**
-- Documented in logs/
-- Zero regressions
-- Incremental approach
+✓ ReplaceInFile: Rejects empty replacements (would truncate)
+✓ ReplaceInFile: Max replacement count validation (prevent accidents)
+✓ ApplyPatch: Dry-run mode (--dry-run flag)
+✓ ExecuteCommand: Working directory validation
+✓ All tools: JSON schema validation + type safety
+```
 
 ---
 
-## Phase 4: Pragmatic Recommendations
+## 4. MODEL & LLM ABSTRACTION
 
-### Priority 1: High-Impact, Low-Risk
+### 4.1 Multi-Backend Support
 
-#### R1.1: Reorganize Root-Level Packages (2-4 hours)
-**Move packages to appropriate locations:**
+**Three Backends**:
+1. **Gemini**: google.golang.org/genai (Google's official SDK)
+2. **Vertex AI**: Gemini models via GCP (requires GOOGLE_CLOUD_PROJECT)
+3. **OpenAI**: OpenAI GPT-4o (requires OPENAI_API_KEY)
+
+**Key File**: `pkg/models/registry.go` - Dynamic model resolution
+
+### 4.2 Model Registry Design
 
 ```
-BEFORE:
-code_agent/
-├── workspace/      # Root level
-├── tracking/       # Root level
-├── agent_prompts/  # Root level
-
-AFTER:
-code_agent/
-├── pkg/
-│   └── workspace/  # Reusable workspace logic
-├── internal/
-│   ├── tracking/   # App-specific tracking
-│   └── prompts/    # App-specific prompts
+Registry
+  ├─ models: map[modelID] → Config       [canonical model definitions]
+  ├─ aliases: map[shorthand] → modelID   [user-friendly shortcuts]
+  └─ modelsByProvider: map[backend] → []modelID
 ```
 
-**Steps:**
-1. Move workspace/ to pkg/workspace/
-2. Move tracking/ to internal/tracking/
-3. Move agent_prompts/ to internal/prompts/
-4. Update all imports (automated via sed/scripts)
-5. Run tests
+**Resolution Priority**:
+1. Explicit model ID from CLI (--model gemini-2.5-flash)
+2. Backend from --backend flag or env var
+3. Default model (gemini-2.5-flash)
 
-**Risk: Low** (mechanical refactoring)
-**Impact: High** (clearer architecture)
+**Factory Pattern**: `factories/` subdir registers models during init()
 
-#### R1.2: Explicit Tool Registration (3-6 hours)
-**Replace init() with explicit registration:**
+### 4.3 Config Structure
 
 ```go
-// tools/registry.go (new file)
-package tools
-
-func RegisterCoreTools(reg *base.ToolRegistry) error {
-    // File operations
-    if err := reg.Register(file.ReadFileTool()); err != nil {
-        return err
+type Config struct {
+    ID             string         // canonical ID
+    Name           string         // display name
+    DisplayName    string         // UI-friendly name
+    Backend        string         // "gemini" | "vertexai" | "openai"
+    ContextWindow  int            // max tokens
+    Capabilities   struct {       // vision, tools, long context, cost tier
+        VisionSupport bool
+        ToolUseSupport bool
+        LongContextWindow bool
+        CostTier string            // "economy" | "standard" | "premium"
     }
-    if err := reg.Register(file.WriteFileTool()); err != nil {
-        return err
-    }
-    
-    // Edit operations
-    if err := reg.Register(edit.ApplyPatchTool()); err != nil {
-        return err
-    }
-    
-    // ... all tools
-    return nil
+    RecommendedFor []string       // ["coding", "analysis", "creative"]
+    IsDefault      bool
 }
 ```
-
-**Update initialization:**
-```go
-// internal/orchestration/agent.go
-func InitializeAgentComponent(...) {
-    registry := base.NewToolRegistry()
-    if err := tools.RegisterCoreTools(registry); err != nil {
-        return nil, err
-    }
-    // ...
-}
-```
-
-**Benefits:**
-- Clear tool inventory
-- Conditional registration
-- Better testability
-- Explicit dependencies
-
-**Risk: Low** (additive change, keep init() for backward compat)
-**Impact: High** (better maintainability)
-
-#### R1.3: Consolidate internal/app (4-6 hours)
-**Simplify and focus internal/app:**
-
-```
-BEFORE:
-internal/app/
-├── app.go
-├── components.go (type aliases)
-├── factories.go (creates other packages' components)
-├── session.go
-├── signals.go
-├── utils.go
-
-AFTER:
-internal/app/
-├── app.go (Application struct + Run())
-├── lifecycle.go (init/cleanup)
-├── 6 test files
-
-internal/orchestration/
-├── builder.go
-├── components.go
-├── factories/ (new)
-│   ├── display.go
-│   ├── model.go
-│   ├── agent.go
-│   └── session.go
-```
-
-**Steps:**
-1. Move factories.go content to internal/orchestration/factories/
-2. Remove components.go (type aliases), use direct types
-3. Merge session.go, signals.go content into app.go or lifecycle.go
-4. Update imports
-
-**Risk: Medium** (structural change)
-**Impact: High** (clearer responsibilities)
-
-### Priority 2: Medium-Impact, Low-Risk
-
-#### R2.1: Add Package Documentation (1-2 hours)
-**Add doc.go files to major packages:**
-
-```go
-// internal/app/doc.go
-// Package app manages the application lifecycle, including initialization,
-// signal handling, and graceful shutdown.
-package app
-
-// internal/orchestration/doc.go
-// Package orchestration provides component dependency injection and
-// initialization orchestration using the builder pattern.
-package orchestration
-
-// tools/doc.go
-// Package tools provides a comprehensive collection of agent tools
-// for file operations, code editing, execution, and workspace management.
-package tools
-```
-
-**Risk: Zero** (documentation only)
-**Impact: Medium** (better godoc, clearer intent)
-
-#### R2.2: Extract Common Factory Interface (2-3 hours)
-**Create generic factory abstraction:**
-
-```go
-// pkg/factory/interface.go (new)
-package factory
-
-type Factory[T any] interface {
-    Create(config Config) (T, error)
-    Validate(config Config) error
-}
-
-type Registry[T any] interface {
-    Register(id string, factory Factory[T])
-    Get(id string) (Factory[T], error)
-    List() []string
-}
-```
-
-**Apply to:**
-- pkg/models/factories/
-- internal/display/formatters/
-- (future) tool factories
-
-**Risk: Low** (additive, optional migration)
-**Impact: Medium** (reusable pattern)
-
-#### R2.3: Simplify Display Subpackages (2-4 hours)
-**Consolidate related packages:**
-
-```
-BEFORE:
-internal/display/
-├── banner/       (single purpose)
-├── events/       (event types)
-├── terminal/     (terminal primitives)
-
-AFTER:
-internal/display/
-├── core/
-│   ├── interfaces.go
-│   ├── events.go     (merged from events/)
-│   └── terminal.go   (merged from terminal/)
-├── components/
-│   ├── banner.go     (merged from banner/)
-│   ├── spinner.go
-│   └── ...
-```
-
-**Benefits:**
-- Fewer packages
-- Clearer organization
-- Less import boilerplate
-
-**Risk: Low** (internal package, good tests)
-**Impact: Medium** (simpler navigation)
-
-### Priority 3: Low-Priority, Future Enhancements
-
-#### R3.1: Generic Component Lifecycle (4-8 hours)
-**Create generic component interface:**
-
-```go
-// internal/orchestration/lifecycle.go
-type Component interface {
-    Initialize(ctx context.Context) error
-    Start(ctx context.Context) error
-    Stop(ctx context.Context) error
-}
-
-type ComponentBuilder[T Component] interface {
-    Build(ctx context.Context, config *config.Config) (T, error)
-}
-```
-
-**Risk: Medium-High** (requires refactoring multiple components)
-**Impact: Medium** (more generic, reusable)
-
-#### R3.2: Plugin Architecture for Tools (8-12 hours)
-**Enable dynamic tool loading:**
-
-```go
-type ToolPlugin interface {
-    Name() string
-    Version() string
-    Register(registry *base.ToolRegistry) error
-}
-```
-
-**Risk: High** (significant architectural change)
-**Impact: Low-Medium** (extensibility, not currently needed)
 
 ---
 
-## Phase 5: Risk Analysis
+## 5. INTERNAL PACKAGES (Comprehensive Map)
 
-### Refactoring Risk Matrix
+### 5.1 `internal/app/`
+**Responsibility**: Application lifecycle orchestration
 
-| Recommendation | Risk Level | Impact | Effort | Dependencies |
-|----------------|-----------|---------|--------|--------------|
-| R1.1: Reorganize root packages | LOW | HIGH | 2-4h | None |
-| R1.2: Explicit tool registration | LOW | HIGH | 3-6h | None |
-| R1.3: Consolidate internal/app | MEDIUM | HIGH | 4-6h | R1.1 |
-| R2.1: Package documentation | ZERO | MEDIUM | 1-2h | None |
-| R2.2: Common factory interface | LOW | MEDIUM | 2-3h | None |
-| R2.3: Simplify display packages | LOW | MEDIUM | 2-4h | None |
-| R3.1: Generic component lifecycle | HIGH | MEDIUM | 4-8h | R1.3 |
-| R3.2: Plugin architecture | HIGH | LOW | 8-12h | R1.2 |
+| File | Purpose |
+|------|---------|
+| `app.go` | Main Application struct, Run(), Close(), REPL initialization |
+| `components.go` | Type aliases for component re-export (backward compat) |
+| `factories.go` | Component factory functions (deprecated, use Orchestrator) |
+| `signals.go` | Unix signal handling (SIGINT, SIGTERM) |
+| `session.go` | Session creation & management helpers |
 
-### Risk Mitigation Strategies
+**Key Methods**:
+- `New(ctx, cfg)` - Creates app with orchestrated components
+- `Run()` - Starts REPL loop
+- `Close()` - Cleanup (session manager, signal handler, REPL)
 
-1. **Branch-based Development**
-   - Create feature branches for each recommendation
-   - One recommendation per PR
-   - Comprehensive review before merge
+### 5.2 `internal/orchestration/`
+**Responsibility**: Component builder & initialization
 
-2. **Incremental Testing**
-   - Run `make check` after each change
-   - Verify zero regression
-   - Test backward compatibility
+| File | Purpose |
+|------|---------|
+| `builder.go` | Orchestrator fluent builder API |
+| `components.go` | Component type definitions (Display, Model, Session) |
+| `display.go` | Display component factory |
+| `model.go` | Model registry & LLM initialization |
+| `agent.go` | ADK agent creation + tool registration |
+| `session.go` | Session manager + token tracking |
 
-3. **Rollback Plan**
-   - Keep git history clean
-   - Tag before major changes
-   - Document rollback procedures
+**Key Pattern**: All WithX() methods check prior errors, allowing:
+```go
+components, err := orchestrator.
+    WithDisplay().
+    WithModel().
+    WithAgent().
+    WithSession().
+    Build()
+```
 
-4. **Validation Criteria**
-   - ✅ All tests pass
-   - ✅ No build warnings
-   - ✅ No new circular dependencies
-   - ✅ Backward compatibility maintained
-   - ✅ Documentation updated
+### 5.3 `internal/repl/`
+**Responsibility**: Read-Eval-Print Loop
+
+| File | Purpose |
+|------|---------|
+| `repl.go` | Main REPL loop, readline integration, input processing |
+
+**Features**:
+- Readline instance with history file (~/.code_agent_history)
+- Built-in command routing (/help, /models, /exit, etc.)
+- Agent invocation with spinner feedback
+- Event timeline collection for UI rendering
+- Context cancellation awareness
+
+### 5.4 `internal/display/`
+**Responsibility**: Terminal UI rendering & output formatting
+
+**Subpackages**:
+- `banner/` - Welcome/start banners
+- `renderer/` - Base Renderer (colors, styles, ANSI)
+- `streaming/` - Real-time agent output (thinking, tool execution)
+- `components/` - EventTimeline, event types
+- `formatters/` - Output formatters (markdown, JSON, plain text)
+- `styles/` - Color palettes, output format constants
+- `terminal/` - Terminal width/height detection
+- `tools/` - Tool execution display helpers
+- `core/` - Core display logic
+
+**Key Types**:
+- `Renderer` - ANSI color/style application
+- `StreamingDisplay` - Progressive output during agent execution
+- `TypewriterPrinter` - Animated text output
+- `EventTimeline` - Event collection for this request
+
+### 5.5 `internal/session/`
+**Responsibility**: Session persistence & token tracking
+
+| File | Purpose |
+|------|---------|
+| `manager.go` | SessionManager CRUD operations |
+| `models.go` | Session data models |
+| `persistence/` | SQLite backend (gorm) |
+
+**Key Abstraction**: Separates session service (interface) from implementation (SQLite)
+
+### 5.6 `internal/config/`
+**Responsibility**: Configuration from CLI flags & environment
+
+**Key Method**: `LoadFromEnv()` - parses:
+- CLI flags (--model, --backend, --output-format, etc.)
+- Environment variables (GOOGLE_API_KEY, GOOGLE_CLOUD_PROJECT, etc.)
+- Returns config + remaining args
+
+### 5.7 `internal/cli/`
+**Responsibility**: Built-in REPL commands
+
+**Commands**:
+- `/help` - Display help message
+- `/models` - List available models
+- `/use` - Switch models at runtime
+- `/exit` / `/quit` - Exit REPL
+- `/sessions` - Manage sessions
+
+### 5.8 `internal/llm/`
+**Responsibility**: LLM provider abstraction (Gemini, Vertex, OpenAI)
+
+**Pattern**: Adapter pattern for each backend
+- `gemini.go` - Google Gemini SDK integration
+- `openai.go` - OpenAI SDK integration
+- `vertex.go` - Vertex AI integration
+
+### 5.9 Other Internal Packages
+
+| Package | Purpose |
+|---------|---------|
+| `internal/tracking/` | Token usage tracking for sessions |
+| `internal/runtime/` | Signal handling, context management |
+| `internal/prompts/` | Agent system prompts |
+| `internal/errors/` | Error handling utilities |
 
 ---
 
-## Phase 6: Implementation Roadmap
+## 6. KEY DESIGN DECISIONS
 
-### Sprint 1: Foundation (1 week)
-**Goal: Low-risk organizational improvements**
+### 6.1 Why ADK Framework?
 
-Day 1-2: R2.1 Package Documentation
-- Add doc.go files
-- Update README references
-- Generate godoc
+**Chosen over alternatives** (Cline, Claude Code, direct API calls):
+- ✓ Official Google framework for autonomous agents
+- ✓ Tool abstraction layer (Tool interface, JSON schema support)
+- ✓ Session management built-in
+- ✓ Streaming & event-driven architecture
+- ✓ Function calling with automatic type marshaling
 
-Day 3-4: R1.1 Reorganize Root Packages
-- Move workspace/ to pkg/workspace/
-- Move tracking/ to internal/tracking/
-- Move agent_prompts/ to internal/prompts/
-- Update all imports
-- Run tests
+### 6.2 Why Multiple LLM Backends?
 
-Day 5: R1.2 Explicit Tool Registration (Part 1)
-- Create tools/registry.go
-- Implement RegisterCoreTools()
-- Keep init() for backward compat
-- Add tests
+**Strategic reasoning**:
+- 🎯 Vendor lock-in avoidance (Gemini → OpenAI → Vertex)
+- 🎯 Cost optimization (pick cheapest model for task)
+- 🎯 Feature coverage (some models have vision, others have function calling)
+- 🎯 Fallback strategy (if one API rate-limits, switch backends)
 
-### Sprint 2: Consolidation (1 week)
-**Goal: Simplify internal/app and improve structure**
+### 6.3 Tool Registration at Package Init
 
-Day 1-3: R1.3 Consolidate internal/app
-- Create internal/orchestration/factories/
-- Move factory logic
-- Remove type aliases
-- Refactor app.go
-- Run extensive tests
+**Pattern**: Each tool's `NewXxxTool()` calls `common.Register()` during `init()`
 
-Day 4-5: R2.3 Simplify Display Packages
-- Merge banner/ into components/
-- Merge events/ into core/
-- Update imports
-- Verify facade still works
+**Pro**: Automatic discovery, no manual registry maintenance  
+**Con**: Makes mocking harder in tests (global state)
 
-### Sprint 3: Polish (3-5 days)
-**Goal: Extract patterns and improve reusability**
+### 6.4 Component-based Display
 
-Day 1-2: R2.2 Common Factory Interface
-- Create pkg/factory/
-- Define generic interfaces
-- Optional migration of existing factories
+Rather than monolithic renderer, **8 specialized packages** under `display/`:
+- Concern separation (banner ≠ streaming ≠ formatting)
+- Testability (mock individual components)
+- Extensibility (add new output formats without touching core)
 
-Day 3: Testing & Documentation
-- Update architecture docs
-- Add examples
-- Performance testing
+### 6.5 Orchestrator Pattern > Factory Pattern
 
-### Sprint 4+: Future Enhancements (Optional)
-**Goal: Advanced patterns**
+**Old approach**: Separate factory functions (still exist in `factories.go`)  
+**New approach**: Orchestrator with WithX() methods
 
-- R3.1: Generic Component Lifecycle
-- R3.2: Plugin Architecture
-- Performance optimizations
-- Additional tooling
+**Why**:
+- Single place to understand component dependencies
+- Fluent API is more readable
+- Error collection at each step (fail-fast, not panic)
 
 ---
 
-## Conclusion
+## 7. DATA FLOWS
 
-### Current State: GOOD (7.5/10)
-The codebase is well-structured with:
-- Clean architecture
-- Good test coverage
-- Recent successful refactoring
-- Zero circular dependencies
-- Strong patterns (Builder, Factory, Facade, Registry)
+### 7.1 User Interaction → Agent Execution
 
-### Target State: EXCELLENT (9/10)
-With proposed changes:
-- ✅ Clearer package organization
-- ✅ Explicit over implicit (tool registration)
-- ✅ Better documentation
-- ✅ More reusable patterns
-- ✅ Simpler navigation
-- ✅ Maintainable long-term
+```
+REPL.readline()
+  └─> processUserMessage(ctx, input)
+       ├─> Create genai.Content with user text
+       ├─> agent.Run(ctx, content)
+       │    └─> [ADK agentic loop]
+       │         ├─ Call LLM with context
+       │         ├─ Parse tool calls from response
+       │         ├─ Execute tools (file read, execute command, etc.)
+       │         ├─ Collect results in timeline
+       │         └─ Repeat until stop
+       ├─> Render timeline (thinking, tool execution, results)
+       └─> Collect token usage & session state
+```
 
-### Key Success Factors
-1. **Pragmatic Approach**: Focus on high-impact, low-risk changes
-2. **Zero Regression**: Maintain 100% test pass rate
-3. **Incremental**: One change at a time
-4. **Documented**: Clear logs and rationale
-5. **Reviewable**: Small, focused PRs
+### 7.2 Model Selection Flow
 
-### Estimated Total Effort
-- Sprint 1: 5 days (low risk)
-- Sprint 2: 5 days (medium risk)
-- Sprint 3: 3-5 days (low risk)
-- **Total: 13-15 days**
+```
+CLI: --model gemini-2.5-flash --backend gemini
+  └─> config.LoadFromEnv()
+       └─> orchestration.InitializeModelComponents(ctx, cfg)
+            ├─> registry.ResolveModel(cfg.Model, cfg.Backend)
+            │    └─ Returns Config (with ID, Backend, Capabilities)
+            └─> llm.NewLLM(provider, modelID, apiKey)
+                 └─ Creates google.golang.org/adk/model.LLM instance
+```
 
-### Commitment to Quality
-- ✅ **Zero regressions**
-- ✅ **Backward compatibility**
-- ✅ **Comprehensive testing**
-- ✅ **Clear documentation**
-- ✅ **Pragmatic decisions**
+### 7.3 Session & Token Tracking
 
-**Reputation protected. Quality assured.**
+```
+SessionManager (SQLite backend)
+  ├─ CreateSession(ctx, userID, sessionName)
+  ├─ GetSession(ctx, userID, sessionID)
+  ├─ ListSessions(ctx, userID)
+  └─ DeleteSession(ctx, userID, sessionID)
+
+SessionTokens (in-memory tracking)
+  ├─ Track input tokens per request
+  ├─ Track output tokens per request
+  ├─ Accumulate totals in session
+  └─ Display in UI
+```
+
+---
+
+## 8. KEY FILES TO UNDERSTAND
+
+### Essential Reading Order (Recommended)
+1. **`main.go`** (140 lines) - Entry point, initialization
+2. **`internal/orchestration/builder.go`** (140 lines) - Component orchestration
+3. **`internal/app/app.go`** (140 lines) - Lifecycle management
+4. **`internal/repl/repl.go`** (245 lines) - Interactive loop
+5. **`tools/file/file_tools.go`** (150 lines) - Tool pattern example
+6. **`internal/display/renderer.go`** - Terminal UI facade
+7. **`pkg/models/registry.go`** (218 lines) - Model selection logic
+
+### Total Critical Code: ~1000 lines (easily digestible)
+
+---
+
+## 9. CONVENTIONS & PATTERNS
+
+### 9.1 Error Handling
+- Uses `pkg/errors/` package with error codes
+- Output structs always have Success + Error fields
+- Tools never panic (return error in output struct)
+
+### 9.2 Testing
+- Unit tests in `*_test.go` files
+- Test factories in `pkg/testutil/`
+- Makefile has `make test`, `make coverage`, `make check`
+
+### 9.3 Configuration
+- Env vars for secrets (GOOGLE_API_KEY, etc.)
+- CLI flags for behavior (--model, --output-format, etc.)
+- Precedence: CLI flags > env vars > defaults
+
+### 9.4 Code Organization
+- `cmd/` patterns (none currently, uses main.go directly)
+- `pkg/` for public reusable code (models, errors, workspace)
+- `internal/` for app-specific code (repl, display, session)
+- `tools/` for tool ecosystem (flat structure, ~30 tools)
+
+---
+
+## 10. EXTERNAL DEPENDENCIES (High-Level)
+
+| Dependency | Purpose | Version |
+|------------|---------|---------|
+| `google.golang.org/adk` (local fork) | Agent framework, tool abstraction | v0.0.0 (replaced) |
+| `google.golang.org/genai` | Gemini API SDK | v1.20.0 |
+| `github.com/openai/openai-go` | OpenAI API SDK | v3.8.1 |
+| `github.com/charmbracelet/glamour` | Markdown rendering | v0.10.0 |
+| `github.com/charmbracelet/lipgloss` | Terminal styling | v1.1.1 |
+| `github.com/chzyer/readline` | Interactive CLI | v1.5.1 |
+| `gorm.io/gorm` + `sqlite` | Session persistence | v1.31.0 |
+
+---
+
+## 11. STRENGTHS & OBSERVATIONS
+
+### ✅ What's Well Done
+1. **Clean separation of concerns** - Each package has clear responsibility
+2. **Tool abstraction** - Extensible, type-safe tool system
+3. **Multi-backend support** - Strategic abstraction for LLM providers
+4. **Component composition** - Orchestrator pattern scales well
+5. **Rich terminal UI** - Professional markdown rendering + streaming output
+6. **Error handling** - Consistent error struct across all tools
+7. **Testing infrastructure** - Makefile targets, test utilities
+
+### ⚠️ Areas for Refinement
+1. **Tool registration** - Global state (init functions) makes mocking hard
+2. **Orchestrator size** - `orchestration/` package gets large with all factories
+3. **REPL complexity** - `repl.go` (245 lines) handles too many concerns
+4. **Documentation** - Limited inline comments on complex flows
+
+---
+
+## 12. TODO FOR DOCUMENTATION
+
+- [ ] **ARCHITECTURE.md** - System design diagram, component interaction
+- [ ] **TOOL_DEVELOPMENT.md** - Step-by-step guide for adding new tools
+- [ ] **QUICK_REFERENCE.md** - Common commands, environment variables
+- [ ] **API_INTEGRATION.md** - Backend setup (Gemini, Vertex AI, OpenAI)
+
+---
+
+## Summary Statistics
+
+| Metric | Count |
+|--------|-------|
+| Go packages | 20+ |
+| Tool categories | 8 |
+| Total tools | ~30 |
+| Main code files | ~15 |
+| Internal packages | 11 |
+| Lines of critical code | ~1000 |
+| Supported LLM backends | 3 |
+| CLI commands | 6+ |
 
