@@ -1,17 +1,17 @@
-// Package main - Gemini model definitions and registration
-package main
+// Package models - Gemini model definitions and registration
+package models
 
 // RegisterGeminiAndVertexAIModels registers all Gemini and Vertex AI models with the registry
 // This function should be called during registry initialization
-func RegisterGeminiAndVertexAIModels(registry *ModelRegistry) {
+func RegisterGeminiAndVertexAIModels(registry *Registry) {
 	// Define base models ONCE (no more -vertex duplicates!)
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gemini-2.5-flash",
 		Name:          "Gemini 2.5 Flash",
 		DisplayName:   "Gemini 2.5 Flash",
 		Backend:       "gemini",
 		ContextWindow: 1000000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -22,13 +22,13 @@ func RegisterGeminiAndVertexAIModels(registry *ModelRegistry) {
 		IsDefault:      true,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gemini-2.0-flash",
 		Name:          "Gemini 2.0 Flash",
 		DisplayName:   "Gemini 2.0 Flash",
 		Backend:       "gemini",
 		ContextWindow: 1000000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -39,13 +39,13 @@ func RegisterGeminiAndVertexAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gemini-1.5-flash",
 		Name:          "Gemini 1.5 Flash",
 		DisplayName:   "Gemini 1.5 Flash",
 		Backend:       "gemini",
 		ContextWindow: 1000000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -56,13 +56,13 @@ func RegisterGeminiAndVertexAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gemini-1.5-pro",
 		Name:          "Gemini 1.5 Pro",
 		DisplayName:   "Gemini 1.5 Pro",
 		Backend:       "gemini",
 		ContextWindow: 2000000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,

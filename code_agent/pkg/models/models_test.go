@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package models
 
 import (
 	"testing"
 )
 
 func TestModelRegistry(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := NewRegistry()
 
 	tests := []struct {
 		name          string
@@ -52,7 +52,7 @@ func TestModelRegistry(t *testing.T) {
 }
 
 func TestModelResolve(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := NewRegistry()
 
 	tests := []struct {
 		name          string
@@ -88,7 +88,7 @@ func TestModelResolve(t *testing.T) {
 }
 
 func TestListModelsByBackend(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := NewRegistry()
 
 	geminiBakcend := registry.ListModelsByBackend("gemini")
 
@@ -139,7 +139,7 @@ func TestExtractModelID(t *testing.T) {
 }
 
 func TestDefaultModel(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := NewRegistry()
 	defaultModel := registry.GetDefaultModel()
 
 	if !defaultModel.IsDefault {

@@ -1,5 +1,5 @@
-// Package main - Session management handlers
-package main
+// Package cli - Session management handlers
+package cli
 
 import (
 	"context"

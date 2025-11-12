@@ -1,5 +1,5 @@
-// Package main - Event handling and display logic
-package main
+// Package display - Event handling and display logic
+package display
 
 import (
 	"fmt"
@@ -8,14 +8,13 @@ import (
 
 	"google.golang.org/adk/session"
 
-	"code_agent/display"
 	"code_agent/tracking"
 )
 
-// printEventEnhanced processes and displays agent events
-func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.StreamingDisplay,
-	event *session.Event, spinner *display.Spinner, activeToolName *string, toolRunning *bool,
-	sessionTokens *tracking.SessionTokens, requestID string, timeline *display.EventTimeline) {
+// PrintEventEnhanced processes and displays agent events
+func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
+	event *session.Event, spinner *Spinner, activeToolName *string, toolRunning *bool,
+	sessionTokens *tracking.SessionTokens, requestID string, timeline *EventTimeline) {
 
 	if event.Content == nil || len(event.Content.Parts) == 0 {
 		return
@@ -42,8 +41,8 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 	}
 
 	// Create tool renderer with enhanced features
-	toolRenderer := display.NewToolRenderer(renderer)
-	toolResultParser := display.NewToolResultParser(nil)
+	toolRenderer := NewToolRenderer(renderer)
+	toolResultParser := NewToolResultParser(nil)
 
 	for _, part := range event.Content.Parts {
 		// Handle text content
@@ -70,12 +69,12 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 
 				if isThinking {
 					// Update spinner message with thinking indicator and set thinking mode
-					spinner.SetMode(display.SpinnerModeThinking)
-					spinner.Update(display.EventTypeIcon(display.EventTypeThinking) + " Agent is thinking")
+					spinner.SetMode(SpinnerModeThinking)
+					spinner.Update(EventTypeIcon(EventTypeThinking) + " Agent is thinking")
 					spinner.Start()
 				} else {
 					// Render the actual text content with result indicator
-					prefix := display.EventTypeIcon(display.EventTypeResult) + " "
+					prefix := EventTypeIcon(EventTypeResult) + " "
 					output := prefix + renderer.RenderPartContent(part)
 					fmt.Print(output)
 				}
@@ -103,7 +102,7 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 			fmt.Print(output)
 
 			// Start spinner with context-aware message for the tool execution
-			spinnerMessage := getToolSpinnerMessage(part.FunctionCall.Name, args)
+			spinnerMessage := GetToolSpinnerMessage(part.FunctionCall.Name, args)
 			spinner.Update(spinnerMessage)
 			spinner.Start()
 		}
@@ -125,7 +124,7 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 			}
 
 			// Show success indicator for tool completion
-			successIcon := display.EventTypeIcon(display.EventTypeSuccess)
+			successIcon := EventTypeIcon(EventTypeSuccess)
 			fmt.Printf("\n%s Tool completed: %s\n", successIcon, part.FunctionResponse.Name)
 
 			// Use enhanced result parser for structured output
@@ -148,9 +147,9 @@ func printEventEnhanced(renderer *display.Renderer, streamDisplay *display.Strea
 	}
 }
 
-// getToolSpinnerMessage returns a context-aware spinner message for tool execution
-func getToolSpinnerMessage(toolName string, args map[string]any) string {
-	icon := display.EventTypeIcon(display.EventTypeExecuting)
+// GetToolSpinnerMessage returns a context-aware spinner message for tool execution
+func GetToolSpinnerMessage(toolName string, args map[string]any) string {
+	icon := EventTypeIcon(EventTypeExecuting)
 
 	switch toolName {
 	case "read_file":

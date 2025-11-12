@@ -1,17 +1,17 @@
-// Package main - OpenAI model definitions and registration
-package main
+// Package models - OpenAI model definitions and registration
+package models
 
 // RegisterOpenAIModels registers all OpenAI models with the registry
 // This function should be called during registry initialization
-func RegisterOpenAIModels(registry *ModelRegistry) {
+func RegisterOpenAIModels(registry *Registry) {
 	// Frontier models - GPT-5 series
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-5",
 		Name:          "GPT-5",
 		DisplayName:   "GPT-5",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -22,13 +22,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-5-mini",
 		Name:          "GPT-5 Mini",
 		DisplayName:   "GPT-5 Mini",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -39,13 +39,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-5-nano",
 		Name:          "GPT-5 Nano",
 		DisplayName:   "GPT-5 Nano",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -56,13 +56,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-5-pro",
 		Name:          "GPT-5 Pro",
 		DisplayName:   "GPT-5 Pro",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -74,13 +74,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 	})
 
 	// GPT-4.1 series
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-4.1",
 		Name:          "GPT-4.1",
 		DisplayName:   "GPT-4.1",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -91,13 +91,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-4.1-mini",
 		Name:          "GPT-4.1 Mini",
 		DisplayName:   "GPT-4.1 Mini",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -108,13 +108,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-4.1-nano",
 		Name:          "GPT-4.1 Nano",
 		DisplayName:   "GPT-4.1 Nano",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -126,13 +126,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 	})
 
 	// Reasoning models - O-series
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-5-codex",
 		Name:          "GPT-5 Codex",
 		DisplayName:   "GPT-5 Codex",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -143,13 +143,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "o4-mini",
 		Name:          "o4-mini",
 		DisplayName:   "o4-mini (Fast Reasoning)",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    false,
 			LongContextWindow: true,
@@ -160,13 +160,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "o3",
 		Name:          "o3",
 		DisplayName:   "o3 (Deep Reasoning)",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    false,
 			LongContextWindow: true,
@@ -177,13 +177,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "o3-mini",
 		Name:          "o3-mini",
 		DisplayName:   "o3-mini (Lightweight Reasoning)",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    false,
 			LongContextWindow: true,
@@ -195,13 +195,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 	})
 
 	// Vision and older models
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-4o",
 		Name:          "GPT-4o",
 		DisplayName:   "GPT-4o",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -212,13 +212,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "gpt-4o-mini",
 		Name:          "GPT-4o Mini",
 		DisplayName:   "GPT-4o Mini",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     true,
 			ToolUseSupport:    true,
 			LongContextWindow: true,
@@ -229,13 +229,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "o1",
 		Name:          "o1",
 		DisplayName:   "o1 (Previous Reasoning)",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    false,
 			LongContextWindow: true,
@@ -246,13 +246,13 @@ func RegisterOpenAIModels(registry *ModelRegistry) {
 		IsDefault:      false,
 	})
 
-	registry.RegisterModel(ModelConfig{
+	registry.RegisterModel(Config{
 		ID:            "o1-mini",
 		Name:          "o1-mini",
 		DisplayName:   "o1-mini (Deprecated)",
 		Backend:       "openai",
 		ContextWindow: 128000,
-		Capabilities: ModelCapabilities{
+		Capabilities: Capabilities{
 			VisionSupport:     false,
 			ToolUseSupport:    false,
 			LongContextWindow: true,

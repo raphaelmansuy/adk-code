@@ -1,5 +1,5 @@
-// Package main - CLI command handlers
-package main
+// Package cli - CLI command handlers
+package cli
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"code_agent/display"
+	"code_agent/pkg/models"
 	"code_agent/tools"
 	"code_agent/tracking"
 
@@ -49,10 +50,10 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 	}
 }
 
-// handleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
+// HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in main.go to break the loop
-func handleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *ModelRegistry, currentModel ModelConfig) bool {
+func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config) bool {
 	switch input {
 	case "/prompt":
 		// Show the XML-structured prompt with minimal context
@@ -104,15 +105,15 @@ func handleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		// Check if it's a /set-model command
 		if strings.HasPrefix(input, "/set-model ") {
 			modelSpec := strings.TrimPrefix(input, "/set-model ")
-			handleSetModel(renderer, modelRegistry, modelSpec)
+			HandleSetModel(renderer, modelRegistry, modelSpec)
 			return true
 		}
 		return false
 	}
 }
 
-// handleSetModel validates and displays information about switching to a new model
-func handleSetModel(renderer *display.Renderer, registry *ModelRegistry, modelSpec string) {
+// HandleSetModel validates and displays information about switching to a new model
+func HandleSetModel(renderer *display.Renderer, registry *models.Registry, modelSpec string) {
 	modelSpec = strings.TrimSpace(modelSpec)
 	if modelSpec == "" {
 		fmt.Println(renderer.Red("Error: Please specify a model using provider/model syntax"))
@@ -149,9 +150,9 @@ func handleSetModel(renderer *display.Renderer, registry *ModelRegistry, modelSp
 		fmt.Printf("%s\n", renderer.Red(fmt.Sprintf("Model not found: %v", modelErr)))
 		fmt.Println("\n" + renderer.Bold("Available models:"))
 		for _, providerName := range registry.ListProviders() {
-			models := registry.GetProviderModels(providerName)
+			modelsCfg := registry.GetProviderModels(providerName)
 			fmt.Printf("\n%s:\n", renderer.Bold(strings.ToUpper(providerName[:1])+strings.ToLower(providerName[1:])))
-			for _, m := range models {
+			for _, m := range modelsCfg {
 				fmt.Printf("  • %s/%s\n", providerName, m.ID)
 			}
 		}

@@ -20,6 +20,8 @@ import (
 	codingagent "code_agent/agent"
 	"code_agent/display"
 	"code_agent/persistence"
+	"code_agent/pkg/cli"
+	"code_agent/pkg/models"
 	"code_agent/tracking"
 )
 
@@ -55,10 +57,10 @@ func main() {
 	}()
 
 	// Parse command-line flags
-	cliConfig, args := ParseCLIFlags()
+	cliConfig, args := cli.ParseCLIFlags()
 
 	// Handle special commands (new-session, list-sessions, etc.)
-	if HandleCLICommands(ctx, args, cliConfig.DBPath) {
+	if cli.HandleCLICommands(ctx, args, cliConfig.DBPath) {
 		os.Exit(0)
 	}
 
@@ -84,17 +86,17 @@ func main() {
 	streamingDisplay := display.NewStreamingDisplay(renderer, typewriter)
 
 	// Create model registry
-	modelRegistry := NewModelRegistry()
+	modelRegistry := models.NewRegistry()
 
 	// Resolve which model to use based on provider/model syntax
-	var selectedModel ModelConfig
+	var selectedModel models.Config
 
 	if cliConfig.Model == "" {
 		// No model specified, use default
 		selectedModel = modelRegistry.GetDefaultModel()
 	} else {
 		// Parse the provider/model syntax
-		parsedProvider, parsedModel, parseErr := ParseProviderModelSyntax(cliConfig.Model)
+		parsedProvider, parsedModel, parseErr := cli.ParseProviderModelSyntax(cliConfig.Model)
 		if parseErr != nil {
 			log.Fatalf("Invalid model syntax: %v\nUse format: provider/model (e.g., gemini/2.5-flash)", parseErr)
 		}
@@ -160,7 +162,7 @@ func main() {
 	var modelErr error
 
 	// Extract the actual model ID for the API (remove -vertex suffix if present)
-	actualModelID := ExtractModelIDFromGemini(selectedModel.ID)
+	actualModelID := models.ExtractModelIDFromGemini(selectedModel.ID)
 
 	switch selectedModel.Backend {
 	case "vertexai":
@@ -170,7 +172,7 @@ func main() {
 		if cliConfig.VertexAILocation == "" {
 			log.Fatal("Vertex AI backend requires GOOGLE_CLOUD_LOCATION environment variable or --location flag")
 		}
-		llmModel, modelErr = CreateVertexAIModel(ctx, VertexAIConfig{
+		llmModel, modelErr = models.CreateVertexAIModel(ctx, models.VertexAIConfig{
 			Project:   cliConfig.VertexAIProject,
 			Location:  cliConfig.VertexAILocation,
 			ModelName: actualModelID,
@@ -181,7 +183,7 @@ func main() {
 		if openaiKey == "" {
 			log.Fatal("OpenAI backend requires OPENAI_API_KEY environment variable")
 		}
-		llmModel, modelErr = CreateOpenAIModel(ctx, OpenAIConfig{
+		llmModel, modelErr = models.CreateOpenAIModel(ctx, models.OpenAIConfig{
 			APIKey:    openaiKey,
 			ModelName: actualModelID,
 		})
@@ -189,7 +191,7 @@ func main() {
 	case "gemini":
 		fallthrough
 	default:
-		llmModel, modelErr = CreateGeminiModel(ctx, GeminiConfig{
+		llmModel, modelErr = models.CreateGeminiModel(ctx, models.GeminiConfig{
 			APIKey:    apiKey,
 			ModelName: actualModelID,
 		})
@@ -311,7 +313,7 @@ func main() {
 		}
 
 		// Handle built-in commands
-		if handleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, selectedModel) {
+		if cli.HandleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, selectedModel) {
 			continue
 		}
 
@@ -358,7 +360,7 @@ func main() {
 			}
 
 			if event != nil {
-				printEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning, sessionTokens, requestID, timeline)
+				display.PrintEventEnhanced(renderer, streamingDisplay, event, spinner, &activeToolName, &toolRunning, sessionTokens, requestID, timeline)
 			}
 		}
 

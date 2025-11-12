@@ -1,5 +1,5 @@
-// Package main - Provider definitions and utilities for model backends
-package main
+// Package models - Provider definitions and utilities for model backends
+package models
 
 import (
 	"sort"

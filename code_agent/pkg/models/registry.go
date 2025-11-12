@@ -1,5 +1,5 @@
-// Package main - Model registry implementation
-package main
+// Package models - Model registry implementation
+package models
 
 import (
 	"fmt"
@@ -7,40 +7,55 @@ import (
 	"strings"
 )
 
-// ModelRegistry manages available models and configurations
-type ModelRegistry struct {
-	models           map[string]ModelConfig // model ID → config
-	aliases          map[string]string      // "provider/shorthand" → model ID
-	modelsByProvider map[string][]string    // provider → list of model IDs
+// Registry manages available models and configurations
+type Registry struct {
+	models           map[string]Config   // model ID → config
+	aliases          map[string]string   // "provider/shorthand" → model ID
+	modelsByProvider map[string][]string // provider → list of model IDs
+}
+
+// NewRegistry creates and initializes a new model registry with all models registered
+func NewRegistry() *Registry {
+	registry := &Registry{
+		models:           make(map[string]Config),
+		aliases:          make(map[string]string),
+		modelsByProvider: make(map[string][]string),
+	}
+
+	// Register all available models
+	RegisterGeminiAndVertexAIModels(registry)
+	RegisterOpenAIModels(registry)
+
+	return registry
 }
 
 // RegisterModel adds a model to the registry
-func (mr *ModelRegistry) RegisterModel(model ModelConfig) {
+func (mr *Registry) RegisterModel(model Config) {
 	mr.models[model.ID] = model
 }
 
 // GetModel retrieves a model by ID
-func (mr *ModelRegistry) GetModel(id string) (ModelConfig, error) {
+func (mr *Registry) GetModel(id string) (Config, error) {
 	model, exists := mr.models[id]
 	if !exists {
-		return ModelConfig{}, fmt.Errorf("model %q not found in registry", id)
+		return Config{}, fmt.Errorf("model %q not found in registry", id)
 	}
 	return model, nil
 }
 
 // GetModelByName retrieves a model by display name (case-insensitive)
-func (mr *ModelRegistry) GetModelByName(name string) (ModelConfig, error) {
+func (mr *Registry) GetModelByName(name string) (Config, error) {
 	name = strings.ToLower(name)
 	for _, model := range mr.models {
 		if strings.ToLower(model.Name) == name {
 			return model, nil
 		}
 	}
-	return ModelConfig{}, fmt.Errorf("model %q not found", name)
+	return Config{}, fmt.Errorf("model %q not found", name)
 }
 
 // GetDefaultModel returns the default model
-func (mr *ModelRegistry) GetDefaultModel() ModelConfig {
+func (mr *Registry) GetDefaultModel() Config {
 	for _, model := range mr.models {
 		if model.IsDefault {
 			return model
@@ -55,8 +70,8 @@ func (mr *ModelRegistry) GetDefaultModel() ModelConfig {
 }
 
 // ListModels returns all available models
-func (mr *ModelRegistry) ListModels() []ModelConfig {
-	models := make([]ModelConfig, 0, len(mr.models))
+func (mr *Registry) ListModels() []Config {
+	models := make([]Config, 0, len(mr.models))
 	for _, model := range mr.models {
 		models = append(models, model)
 	}
@@ -64,8 +79,8 @@ func (mr *ModelRegistry) ListModels() []ModelConfig {
 }
 
 // ListModelsByBackend returns models for a specific backend
-func (mr *ModelRegistry) ListModelsByBackend(backend string) []ModelConfig {
-	var models []ModelConfig
+func (mr *Registry) ListModelsByBackend(backend string) []Config {
+	var models []Config
 	for _, model := range mr.models {
 		if model.Backend == backend {
 			models = append(models, model)
@@ -76,7 +91,7 @@ func (mr *ModelRegistry) ListModelsByBackend(backend string) []ModelConfig {
 
 // ResolveModel determines which model to use based on user input and context
 // Priority: explicit model ID > explicit backend > defaults
-func (mr *ModelRegistry) ResolveModel(modelID string, backend string) (ModelConfig, error) {
+func (mr *Registry) ResolveModel(modelID string, backend string) (Config, error) {
 	// If model ID is specified, use it
 	if modelID != "" {
 		return mr.GetModel(modelID)
@@ -112,7 +127,7 @@ func ExtractModelIDFromGemini(modelID string) string {
 
 // RegisterModelForProvider registers a base model for a specific provider with optional shorthands
 // This avoids duplicating model definitions across providers
-func (mr *ModelRegistry) RegisterModelForProvider(
+func (mr *Registry) RegisterModelForProvider(
 	provider string,
 	baseModelID string,
 	shorthands []string,
@@ -142,9 +157,9 @@ func (mr *ModelRegistry) RegisterModelForProvider(
 }
 
 // GetProviderModels returns all models available for a specific provider
-func (mr *ModelRegistry) GetProviderModels(provider string) []ModelConfig {
+func (mr *Registry) GetProviderModels(provider string) []Config {
 	modelIDs := mr.modelsByProvider[provider]
-	result := make([]ModelConfig, 0, len(modelIDs))
+	result := make([]Config, 0, len(modelIDs))
 	for _, id := range modelIDs {
 		if model, err := mr.GetModel(id); err == nil {
 			result = append(result, model)
@@ -154,7 +169,7 @@ func (mr *ModelRegistry) GetProviderModels(provider string) []ModelConfig {
 }
 
 // ListProviders returns a list of all available providers
-func (mr *ModelRegistry) ListProviders() []string {
+func (mr *Registry) ListProviders() []string {
 	providers := make([]string, 0, len(mr.modelsByProvider))
 	for p := range mr.modelsByProvider {
 		providers = append(providers, p)
@@ -165,15 +180,15 @@ func (mr *ModelRegistry) ListProviders() []string {
 }
 
 // ResolveFromProviderSyntax resolves a model using provider/model syntax
-// Returns the resolved ModelConfig based on provider and model identifier
+// Returns the resolved Config based on provider and model identifier
 // providerName: explicit provider, or empty string for shorthand
 // modelIdentifier: model ID or shorthand (e.g., "flash", "2.5-flash", "gemini-2.5-flash")
 // defaultProvider: fallback provider if not specified (e.g., "gemini")
-func (mr *ModelRegistry) ResolveFromProviderSyntax(
+func (mr *Registry) ResolveFromProviderSyntax(
 	providerName string,
 	modelIdentifier string,
 	defaultProvider string,
-) (ModelConfig, error) {
+) (Config, error) {
 	// If provider not specified, use default
 	if providerName == "" {
 		providerName = defaultProvider
@@ -197,6 +212,6 @@ func (mr *ModelRegistry) ResolveFromProviderSyntax(
 	}
 
 	// Generate helpful error message
-	return ModelConfig{}, fmt.Errorf(
+	return Config{}, fmt.Errorf(
 		"model %q not found for provider %q", modelIdentifier, providerName)
 }

@@ -1,11 +1,12 @@
-// Package main - CLI display helpers
-package main
+// Package cli - CLI display helpers
+package cli
 
 import (
 	"fmt"
 	"strings"
 
 	"code_agent/display"
+	"code_agent/pkg/models"
 )
 
 // printHelpMessage displays the help message with pagination
@@ -122,14 +123,14 @@ func buildToolsListLines(renderer *display.Renderer) []string {
 }
 
 // printModelsList displays all available models with pagination
-func printModelsList(renderer *display.Renderer, registry *ModelRegistry) {
+func printModelsList(renderer *display.Renderer, registry *models.Registry) {
 	lines := buildModelsListLines(renderer, registry)
 	paginator := display.NewPaginator(renderer)
 	paginator.DisplayPaged(lines)
 }
 
 // buildModelsListLines builds the models list as an array of lines for pagination
-func buildModelsListLines(renderer *display.Renderer, registry *ModelRegistry) []string {
+func buildModelsListLines(renderer *display.Renderer, registry *models.Registry) []string {
 	var lines []string
 
 	lines = append(lines, "")
@@ -196,14 +197,14 @@ func buildModelsListLines(renderer *display.Renderer, registry *ModelRegistry) [
 }
 
 // printCurrentModelInfo displays detailed information about the current model with pagination
-func printCurrentModelInfo(renderer *display.Renderer, model ModelConfig) {
+func printCurrentModelInfo(renderer *display.Renderer, model models.Config) {
 	lines := buildCurrentModelInfoLines(renderer, model)
 	paginator := display.NewPaginator(renderer)
 	paginator.DisplayPaged(lines)
 }
 
 // buildCurrentModelInfoLines builds the current model info as an array of lines for pagination
-func buildCurrentModelInfoLines(renderer *display.Renderer, model ModelConfig) []string {
+func buildCurrentModelInfoLines(renderer *display.Renderer, model models.Config) []string {
 	var lines []string
 
 	lines = append(lines, "")
@@ -267,14 +268,14 @@ func buildCurrentModelInfoLines(renderer *display.Renderer, model ModelConfig) [
 }
 
 // printProvidersList displays available providers and their models with pagination
-func printProvidersList(renderer *display.Renderer, registry *ModelRegistry) {
+func printProvidersList(renderer *display.Renderer, registry *models.Registry) {
 	lines := buildProvidersListLines(renderer, registry)
 	paginator := display.NewPaginator(renderer)
 	paginator.DisplayPaged(lines)
 }
 
 // buildProvidersListLines builds the providers list as an array of lines for pagination
-func buildProvidersListLines(renderer *display.Renderer, registry *ModelRegistry) []string {
+func buildProvidersListLines(renderer *display.Renderer, registry *models.Registry) []string {
 	var lines []string
 
 	lines = append(lines, "")
@@ -285,8 +286,8 @@ func buildProvidersListLines(renderer *display.Renderer, registry *ModelRegistry
 
 	// Display each provider
 	for _, providerName := range registry.ListProviders() {
-		provider := ParseProvider(providerName)
-		meta := GetProviderMetadata(provider)
+		provider := models.ParseProvider(providerName)
+		meta := models.GetProviderMetadata(provider)
 
 		// Provider header
 		lines = append(lines, fmt.Sprintf("%s %s", meta.Icon, renderer.Bold(meta.DisplayName)))
@@ -294,8 +295,8 @@ func buildProvidersListLines(renderer *display.Renderer, registry *ModelRegistry
 		lines = append(lines, "")
 
 		// List models for this provider
-		models := registry.GetProviderModels(providerName)
-		for _, model := range models {
+		modelsCfg := registry.GetProviderModels(providerName)
+		for _, model := range modelsCfg {
 			icon := "○"
 			if model.IsDefault {
 				icon = "✓"

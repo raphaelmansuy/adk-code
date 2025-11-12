@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"testing"
+
+	"code_agent/pkg/models"
 )
 
 func TestParseProviderModelSyntax(t *testing.T) {
@@ -64,7 +66,7 @@ func TestParseProviderModelSyntax(t *testing.T) {
 }
 
 func TestResolveFromProviderSyntax(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := models.NewRegistry()
 
 	tests := []struct {
 		name            string
@@ -115,7 +117,7 @@ func TestResolveFromProviderSyntax(t *testing.T) {
 }
 
 func TestGetProviderModels(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := models.NewRegistry()
 
 	geminiBakcend := registry.GetProviderModels("gemini")
 	vertexAI := registry.GetProviderModels("vertexai")
@@ -150,7 +152,7 @@ func TestGetProviderModels(t *testing.T) {
 }
 
 func TestListProviders(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := models.NewRegistry()
 	providers := registry.ListProviders()
 
 	if len(providers) != 3 {
@@ -180,19 +182,19 @@ func TestProviderParsing(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected Provider
+		expected models.Provider
 		isValid  bool
 	}{
-		{"gemini", "gemini", ProviderGemini, true},
-		{"vertexai", "vertexai", ProviderVertexAI, true},
-		{"case-insensitive", "GEMINI", ProviderGemini, true},
-		{"invalid", "invalid", Provider(""), false},
-		{"empty", "", Provider(""), false},
+		{"gemini", "gemini", models.ProviderGemini, true},
+		{"vertexai", "vertexai", models.ProviderVertexAI, true},
+		{"case-insensitive", "GEMINI", models.ProviderGemini, true},
+		{"invalid", "invalid", models.Provider(""), false},
+		{"empty", "", models.Provider(""), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ParseProvider(tt.input)
+			result := models.ParseProvider(tt.input)
 			if tt.isValid {
 				if result != tt.expected {
 					t.Errorf("ParseProvider(%q) = %q, expected %q", tt.input, result, tt.expected)
@@ -208,18 +210,18 @@ func TestProviderParsing(t *testing.T) {
 
 func TestProviderMetadata(t *testing.T) {
 	tests := []struct {
-		provider Provider
-		checkFn  func(ProviderMetadata) bool
+		provider models.Provider
+		checkFn  func(models.ProviderMetadata) bool
 	}{
 		{
-			ProviderGemini,
-			func(m ProviderMetadata) bool {
+			models.ProviderGemini,
+			func(m models.ProviderMetadata) bool {
 				return m.DisplayName == "Gemini API" && m.Name == "gemini" && m.Icon == "🔷"
 			},
 		},
 		{
-			ProviderVertexAI,
-			func(m ProviderMetadata) bool {
+			models.ProviderVertexAI,
+			func(m models.ProviderMetadata) bool {
 				return m.DisplayName == "Vertex AI" && m.Name == "vertexai" && m.Icon == "🔶"
 			},
 		},
@@ -227,7 +229,7 @@ func TestProviderMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.provider.String(), func(t *testing.T) {
-			meta := GetProviderMetadata(tt.provider)
+			meta := models.GetProviderMetadata(tt.provider)
 			if !tt.checkFn(meta) {
 				t.Errorf("Provider metadata check failed for %s: %+v", tt.provider, meta)
 			}
@@ -240,7 +242,7 @@ func TestProviderMetadata(t *testing.T) {
 
 // Integration test: Test the full flow from parsing to model resolution
 func TestParseAndResolveFlow(t *testing.T) {
-	registry := NewModelRegistry()
+	registry := models.NewRegistry()
 
 	tests := []struct {
 		name            string

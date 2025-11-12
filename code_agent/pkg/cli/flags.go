@@ -1,61 +1,10 @@
-// Package main - CLI flag parsing
-package main
+// Package cli - CLI flag parsing
+package cli
 
 import (
 	"flag"
-	"fmt"
 	"os"
-	"strings"
 )
-
-// ParseProviderModelSyntax parses a "provider/model" string into components
-// Examples:
-//
-//	"gemini/2.5-flash" → ("gemini", "2.5-flash", nil)
-//	"gemini/flash" → ("gemini", "flash", nil)
-//	"flash" → ("", "flash", nil)
-//	"/flash" → ("", "", error)
-//	"a/b/c" → ("", "", error)
-func ParseProviderModelSyntax(input string) (string, string, error) {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return "", "", fmt.Errorf("model syntax cannot be empty")
-	}
-
-	parts := strings.Split(input, "/")
-	switch len(parts) {
-	case 1:
-		// Shorthand without provider: "flash" → ("", "flash")
-		return "", parts[0], nil
-	case 2:
-		// Full syntax: "provider/model" → ("provider", "model")
-		if parts[0] == "" || parts[1] == "" {
-			return "", "", fmt.Errorf("invalid model syntax: %q (use provider/model)", input)
-		}
-		return parts[0], parts[1], nil
-	default:
-		return "", "", fmt.Errorf("invalid model syntax: %q (use provider/model)", input)
-	}
-}
-
-// CLIConfig holds parsed command-line flags
-type CLIConfig struct {
-	OutputFormat      string
-	TypewriterEnabled bool
-	SessionName       string
-	DBPath            string
-	WorkingDirectory  string
-	// Backend configuration
-	Backend          string // "gemini" or "vertexai"
-	APIKey           string // For Gemini API
-	VertexAIProject  string // For Vertex AI
-	VertexAILocation string // For Vertex AI
-	// Model selection
-	Model string // Specific model ID (e.g., "gemini-2.5-flash", "gemini-1.5-pro")
-	// Thinking configuration
-	EnableThinking bool  // Enable model thinking/reasoning output
-	ThinkingBudget int32 // Token budget for thinking
-}
 
 // ParseCLIFlags parses command-line arguments and returns config and remaining args
 func ParseCLIFlags() (CLIConfig, []string) {
