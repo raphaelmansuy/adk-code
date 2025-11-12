@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	workspacepkg "code_agent/pkg/workspace"
 	"code_agent/tools/file"
-	workspacepkg "code_agent/workspace"
 )
 
 // WorkspaceTools provides workspace-aware file operation tools
