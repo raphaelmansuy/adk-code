@@ -1,5 +1,5 @@
-// Package cli - Session management handlers
-package cli
+// Package commands provides CLI command handlers organized by functionality.
+package commands
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"code_agent/persistence"
 )
 
-// handleNewSession creates a new session
-func handleNewSession(ctx context.Context, sessionName string, dbPath string) {
+// HandleNewSession creates a new session
+func HandleNewSession(ctx context.Context, sessionName string, dbPath string) {
 	manager, err := persistence.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)
@@ -26,8 +26,8 @@ func handleNewSession(ctx context.Context, sessionName string, dbPath string) {
 	fmt.Printf("✨ Created new session: %s\n", sessionName)
 }
 
-// handleListSessions lists all sessions
-func handleListSessions(ctx context.Context, dbPath string) {
+// HandleListSessions lists all sessions
+func HandleListSessions(ctx context.Context, dbPath string) {
 	manager, err := persistence.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)
@@ -52,8 +52,8 @@ func handleListSessions(ctx context.Context, dbPath string) {
 	}
 }
 
-// handleDeleteSession deletes a session
-func handleDeleteSession(ctx context.Context, sessionName string, dbPath string) {
+// HandleDeleteSession deletes a session
+func HandleDeleteSession(ctx context.Context, sessionName string, dbPath string) {
 	manager, err := persistence.NewSessionManager("code_agent", dbPath)
 	if err != nil {
 		log.Fatalf("Failed to create session manager: %v", err)

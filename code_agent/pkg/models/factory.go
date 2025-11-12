@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"code_agent/model"
-
 	adkmodel "google.golang.org/adk/model"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/genai"
@@ -92,11 +90,7 @@ func CreateGeminiModel(ctx context.Context, cfg GeminiConfig) (adkmodel.LLM, err
 }
 
 // CreateOpenAIModel creates a model using the official OpenAI API
-// Delegates to the model package implementation
+// Uses the internal OpenAI adapter implementation
 func CreateOpenAIModel(ctx context.Context, cfg OpenAIConfig) (adkmodel.LLM, error) {
-	modelCfg := model.OpenAIConfig{
-		APIKey:    cfg.APIKey,
-		ModelName: cfg.ModelName,
-	}
-	return model.CreateOpenAIModel(ctx, modelCfg)
+	return createOpenAIModelInternal(ctx, cfg)
 }

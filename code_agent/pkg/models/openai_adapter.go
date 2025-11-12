@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package models
 
 import (
 	"context"
@@ -28,19 +28,14 @@ import (
 	"google.golang.org/genai"
 )
 
-type OpenAIConfig struct {
-	APIKey    string
-	ModelName string
-}
-
 // OpenAIModelAdapter implements the model.LLM interface for OpenAI models
 type OpenAIModelAdapter struct {
 	client    openai.Client
 	modelName string
 }
 
-// CreateOpenAIModel creates a model using the OpenAI API backend
-func CreateOpenAIModel(ctx context.Context, cfg OpenAIConfig) (model.LLM, error) {
+// createOpenAIModelInternal creates a model using the OpenAI API backend (internal implementation)
+func createOpenAIModelInternal(ctx context.Context, cfg OpenAIConfig) (model.LLM, error) {
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("OpenAI API key is required")
 	}

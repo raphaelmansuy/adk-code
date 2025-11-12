@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"code_agent/display/components"
 )
 
 // ToolRenderer provides specialized rendering for tool calls and results.
@@ -67,7 +69,7 @@ func (tr *ToolRenderer) generateToolHeader(toolName string, args map[string]any,
 
 	// Extract path from args if present
 	if p, ok := args["path"].(string); ok {
-		path = tr.renderer.truncatePath(p, 60)
+		path = components.ShortenPath(p, 60)
 	}
 
 	switch toolName {
@@ -206,32 +208,10 @@ func (tr *ToolRenderer) generateToolPreview(toolName string, args map[string]any
 	return ""
 }
 
-// RenderToolCallDetailed renders a tool call with detailed argument display.
+// RenderToolCallDetailed renders a tool call with detailed argument display
 func (tr *ToolRenderer) RenderToolCallDetailed(toolName string, args map[string]any) string {
-	var output strings.Builder
-
-	// Contextual header
-	header := tr.renderer.getToolHeader(toolName, args)
-	rendered := tr.renderer.RenderMarkdown(header)
-	output.WriteString("\n")
-	output.WriteString(rendered)
-
-	// Render arguments (if not already shown in header)
-	switch toolName {
-	case "read_file", "write_file", "list_directory", "replace_in_file", "execute_command", "grep_search":
-		// Already shown in header
-	default:
-		// Show arguments for other tools
-		if len(args) > 0 {
-			output.WriteString(tr.renderer.Dim("\n  Arguments:\n"))
-			for k, v := range args {
-				output.WriteString(tr.renderer.Dim(fmt.Sprintf("    %s: %v\n", k, v)))
-			}
-		}
-	}
-
-	output.WriteString("\n")
-	return output.String()
+	// Delegate to the renderer's tool formatter for consistent formatting
+	return tr.renderer.RenderToolCall(toolName, args)
 }
 
 // RenderToolResultDetailed renders a tool result with detailed output.

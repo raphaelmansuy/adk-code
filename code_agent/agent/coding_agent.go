@@ -71,52 +71,10 @@ func GetProjectRoot(startPath string) (string, error) {
 
 // NewCodingAgent creates a new coding agent with all necessary tools.
 func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
-	// Initialize all tools (they register themselves in the global registry)
-	// We still need to call these to trigger registration via init side effects
-	if _, err := tools.NewReadFileTool(); err != nil {
-		return nil, fmt.Errorf("failed to create read_file tool: %w", err)
-	}
-	if _, err := tools.NewWriteFileTool(); err != nil {
-		return nil, fmt.Errorf("failed to create write_file tool: %w", err)
-	}
-	if _, err := tools.NewReplaceInFileTool(); err != nil {
-		return nil, fmt.Errorf("failed to create replace_in_file tool: %w", err)
-	}
-	if _, err := tools.NewListDirectoryTool(); err != nil {
-		return nil, fmt.Errorf("failed to create list_directory tool: %w", err)
-	}
-	if _, err := tools.NewSearchFilesTool(); err != nil {
-		return nil, fmt.Errorf("failed to create search_files tool: %w", err)
-	}
-	if _, err := tools.NewExecuteCommandTool(); err != nil {
-		return nil, fmt.Errorf("failed to create execute_command tool: %w", err)
-	}
-	if _, err := tools.NewGrepSearchTool(); err != nil {
-		return nil, fmt.Errorf("failed to create grep_search tool: %w", err)
-	}
-	if _, err := tools.NewApplyPatchTool(); err != nil {
-		return nil, fmt.Errorf("failed to create apply_patch tool: %w", err)
-	}
+	// Most tools auto-register via init() functions in their packages.
+	// V4A patch tool requires working directory parameter, so we register it explicitly.
 	if _, err := tools.NewApplyV4APatchTool(cfg.WorkingDirectory); err != nil {
 		return nil, fmt.Errorf("failed to create apply_v4a_patch tool: %w", err)
-	}
-	if _, err := tools.NewPreviewReplaceTool(); err != nil {
-		return nil, fmt.Errorf("failed to create preview_replace_in_file tool: %w", err)
-	}
-	if _, err := tools.NewEditLinesTool(); err != nil {
-		return nil, fmt.Errorf("failed to create edit_lines tool: %w", err)
-	}
-	if _, err := tools.NewSearchReplaceTool(); err != nil {
-		return nil, fmt.Errorf("failed to create search_replace tool: %w", err)
-	}
-	if _, err := tools.NewExecuteProgramTool(); err != nil {
-		return nil, fmt.Errorf("failed to create execute_program tool: %w", err)
-	}
-	if _, err := tools.NewDisplayMessageTool(); err != nil {
-		return nil, fmt.Errorf("failed to create display_message tool: %w", err)
-	}
-	if _, err := tools.NewUpdateTaskListTool(); err != nil {
-		return nil, fmt.Errorf("failed to create update_task_list tool: %w", err)
 	}
 
 	// Get all registered tools from the registry
