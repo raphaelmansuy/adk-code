@@ -1,18 +1,21 @@
 // Package tools provides a comprehensive collection of file, editing, execution,
-// and workspace management tools for the coding agent. This package re-exports
-// all tool constructors and types from subpackages for backward compatibility.
+// and workspace management tools for the coding agent.
+//
+// This package serves as the public interface for tool functionality, re-exporting
+// key types and constructors from internal subpackages. Tools are automatically
+// registered via init() functions in their respective subpackages.
 //
 // Subpackages:
+//   - common: Shared types and registry for all tools
 //   - file: File read/write/list operations
 //   - edit: Code editing tools (patches, search/replace, line edits)
 //   - search: Search and discovery tools
 //   - exec: Command and program execution
-//   - workspace: Workspace management
+//   - display: Message display and task list updates
+//   - workspace: Workspace management and analysis
 //   - v4a: V4A patch format tools
-//   - common: Shared types and registry
 package tools
 
-// Re-export all key functions from subpackages
 import (
 	"code_agent/tools/common"
 	"code_agent/tools/display"
@@ -24,51 +27,9 @@ import (
 	"code_agent/tools/workspace"
 )
 
-// File tools
-var (
-	NewReadFileTool      = file.NewReadFileTool
-	NewWriteFileTool     = file.NewWriteFileTool
-	NewReplaceInFileTool = file.NewReplaceInFileTool
-	NewListDirectoryTool = file.NewListDirectoryTool
-	NewSearchFilesTool   = file.NewSearchFilesTool
-)
+// Re-export type aliases for all tool input/output types
+// This reduces boilerplate for callers while maintaining clear type identity
 
-// Display tools
-var (
-	NewDisplayMessageTool = display.NewDisplayMessageTool
-	NewUpdateTaskListTool = display.NewUpdateTaskListTool
-)
-
-// Search tools
-var (
-	NewPreviewReplaceTool = search.NewPreviewReplaceTool
-)
-
-// Edit tools
-var (
-	NewApplyPatchTool    = edit.NewApplyPatchTool
-	NewEditLinesTool     = edit.NewEditLinesTool
-	NewSearchReplaceTool = edit.NewSearchReplaceTool
-)
-
-// Execution tools
-var (
-	NewExecuteCommandTool = exec.NewExecuteCommandTool
-	NewExecuteProgramTool = exec.NewExecuteProgramTool
-	NewGrepSearchTool     = exec.NewGrepSearchTool
-)
-
-// Workspace tools
-var (
-	NewWorkspaceTools = workspace.NewWorkspaceTools
-)
-
-// V4A tools
-var (
-	NewApplyV4APatchTool = v4a.NewApplyV4APatchTool
-)
-
-// Re-export types from subpackages
 type (
 	// Common types
 	ErrorCode    = common.ErrorCode
@@ -77,7 +38,7 @@ type (
 	ToolCategory = common.ToolCategory
 	ToolRegistry = common.ToolRegistry
 
-	// File types
+	// File tool types
 	ReadFileInput       = file.ReadFileInput
 	ReadFileOutput      = file.ReadFileOutput
 	WriteFileInput      = file.WriteFileInput
@@ -90,11 +51,11 @@ type (
 	SearchFilesOutput   = file.SearchFilesOutput
 	FileInfo            = file.FileInfo
 
-	// Search types
+	// Search tool types
 	PreviewReplaceInput  = search.PreviewReplaceInput
 	PreviewReplaceOutput = search.PreviewReplaceOutput
 
-	// Edit types
+	// Edit tool types
 	ApplyPatchInput     = edit.ApplyPatchInput
 	ApplyPatchOutput    = edit.ApplyPatchOutput
 	EditLinesInput      = edit.EditLinesInput
@@ -102,7 +63,7 @@ type (
 	SearchReplaceInput  = edit.SearchReplaceInput
 	SearchReplaceOutput = edit.SearchReplaceOutput
 
-	// Execution types
+	// Execution tool types
 	ExecuteCommandInput  = exec.ExecuteCommandInput
 	ExecuteCommandOutput = exec.ExecuteCommandOutput
 	ExecuteProgramInput  = exec.ExecuteProgramInput
@@ -111,23 +72,23 @@ type (
 	GrepSearchOutput     = exec.GrepSearchOutput
 	GrepMatch            = exec.GrepMatch
 
-	// Workspace types
+	// Workspace tool types
 	WorkspaceTools = workspace.WorkspaceTools
 
-	// V4A types
+	// V4A patch tool types
 	ApplyV4APatchInput  = v4a.ApplyV4APatchInput
 	ApplyV4APatchOutput = v4a.ApplyV4APatchOutput
 	V4APatch            = v4a.V4APatch
 	V4AHunk             = v4a.V4AHunk
 
-	// Display types
+	// Display tool types
 	DisplayMessageInput  = display.DisplayMessageInput
 	DisplayMessageOutput = display.DisplayMessageOutput
 	UpdateTaskListInput  = display.UpdateTaskListInput
 	UpdateTaskListOutput = display.UpdateTaskListOutput
 )
 
-// Re-export constants from common package
+// Re-export category constants for tool classification
 const (
 	CategoryFileOperations  = common.CategoryFileOperations
 	CategorySearchDiscovery = common.CategorySearchDiscovery
@@ -137,7 +98,41 @@ const (
 	CategoryDisplay         = common.CategoryDisplay
 )
 
-// Registry functions
+// Re-export tool constructors for programmatic tool creation
+// Most callers should use the registry for tool access
+var (
+	// File tools
+	NewReadFileTool      = file.NewReadFileTool
+	NewWriteFileTool     = file.NewWriteFileTool
+	NewReplaceInFileTool = file.NewReplaceInFileTool
+	NewListDirectoryTool = file.NewListDirectoryTool
+	NewSearchFilesTool   = file.NewSearchFilesTool
+
+	// Display tools
+	NewDisplayMessageTool = display.NewDisplayMessageTool
+	NewUpdateTaskListTool = display.NewUpdateTaskListTool
+
+	// Search tools
+	NewPreviewReplaceTool = search.NewPreviewReplaceTool
+
+	// Edit tools
+	NewApplyPatchTool    = edit.NewApplyPatchTool
+	NewEditLinesTool     = edit.NewEditLinesTool
+	NewSearchReplaceTool = edit.NewSearchReplaceTool
+
+	// Execution tools
+	NewExecuteCommandTool = exec.NewExecuteCommandTool
+	NewExecuteProgramTool = exec.NewExecuteProgramTool
+	NewGrepSearchTool     = exec.NewGrepSearchTool
+
+	// Workspace tools
+	NewWorkspaceTools = workspace.NewWorkspaceTools
+
+	// V4A tools
+	NewApplyV4APatchTool = v4a.NewApplyV4APatchTool
+)
+
+// Re-export registry functions for tool access and registration
 var (
 	GetRegistry = common.GetRegistry
 	Register    = common.Register
