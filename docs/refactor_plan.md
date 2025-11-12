@@ -1,658 +1,972 @@
 # Code Agent Refactoring Plan
 
-**Status**: Ready for Implementation  
-**Risk Level**: LOW (0% regression if followed incrementally)  
-**Estimated Effort**: 3-4 weeks (phased approach)  
-**Priority**: MEDIUM (modernization; not blocking current functionality)
-
----
+**Date**: November 12, 2025  
+**Objective**: Improve code organization, modularity, and maintainability while ensuring 0% regression  
+**Current Scale**: ~23,464 LOC across ~100 Go files, 31 test files
 
 ## Executive Summary
 
-This plan reorganizes the codebase for **better maintainability, clarity, and extensibility** without changing core functionality. The strategy follows Go best practices:
+This plan addresses architectural concerns while maintaining backward compatibility and zero regression. The focus is on pragmatic improvements that enhance code quality without disrupting existing functionality.
 
-1. **Clean package boundaries** – Each package has one clear responsibility
-2. **Reduced coupling** – Dependency injection, interfaces, not singletons
-3. **Layered architecture** – Clear distinction between presentation, business logic, and data layers
-4. **Incremental refactoring** – 5 phases; each can ship independently
+## Guiding Principles
+
+1. **Zero Regression**: All existing tests must pass after each phase
+2. **Incremental Changes**: Small, testable changes with clear rollback points
+3. **Backward Compatibility**: Maintain existing APIs through deprecation/facade patterns
+4. **Pragmatic Over Perfect**: Focus on high-impact improvements
+5. **Test-Driven**: Add tests before refactoring, ensure coverage remains stable
+
+## Current Architecture Assessment
+
+### Strengths to Preserve
+- ✅ Clean tool registration system with category-based organization
+- ✅ No circular dependencies
+- ✅ Well-defined error handling patterns
+- ✅ Repository pattern for data access
+- ✅ Interface-driven design in key areas
+
+### Issues to Address
+- ❌ Display package too large (~4000+ LOC, 25+ files)
+- ❌ Internal/app package has "God Object" characteristics
+- ❌ Mixed abstraction levels in several packages
+- ❌ Session management split across 3 locations
+- ❌ Inconsistent package organization patterns
+- ❌ Heavy reliance on init() for registration (fragile, hard to test)
 
 ---
 
-## Current State → Target State
+## Phase 1: Foundation & Documentation (Low Risk)
 
-### Current Organization
+**Goal**: Establish testing baseline and document current architecture without changing code
 
+### 1.1 Test Coverage Analysis
+- [ ] Run `make test` with coverage reporting
+- [ ] Document current test coverage percentage
+- [ ] Identify packages with <50% coverage
+- [ ] Create coverage baseline report: `docs/test_coverage_baseline.md`
+
+### 1.2 Dependency Graph
+- [ ] Generate package dependency graph using `go mod graph`
+- [ ] Document key dependency flows
+- [ ] Identify tight coupling points
+- [ ] Output: `docs/architecture/dependency_graph.md`
+
+### 1.3 API Surface Documentation
+- [ ] Document all exported functions/types in each package
+- [ ] Identify public APIs that must remain stable
+- [ ] Mark internal-only exports that can change freely
+- [ ] Output: `docs/architecture/api_surface.md`
+
+**Validation**: No code changes, documentation only  
+**Duration**: 1-2 days  
+**Risk**: None
+
+---
+
+## Phase 2: Display Package Restructuring (Medium Risk)
+
+**Goal**: Break down the monolithic display package into focused sub-packages
+
+### Current Structure (display/)
 ```
-code_agent/
-├── main.go                              # Entry point
-├── internal/app/                        # Monolithic orchestrator (300+ LOC)
-├── agent/                               # LLM & prompts (fragmented: 7 files)
-├── display/                             # UI (24+ files, unclear hierarchy)
-├── tools/                               # ✅ Well-structured (auto-registering)
-├── workspace/                           # ✅ Good design
-├── session/                             # ✅ Isolated
-├── pkg/
-│   ├── cli/                            # Mixed concerns (flags, commands, syntax)
-│   ├── errors/                         # ✅ Good
-│   └── models/                         # Heavy SDK dependencies
-├── tracking/                            # Event tracking
-└── [Others]
-```
-
-### Target Organization
-
-```
-code_agent/
-├── main.go                              # Clean entry point
-├── cmd/                                 # NEW: CLI commands layer
-│   ├── app.go                          # Application entrypoint
-│   └── commands/                       # Refactored CLI commands
-├── internal/
-│   ├── app/                            # Lean orchestrator
-│   ├── config/                         # NEW: Configuration management
-│   ├── llm/                            # NEW: LLM abstraction layer
-│   ├── ui/                             # NEW: Presentation layer
-│   ├── data/                           # NEW: Persistence layer
-│   └── testutils/                      # Test helpers (existing)
-├── agent/                               # Focused: LLM agent definition
-│   ├── agent.go                        # Core agent config
-│   └── prompts/                        # Consolidated prompt logic
-├── display/                             # Lean: Presentation/rendering
-│   ├── renderer.go                     # Main renderer facade
-│   ├── formatter/                      # Specialized formatters
-│   └── terminal/                       # Terminal utilities
-├── tools/                               # ✅ Keep as-is (excellent design)
-├── workspace/                           # ✅ Keep as-is
-├── session/                             # ✅ Keep as-is
-├── pkg/
-│   ├── cli/                            # SLIM: Just flags, no commands
-│   ├── errors/                         # ✅ Keep as-is
-│   └── log/                            # NEW: Structured logging
-└── [Others]
-```
-
----
-
-## Detailed Refactoring Phases
-
-### Phase 1: Extract Configuration Layer
-
-**Goal**: Separate configuration from orchestration  
-**Files Affected**: `pkg/cli/` → `internal/config/`, `internal/app/`  
-**Risk**: LOW | **Duration**: 3-5 days | **Regression Risk**: 0%
-
-#### What Changes
-
-1. **Create `internal/config/` package**
-   ```go
-   // internal/config/config.go
-   type Config struct {
-       CLI       CLIConfig        // From pkg/cli
-       Model     ModelConfig      // From pkg/models
-       Workspace WorkspaceConfig  // From workspace
-       // ... other configs
-   }
-
-   // LoadConfig(ctx) (*Config, error)
-   // ValidateConfig(cfg *Config) error
-   ```
-
-2. **Slim down `pkg/cli/`**
-   - Move `CLIConfig` to `internal/config/`
-   - Keep only flag parsing in `pkg/cli/flags.go`
-   - Move `commands.go` to `cmd/commands/`
-
-3. **Update `main.go`**
-   ```go
-   // Before
-   cliConfig, args := cli.ParseCLIFlags()
-   if cli.HandleCLICommands(ctx, args, cliConfig.DBPath) { os.Exit(0) }
-   app, _ := app.New(ctx, &cliConfig)
-
-   // After
-   cfg, _ := config.LoadFromEnv()
-   if handled, _ := cmd.HandleSpecialCommands(ctx, cfg); handled { os.Exit(0) }
-   app, _ := app.New(ctx, cfg)
-   ```
-
-#### Checklist
-- [ ] Create `internal/config/` package with Config struct
-- [ ] Move CLIConfig, ModelConfig definitions to internal/config
-- [ ] Create config.LoadFromEnv() factory
-- [ ] Update main.go to use new config path
-- [ ] Update Application.New(ctx, cfg) signature
-- [ ] Run full test suite; verify 0 failures
-- [ ] Update imports across codebase
-
----
-
-### Phase 2: Refactor Application Orchestrator
-
-**Goal**: Break monolithic Application into focused components  
-**Files Affected**: `internal/app/`  
-**Risk**: LOW | **Duration**: 5-7 days | **Regression Risk**: 0%
-
-#### What Changes
-
-1. **Extract Component Managers**
-   ```go
-   // internal/app/components/
-   ├── display.go        // DisplayManager
-   ├── model.go          // ModelManager
-   ├── agent.go          // AgentManager
-   ├── session.go        // SessionManager (refactor existing)
-   ├── workspace.go      // NEW: WorkspaceManager
-   └── repl.go           // REPLManager (extract from repl.go)
-
-   // Each Manager encapsulates initialization + lifecycle
-   type DisplayManager struct {
-       renderer *display.Renderer
-       typewriter *display.Typewriter
-       // ...
-   }
-   func (dm *DisplayManager) Initialize(ctx context.Context, cfg *config.Config) error
-   func (dm *DisplayManager) Shutdown(ctx context.Context) error
-   ```
-
-2. **Simplify Application struct**
-   ```go
-   // Before: 7 fields, complex orchestration
-   type Application struct {
-       config        *CLIConfig
-       display       *DisplayComponents
-       model         *ModelComponents
-       // ... (monolithic)
-   }
-
-   // After: Lean orchestrator
-   type Application struct {
-       config    *config.Config
-       managers  ComponentManagers  // Aggregate
-       agent     Agent              // Injected
-   }
-
-   type ComponentManagers struct {
-       Display   *DisplayManager
-       Model     *ModelManager
-       Agent     *AgentManager
-       Session   *SessionManager
-       Workspace *WorkspaceManager
-       REPL      *REPLManager
-   }
-   ```
-
-3. **Create AppBuilder for cleaner initialization**
-   ```go
-   app, err := NewApplicationBuilder(config).
-       WithContext(ctx).
-       WithSignalHandling().
-       Build()
-   ```
-
-4. **Extract REPL loop**
-   - Move REPL from app.Run() to REPLManager
-   - Test REPL independently
-
-#### Checklist
-- [ ] Create `internal/app/components/` directory
-- [ ] Extract DisplayManager (test independently)
-- [ ] Extract ModelManager (test independently)
-- [ ] Extract AgentManager (test independently)
-- [ ] Extract REPLManager from repl.go
-- [ ] Simplify Application struct to orchestrator role only
-- [ ] Create AppBuilder for cleaner API
-- [ ] Update Application.Run() to use manager pattern
-- [ ] Run full test suite; verify 0 failures
-- [ ] Verify signal handling still works (Ctrl+C test)
-
----
-
-### Phase 3: Reorganize Display Package
-
-**Goal**: Reduce 24 files to 5 focused subpackages  
-**Files Affected**: `display/`  
-**Risk**: LOW | **Duration**: 4-6 days | **Regression Risk**: 0%
-
-#### What Changes
-
-1. **Consolidate display/ structure**
-   ```go
-   // Target structure
-   display/
-   ├── renderer.go              # Main Renderer facade (keep as-is)
-   ├── formatter/
-   │   ├── registry.go          # FormatterRegistry (new abstraction)
-   │   ├── base.go              # BaseFormatter interface
-   │   ├── tool.go              # ToolFormatter
-   │   ├── agent.go             # AgentFormatter
-   │   ├── error.go             # ErrorFormatter
-   │   └── metrics.go           # MetricsFormatter
-   ├── styles/                  # Keep existing structure
-   ├── terminal/                # Keep existing structure
-   ├── components.go            # Atomic display components (banner, etc.)
-   ├── animation/
-   │   ├── spinner.go           # Spinner animation
-   │   ├── typewriter.go        # Typewriter animation
-   │   └── paginator.go         # Pagination
-   └── stream/
-       ├── streaming.go         # StreamingDisplay
-       ├── segment.go           # StreamingSegment
-       └── deduplicator.go      # Deduplicator
-   ```
-
-2. **Create FormatterRegistry abstraction**
-   ```go
-   // display/formatter/registry.go
-   type FormatterRegistry interface {
-       Register(category string, formatter Formatter) error
-       Get(category string) (Formatter, error)
-       GetAll() map[string]Formatter
-   }
-
-   // Renderer uses registry instead of direct field references
-   type Renderer struct {
-       formatters FormatterRegistry
-       styles     *styles.Styles
-   }
-   ```
-
-3. **Move complex helpers to their own files**
-   - `tool_renderer.go`, `tool_adapter.go`, `tool_result_parser.go` → `formatter/tool_internals.go`
-   - `streaming_segment.go` → `stream/segment.go`
-   - `deduplicator.go` → `stream/deduplicator.go`
-
-4. **Consolidate prompts/ (agent package)**
-   - Merge `builder.go` + `builder_cont.go` into `builder.go`
-   - Move prompt sections (workflow, guidance, pitfalls) to separate internal file: `builder_sections.go`
-   - Result: `prompts/` becomes more modular
-
-#### Checklist
-- [ ] Create display/formatter/ subpackage with registry
-- [ ] Extract Formatter interface for all formatters to implement
-- [ ] Move tool formatter internals to formatter/ subpackage
-- [ ] Create display/animation/ subpackage (spinner, typewriter, paginator)
-- [ ] Create display/stream/ subpackage (streaming, segment, deduplicator)
-- [ ] Update Renderer to use FormatterRegistry instead of direct fields
-- [ ] Update agent/prompts/: merge builder.go + builder_cont.go
-- [ ] Move prompt sections to builder_sections.go
-- [ ] Run full test suite; verify 0 failures
-- [ ] Verify display output looks identical (no visual regression)
-
----
-
-### Phase 4: Extract LLM Abstraction Layer
-
-**Goal**: Isolate LLM implementation details; simplify agent.go  
-**Files Affected**: `pkg/models/`, `agent/`, `internal/app/`  
-**Risk**: MEDIUM | **Duration**: 5-7 days | **Regression Risk**: <1% (well-isolated)
-
-#### What Changes
-
-1. **Create `internal/llm/` abstraction layer**
-   ```go
-   // internal/llm/
-   ├── provider.go           # LLMProvider interface
-   ├── config.go             # LLM configuration
-   ├── factory.go            # Factory for creating providers
-   ├── backends/
-   │   ├── gemini.go         # Gemini implementation
-   │   ├── vertexai.go       # Vertex AI implementation
-   │   └── openai.go         # OpenAI implementation
-   └── cache.go              # Model caching/registry
-
-   // internal/llm/provider.go
-   type LLMProvider interface {
-       Create(ctx context.Context, config Config) (model.LLM, error)
-       Validate(config Config) error
-       GetMetadata() ProviderMetadata
-   }
-
-   type Config struct {
-       Provider string
-       Model    string
-       APIKey   string
-       // ... provider-specific fields
-   }
-   ```
-
-2. **Move provider creation logic**
-   - Move `pkg/models/gemini.go`, `vertexai.go`, `openai.go` to `internal/llm/backends/`
-   - Move `pkg/models/registry.go` logic to `internal/llm/factory.go`
-   - Keep error handling in `pkg/errors/`
-
-3. **Simplify agent.go**
-   ```go
-   // Before
-   llm, err := models.CreateGeminiModel(ctx, config)  // Complex factory
-
-   // After
-   llm, err := llm.Create(ctx, config)  // Clean factory
-   ```
-
-4. **Move model registry to pkg/models** (rename to pkg/registry)
-   - Keep model.Config definitions here (backward compat)
-   - Import from internal/llm for provider logic
-
-#### Checklist
-- [ ] Create `internal/llm/` package structure
-- [ ] Extract LLMProvider interface from existing code
-- [ ] Move provider implementations to `internal/llm/backends/`
-- [ ] Create `internal/llm/factory.go` for provider creation
-- [ ] Update `pkg/models/` to import from internal/llm
-- [ ] Update `agent.go` to use new factory
-- [ ] Update `internal/app/` model initialization
-- [ ] Run full test suite; verify 0 failures
-- [ ] Test all three backends (Gemini, Vertex AI, OpenAI)
-
----
-
-### Phase 5: Extract Data/Persistence Layer
-
-**Goal**: Separate data access from business logic  
-**Files Affected**: `session/`, `tracking/`, `pkg/models/`  
-**Risk**: LOW | **Duration**: 3-5 days | **Regression Risk**: 0%
-
-#### What Changes
-
-1. **Create `internal/data/` package**
-   ```go
-   // internal/data/
-   ├── session.go            # Session repository
-   ├── models.go             # Model registry repository
-   ├── persistence.go        # Persistence abstraction
-   └── sqlite/
-       ├── session.go        # SQLite session impl
-       └── models.go         # SQLite model registry impl
-   ```
-
-2. **Extract Session as Repository pattern**
-   ```go
-   // Before: session/ is tightly bound to SQLite
-   type SessionManager struct {
-       sessionService session.Service
-   }
-
-   // After: Abstracted interface
-   type SessionRepository interface {
-       Create(ctx context.Context, req *CreateRequest) error
-       Get(ctx context.Context, id string) (*Session, error)
-       List(ctx context.Context, userID string) ([]*Session, error)
-       Delete(ctx context.Context, id string) error
-   }
-
-   // Implementations
-   type SQLiteSessionRepository struct { ... }
-   type InMemorySessionRepository struct { ... }  // For testing
-   ```
-
-3. **Move model persistence to data layer**
-   - `pkg/models/sqlite.go` → `internal/data/sqlite/models.go`
-   - Extract as ModelRegistry interface
-
-4. **Decouple from database implementation**
-   - Use repository pattern throughout
-   - Easy to swap implementations for testing/alternative backends
-
-#### Checklist
-- [ ] Create `internal/data/` package structure
-- [ ] Extract SessionRepository interface from session/
-- [ ] Create SQLite implementation in internal/data/sqlite/
-- [ ] Move model persistence to internal/data/
-- [ ] Extract ModelRegistry interface
-- [ ] Update session/ to use repository pattern
-- [ ] Create in-memory implementations for testing
-- [ ] Run full test suite; verify 0 failures
-- [ ] Test with both SQLite and in-memory backends
-
----
-
-## Summary of Changes by Package
-
-| Package | Phase | Action | Risk |
-|---------|-------|--------|------|
-| `main.go` | 1, 2 | Update to use new config path | LOW |
-| `pkg/cli/` | 1 | **Slim**: Move configs to internal/config | LOW |
-| `internal/config/` | 1 | **NEW**: Centralized configuration | LOW |
-| `internal/app/` | 2 | **Refactor**: Extract component managers | LOW |
-| `display/` | 3 | **Reorganize**: Consolidate 24 files to 5 dirs | LOW |
-| `agent/prompts/` | 3 | **Consolidate**: Merge builder files | LOW |
-| `internal/llm/` | 4 | **NEW**: LLM abstraction layer | MEDIUM |
-| `pkg/models/` | 4 | **Update**: Import from internal/llm | MEDIUM |
-| `internal/data/` | 5 | **NEW**: Data/persistence layer | LOW |
-| `session/` | 5 | **Update**: Use repository pattern | LOW |
-| `tools/` | - | **NO CHANGE**: Keep as-is (excellent) | - |
-| `workspace/` | - | **NO CHANGE**: Keep as-is | - |
-
----
-
-## Validation & Rollback Strategy
-
-### Before Each Phase
-- [ ] Create feature branch: `refactor/phase-X-description`
-- [ ] Document expected behavior in test cases
-- [ ] Run full test suite; baseline established
-
-### During Each Phase
-- [ ] Commit frequently (every logical change)
-- [ ] Run tests after each commit
-- [ ] Keep git history clean for easy bisect if issues arise
-
-### After Each Phase
-- [ ] Run full test suite (100% pass required)
-- [ ] Run integration tests (REPL, agent.Run(), signal handling)
-- [ ] Verify no visual regressions (display output identical)
-- [ ] Code review before merging to main
-
-### Rollback Procedure
-- If >1 test fails: `git revert` and diagnose
-- If regression detected: `git reset --hard` to last stable
-- Never push incomplete phase; always backtrack to green state
-
----
-
-## Testing Strategy
-
-### Unit Tests (per phase)
-- New packages: Write tests before/alongside changes
-- Modified packages: Verify existing tests still pass
-- Use table-driven tests for complex logic
-
-### Integration Tests
-- Agent loop: Test agent.Run() with mock tools
-- REPL: Test interactive prompt → agent → output
-- Signal handling: Test Ctrl+C cancels running agent
-- Config loading: Test all config sources (env, flags, file)
-
-### Regression Tests
-- Visual display output (tool call formatting, banners, colors)
-- Tool execution (execute command, file operations)
-- Session persistence (create, list, delete, resume)
-- Model selection (all three backends work)
-
-### Test Automation
-```bash
-# Before each commit
-make test            # Unit tests
-make integration-test  # Integration tests (after Phase 2)
-make check           # Format, vet, lint, test
+display/
+  ├── ansi.go, event.go, facade.go, factory.go
+  ├── renderer.go, streaming_display.go, typewriter.go, spinner.go
+  ├── tool_*.go (adapter, renderer, result_parser)
+  ├── paginator.go, deduplicator.go
+  ├── banner/ (banner.go, banner_test.go)
+  ├── components/ (banner.go)
+  ├── formatters/ (...)
+  ├── renderer/ (renderer.go, markdown_renderer.go)
+  ├── styles/ (colors.go, formatting.go)
+  ├── terminal/ (...)
+  └── tooling/ (...)
 ```
 
+### Proposed Structure
+```
+display/
+  ├── facade.go          # Public API facade (maintain backward compatibility)
+  ├── factory.go         # Component factory
+  │
+  ├── core/              # Core rendering primitives
+  │   ├── ansi.go        # ANSI codes
+  │   ├── terminal.go    # Terminal utilities
+  │   └── styles.go      # Style definitions
+  │
+  ├── components/        # UI components
+  │   ├── spinner.go
+  │   ├── typewriter.go
+  │   ├── paginator.go
+  │   └── banner.go
+  │
+  ├── renderers/         # Content renderers
+  │   ├── renderer.go
+  │   ├── markdown.go
+  │   └── tool_renderer.go
+  │
+  ├── streaming/         # Streaming display
+  │   ├── display.go
+  │   ├── segment.go
+  │   └── deduplicator.go
+  │
+  ├── events/            # Event handling
+  │   ├── event.go
+  │   ├── timeline.go
+  │   └── adapter.go
+  │
+  └── formatters/        # Content formatters
+      └── (existing formatters)
+```
+
+### Implementation Steps
+
+#### 2.1 Create New Package Structure
+- [ ] Create subdirectories under display/
+- [ ] Move files to appropriate packages (copy first, don't delete)
+- [ ] Update package declarations
+- [ ] Fix import paths within display package
+
+#### 2.2 Update facade.go for Backward Compatibility
+```go
+// display/facade.go
+package display
+
+import (
+    "code_agent/display/components"
+    "code_agent/display/renderers"
+    "code_agent/display/streaming"
+)
+
+// Re-export types for backward compatibility
+type Spinner = components.Spinner
+type Renderer = renderers.Renderer
+type StreamingDisplay = streaming.Display
+
+// Re-export constructors
+func NewSpinner(r *Renderer, msg string) *Spinner {
+    return components.NewSpinner(r, msg)
+}
+// ... etc
+```
+
+#### 2.3 Update External Imports
+- [ ] Update imports in internal/app/
+- [ ] Update imports in pkg/cli/
+- [ ] Update imports in agent/
+- [ ] Update imports in tools/
+
+#### 2.4 Testing & Validation
+- [ ] Run all display package tests
+- [ ] Run full test suite: `make test`
+- [ ] Verify no regression in functionality
+- [ ] Remove old files after validation
+
+**Validation Criteria**:
+- All tests pass
+- No change in external API behavior
+- Import paths updated consistently
+- Coverage remains ≥ baseline
+
+**Duration**: 3-4 days  
+**Risk**: Medium (many files to move, many imports to update)  
+**Rollback**: Revert directory changes, restore imports
+
 ---
 
-## Go Best Practices Applied
+## Phase 3: App Package Decomposition (High Risk)
 
-1. ✅ **Interface-based design** – Extract interfaces, use dependency injection
-2. ✅ **Separation of concerns** – Each package has one job
-3. ✅ **Configuration management** – Centralized, validated config
-4. ✅ **Repository pattern** – Abstract data access
-5. ✅ **Factory pattern** – Complex object creation
-6. ✅ **Layered architecture** – Presentation, business logic, data layers
-7. ✅ **Error handling** – Consistent error types (already good)
-8. ✅ **Testing** – Easy to unit test isolated components
-9. ✅ **No global state** – Dependency injection throughout
-10. ✅ **Clean imports** – No circular dependencies
+**Goal**: Break down internal/app/ into focused components with clear responsibilities
+
+### Current Structure (internal/app/)
+```
+app/
+  ├── app.go                    # Main application orchestrator
+  ├── components.go             # Component structs
+  ├── factories.go              # Generic factories
+  ├── factories_test.go
+  ├── init_*.go                 # Component initializers (6 files)
+  ├── repl.go, repl_test.go     # REPL implementation
+  ├── session.go                # Session components
+  ├── signals.go                # Signal handling
+  └── utils.go                  # Utilities
+```
+
+### Proposed Structure
+```
+internal/
+  ├── app/
+  │   ├── app.go              # Simplified application entry point
+  │   ├── config.go           # App-level configuration
+  │   └── lifecycle.go        # Lifecycle management
+  │
+  ├── repl/                   # REPL implementation
+  │   ├── repl.go
+  │   ├── commands.go         # Built-in command handlers
+  │   └── history.go          # History management
+  │
+  ├── runtime/                # Runtime components
+  │   ├── signal_handler.go
+  │   ├── context.go
+  │   └── shutdown.go
+  │
+  └── orchestration/          # Component orchestration
+      ├── builder.go          # Application builder pattern
+      ├── components.go       # Component definitions
+      ├── display.go          # Display component initialization
+      ├── model.go            # Model component initialization
+      ├── session.go          # Session component initialization
+      └── agent.go            # Agent component initialization
+```
+
+### Implementation Steps
+
+#### 3.1 Create Runtime Package
+- [ ] Create internal/runtime/
+- [ ] Move signals.go → signal_handler.go
+- [ ] Extract context management logic
+- [ ] Add tests for signal handling
+- [ ] Update app.go to use internal/runtime
+
+#### 3.2 Create REPL Package
+- [ ] Create internal/repl/
+- [ ] Move repl.go and repl_test.go
+- [ ] Extract command handling logic from pkg/cli to repl/commands.go
+- [ ] Update imports in app.go
+- [ ] Ensure REPL tests still pass
+
+#### 3.3 Create Orchestration Package
+- [ ] Create internal/orchestration/
+- [ ] Move init_*.go files to orchestration/
+- [ ] Rename to descriptive names (display.go, model.go, etc.)
+- [ ] Create builder.go with fluent API for app construction
+- [ ] Move components.go to orchestration/
+
+#### 3.4 Simplify App Package
+- [ ] Refactor app.go to use builder pattern
+- [ ] Remove "God Object" characteristics
+- [ ] Keep only high-level lifecycle management
+- [ ] Document clear responsibilities
+
+**Example Builder Pattern**:
+```go
+// internal/orchestration/builder.go
+type ApplicationBuilder struct {
+    config  *config.Config
+    ctx     context.Context
+}
+
+func NewBuilder(ctx context.Context, cfg *config.Config) *ApplicationBuilder {
+    return &ApplicationBuilder{config: cfg, ctx: ctx}
+}
+
+func (b *ApplicationBuilder) BuildRuntime() (*RuntimeComponents, error) { ... }
+func (b *ApplicationBuilder) BuildDisplay() (*DisplayComponents, error) { ... }
+func (b *ApplicationBuilder) BuildModel() (*ModelComponents, error) { ... }
+func (b *ApplicationBuilder) BuildAgent() (agent.Agent, error) { ... }
+func (b *ApplicationBuilder) Build() (*app.Application, error) { ... }
+```
+
+#### 3.5 Update Tests
+- [ ] Move and update test files to match new structure
+- [ ] Add integration tests for builder pattern
+- [ ] Ensure all app tests pass
+
+**Validation Criteria**:
+- All tests pass
+- Application starts and runs correctly
+- REPL functions identically
+- Signal handling works (Ctrl-C tests)
+- Coverage remains ≥ baseline
+
+**Duration**: 4-5 days  
+**Risk**: High (core application flow changes)  
+**Rollback**: Revert all changes in internal/app, internal/repl, internal/runtime, internal/orchestration
 
 ---
 
-## Incremental Delivery Plan
+## Phase 4: Session Management Consolidation (Medium Risk)
 
-**Goal**: Deliver value at end of each phase
+**Goal**: Consolidate session-related code into a single, coherent package
 
-### Phase 1 (Week 1)
-- ✅ Cleaner main.go
-- ✅ Easier to extend config (add new flags)
+### Current Split
+1. `session/` - Models and SQLite implementation (manager.go, models.go, sqlite.go)
+2. `internal/data/` - Repository interfaces (repository.go)
+3. `internal/data/sqlite/` - SQLite session implementation
+4. `internal/data/memory/` - In-memory session implementation
 
-### Phase 2 (Week 1-2)
-- ✅ Testable components (can unit test each manager)
-- ✅ Easier to debug initialization issues
-- ✅ Prepare for Phase 3 (display refactoring)
+### Proposed Structure
+```
+internal/
+  └── session/
+      ├── session.go          # Session domain models and interfaces
+      ├── manager.go          # Session manager (high-level API)
+      ├── repository.go       # Repository interface
+      │
+      ├── storage/            # Storage implementations
+      │   ├── sqlite/
+      │   │   ├── adapter.go
+      │   │   ├── models.go
+      │   │   └── session.go
+      │   └── memory/
+      │       └── session.go
+      │
+      └── service.go          # Service layer (bridge to ADK)
+```
 
-### Phase 3 (Week 2-3)
-- ✅ Easier to maintain display logic
-- ✅ Reduce cognitive load on display/
-- ✅ Prepare for custom formatter support
+### Implementation Steps
 
-### Phase 4 (Week 3)
-- ✅ Cleaner LLM integration
-- ✅ Easier to add new backends
-- ✅ Better error messages for LLM config
+#### 4.1 Create Unified Session Package
+- [ ] Create internal/session/ (new location)
+- [ ] Move session/models.go → internal/session/session.go
+- [ ] Move internal/data/repository.go → internal/session/repository.go
+- [ ] Update package declarations and internal imports
 
-### Phase 5 (Week 3-4)
-- ✅ Easier to swap backends (SQLite ↔ in-memory)
-- ✅ Testable data layer
-- ✅ Final codebase: clean, modular, maintainable
+#### 4.2 Reorganize Storage Implementations
+- [ ] Create internal/session/storage/sqlite/
+- [ ] Move internal/data/sqlite/session.go → storage/sqlite/
+- [ ] Move internal/data/sqlite/models.go → storage/sqlite/
+- [ ] Move internal/data/memory/session.go → storage/memory/
+- [ ] Update imports and package declarations
+
+#### 4.3 Migrate Session Manager
+- [ ] Move session/manager.go → internal/session/manager.go
+- [ ] Update manager to use new storage package paths
+- [ ] Maintain backward compatibility facade if needed
+
+#### 4.4 Update All References
+- [ ] Update internal/app/ to use internal/session
+- [ ] Update cmd/commands/ to use internal/session
+- [ ] Update any other references to old session packages
+
+#### 4.5 Deprecation Path
+- [ ] Mark old session/ package as deprecated
+- [ ] Add deprecation comments with migration guidance
+- [ ] Can remove old package in future release
+
+**Validation Criteria**:
+- All session-related tests pass
+- Session persistence works (SQLite and memory)
+- List/create/delete session commands work
+- Coverage remains ≥ baseline
+
+**Duration**: 2-3 days  
+**Risk**: Medium (data persistence changes)  
+**Rollback**: Revert internal/session changes, restore old imports
 
 ---
 
-## Estimated Effort Breakdown
+## Phase 5: Tool Registration Explicit Pattern (Low-Medium Risk)
 
-| Phase | Task | Estimate | Notes |
-|-------|------|----------|-------|
-| 1 | Extract config layer | 3-5 days | Low complexity, high impact |
-| 2 | Refactor Application | 5-7 days | More coordination required |
-| 3 | Reorganize display/ | 4-6 days | Mechanical refactoring |
-| 4 | LLM abstraction | 5-7 days | Needs careful testing |
-| 5 | Data persistence layer | 3-5 days | Repository pattern straightforward |
-| **Total** | **Full refactor** | **20-30 days** | ~3-4 weeks of focused work |
+**Goal**: Replace fragile init() pattern with explicit registration for better testability
+
+### Current Pattern
+```go
+// tools/file/read_tool.go
+func init() {
+    _, _ = NewReadFileTool()
+}
+
+func NewReadFileTool() (tool.Tool, error) {
+    // ... create tool
+    common.Register(metadata)
+    return t, err
+}
+```
+
+**Issues**:
+- Init order dependencies
+- Hard to test in isolation
+- Side effects on package import
+- Cannot control registration in tests
+
+### Proposed Pattern
+```go
+// tools/registry/loader.go
+package registry
+
+import (
+    "code_agent/tools/common"
+    "code_agent/tools/file"
+    "code_agent/tools/edit"
+    // ... other tools
+)
+
+// LoadAllTools explicitly registers all tools
+func LoadAllTools() (*common.ToolRegistry, error) {
+    reg := common.NewToolRegistry()
+    
+    // File tools
+    if err := registerFileTool(reg); err != nil {
+        return nil, err
+    }
+    if err := registerEditTools(reg); err != nil {
+        return nil, err
+    }
+    // ... more tools
+    
+    return reg, nil
+}
+
+func registerFileTools(reg *common.ToolRegistry) error {
+    tools := []struct {
+        name string
+        factory func() (tool.Tool, error)
+    }{
+        {"read_file", file.NewReadFileTool},
+        {"write_file", file.NewWriteFileTool},
+        // ...
+    }
+    
+    for _, t := range tools {
+        tool, err := t.factory()
+        if err != nil {
+            return fmt.Errorf("failed to create %s: %w", t.name, err)
+        }
+        if err := reg.Register(tool); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+```
+
+### Implementation Steps
+
+#### 5.1 Create Loader Package
+- [ ] Create tools/registry/loader.go
+- [ ] Implement LoadAllTools() function
+- [ ] Add helper functions for each tool category
+- [ ] Add tests for loader
+
+#### 5.2 Update Tool Constructors
+- [ ] Remove init() functions from all tool files
+- [ ] Ensure NewXxxTool() functions don't auto-register
+- [ ] Keep registration logic but make it explicit
+- [ ] Update tool package imports
+
+#### 5.3 Update Agent Initialization
+- [ ] Modify agent/coding_agent.go to use explicit loader
+- [ ] Replace `tools.GetRegistry()` with `registry.LoadAllTools()`
+- [ ] Handle errors properly during registration
+
+#### 5.4 Update Tests
+- [ ] Add unit tests for each tool in isolation
+- [ ] Add integration tests for full tool registration
+- [ ] Ensure no init() side effects in tests
+
+**Example Usage**:
+```go
+// agent/coding_agent.go
+func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
+    // Explicitly load all tools
+    toolRegistry, err := registry.LoadAllTools()
+    if err != nil {
+        return nil, fmt.Errorf("failed to load tools: %w", err)
+    }
+    
+    allTools := toolRegistry.GetAllTools()
+    // ... rest of agent creation
+}
+```
+
+**Validation Criteria**:
+- All tools register successfully
+- No init() side effects
+- Tools can be tested in isolation
+- Full test suite passes
+- Coverage improves due to better testability
+
+**Duration**: 3-4 days  
+**Risk**: Medium (changes initialization flow)  
+**Rollback**: Restore init() functions, revert loader package
 
 ---
 
-## Risk Mitigation
+## Phase 6: Package Organization Standardization (Low Risk)
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| Regression in agent behavior | Low | High | Comprehensive test suite before/after each phase |
-| Display output changes | Low | High | Visual regression tests (screenshot comparison) |
-| Breaking API changes | Low | Medium | Maintain backward compatibility facades |
-| Performance degradation | Very Low | Medium | Benchmark before/after refactoring |
-| Integration issues | Low | High | Run integration tests daily during refactoring |
+**Goal**: Standardize package organization patterns across the codebase
+
+### Current Inconsistencies
+- Some use subpackages (display/banner, display/renderer)
+- Others are flat (session/, tracking/)
+- pkg/ vs internal/ distinction unclear
+
+### Standardization Rules
+
+#### 6.1 Internal vs Pkg Guidelines
+```
+internal/       - Application-specific, not reusable
+  ├── app/       - Application orchestration
+  ├── config/    - Configuration management
+  ├── data/      - Data persistence
+  ├── llm/       - LLM provider integration
+  └── ...
+
+pkg/            - Reusable, potentially extractable libraries
+  ├── errors/    - Error types and utilities
+  ├── models/    - LLM model configurations
+  ├── cli/       - CLI utilities
+  └── ...
+```
+
+#### 6.2 When to Use Subpackages
+- Package has >10 files → consider splitting
+- Clear sub-responsibilities exist
+- Different abstraction levels
+- Can be tested independently
+
+### Implementation Steps
+
+#### 6.1 Audit Current Packages
+- [ ] List all packages and file counts
+- [ ] Identify packages that should split or merge
+- [ ] Document decisions in `docs/architecture/package_organization.md`
+
+#### 6.2 Move CLI Command Code
+- [ ] Evaluate if pkg/cli/commands should move to internal/repl/commands
+- [ ] Commands are app-specific, not reusable → move to internal
+- [ ] Update imports
+
+#### 6.3 Consolidate Tracking Package
+- [ ] Review tracking/ - should it be internal/tracking?
+- [ ] If app-specific → move to internal/
+- [ ] If reusable → keep as pkg/tracking
+
+#### 6.4 Standardize Naming
+- [ ] Ensure consistent naming conventions
+- [ ] Package names singular (not plural) unless collection
+- [ ] Clear, descriptive names
+
+**Validation Criteria**:
+- All tests pass after moves
+- Import paths updated consistently
+- No functional changes
+- Documentation updated
+
+**Duration**: 2-3 days  
+**Risk**: Low (mostly file moves)  
+**Rollback**: Revert package moves, restore imports
+
+---
+
+## Phase 7: Testing Infrastructure (Low Risk)
+
+**Goal**: Improve test organization and shared testing utilities
+
+### Current State
+- Tests co-located with code (good)
+- Some shared utilities in testutils/ but underutilized
+- No clear pattern for integration tests
+- Coverage reporting exists but not standardized
+
+### Proposed Improvements
+
+#### 7.1 Enhance testutils Package
+```
+internal/testutils/
+  ├── fixtures/        # Test data and fixtures
+  │   ├── models.go    # Common model configs for tests
+  │   ├── sessions.go  # Common session data
+  │   └── tools.go     # Tool test helpers
+  │
+  ├── mocks/           # Mock implementations
+  │   ├── display.go   # Mock display components
+  │   ├── llm.go       # Mock LLM for testing
+  │   └── storage.go   # Mock storage
+  │
+  ├── assert/          # Custom assertions
+  │   └── errors.go    # Error assertion helpers
+  │
+  └── helpers.go       # General test helpers
+```
+
+#### 7.2 Integration Test Suite
+```
+tests/
+  ├── integration/
+  │   ├── agent_test.go       # End-to-end agent tests
+  │   ├── tools_test.go       # Tool integration tests
+  │   ├── session_test.go     # Session persistence tests
+  │   └── repl_test.go        # REPL interaction tests
+  │
+  └── e2e/
+      ├── scenarios/          # Full user scenarios
+      └── smoke_test.go       # Basic smoke tests
+```
+
+### Implementation Steps
+
+#### 7.1 Build testutils Package
+- [ ] Create organized testutils structure
+- [ ] Extract common test setup code
+- [ ] Create reusable fixtures
+- [ ] Add mock implementations
+- [ ] Document usage patterns
+
+#### 7.2 Add Integration Tests
+- [ ] Create tests/integration/ directory
+- [ ] Write key integration tests
+- [ ] Ensure tests can run in CI
+- [ ] Add make target: `make test-integration`
+
+#### 7.3 Coverage Reporting
+- [ ] Standardize coverage reporting
+- [ ] Set coverage targets per package
+- [ ] Add coverage badge to README
+- [ ] Create make target: `make coverage`
+
+#### 7.4 Test Documentation
+- [ ] Document testing patterns in TESTING.md
+- [ ] Provide examples of unit vs integration tests
+- [ ] Document how to use testutils
+
+**Validation Criteria**:
+- Existing tests still pass
+- New integration tests pass
+- Coverage reporting works
+- Documentation clear
+
+**Duration**: 3-4 days  
+**Risk**: Low (additive, doesn't change existing code)  
+**Rollback**: Remove new tests, keep existing tests
+
+---
+
+## Phase 8: Documentation & Developer Experience (Low Risk)
+
+**Goal**: Comprehensive documentation for the refactored architecture
+
+### Documentation Deliverables
+
+#### 8.1 Architecture Documentation
+- [ ] `docs/architecture/overview.md` - High-level architecture
+- [ ] `docs/architecture/package_guide.md` - Package responsibilities
+- [ ] `docs/architecture/data_flow.md` - How data flows through system
+- [ ] `docs/architecture/extension_guide.md` - How to add new features
+
+#### 8.2 Developer Guides
+- [ ] `docs/guides/adding_tools.md` - How to add new tools
+- [ ] `docs/guides/testing.md` - Testing best practices
+- [ ] `docs/guides/display_components.md` - Using display system
+- [ ] `docs/guides/llm_providers.md` - Adding new LLM providers
+
+#### 8.3 API Documentation
+- [ ] Generate godoc for all packages
+- [ ] Add package-level documentation comments
+- [ ] Document key interfaces and types
+- [ ] Add usage examples in docs
+
+#### 8.4 Migration Guides
+- [ ] Document changes from original structure
+- [ ] Provide import path migration guide
+- [ ] List deprecated APIs and replacements
+
+### Implementation Steps
+
+#### 8.1 Write Core Documentation
+- [ ] Create architecture overview
+- [ ] Document each major package
+- [ ] Create diagrams (mermaid or similar)
+
+#### 8.2 Add Code Examples
+- [ ] Add examples/ directory with runnable code
+- [ ] Document common use cases
+- [ ] Add troubleshooting guide
+
+#### 8.3 Update README
+- [ ] Add architecture section
+- [ ] Link to detailed documentation
+- [ ] Update build and test instructions
+
+#### 8.4 Generate API Docs
+- [ ] Run `go doc` for all packages
+- [ ] Host docs (optional: use pkgsite)
+- [ ] Add doc links to README
+
+**Validation Criteria**:
+- All documentation builds correctly
+- Examples run successfully
+- Links work correctly
+- Clear and comprehensive
+
+**Duration**: 2-3 days  
+**Risk**: None (documentation only)  
+**Rollback**: Not applicable
+
+---
+
+## Phase 9: Performance & Code Quality (Optional)
+
+**Goal**: Optimize performance and enforce code quality standards
+
+### Areas for Optimization
+
+#### 9.1 Code Quality Tools
+- [ ] Add golangci-lint with comprehensive rules
+- [ ] Add pre-commit hooks
+- [ ] Configure staticcheck
+- [ ] Add gofmt/goimports checks
+
+#### 9.2 Performance Profiling
+- [ ] Add benchmarks for critical paths
+- [ ] Profile tool execution
+- [ ] Optimize display rendering
+- [ ] Measure and optimize startup time
+
+#### 9.3 Error Handling Audit
+- [ ] Review all error returns
+- [ ] Ensure proper error wrapping
+- [ ] Add context to all errors
+- [ ] Consistent error messages
+
+#### 9.4 Concurrency Review
+- [ ] Review goroutine usage
+- [ ] Check for race conditions
+- [ ] Add race detector to CI
+- [ ] Document concurrency patterns
+
+### Implementation Steps
+
+#### 9.1 Setup Quality Tools
+- [ ] Add .golangci.yml configuration
+- [ ] Add pre-commit hook script
+- [ ] Update Makefile with quality checks
+- [ ] Run and fix all linting issues
+
+#### 9.2 Add Benchmarks
+- [ ] Identify critical code paths
+- [ ] Write benchmark tests
+- [ ] Establish baseline metrics
+- [ ] Add benchmark CI job
+
+#### 9.3 Race Detection
+- [ ] Run tests with `-race` flag
+- [ ] Fix any race conditions found
+- [ ] Add race detection to CI
+
+**Validation Criteria**:
+- All linters pass
+- Benchmarks establish baselines
+- No race conditions detected
+- Performance not degraded
+
+**Duration**: 3-4 days  
+**Risk**: Low (mostly additive)  
+**Rollback**: Remove quality tools if they cause issues
+
+---
+
+## Implementation Timeline
+
+### Conservative Estimate (Sequential)
+```
+Phase 1: Foundation           2 days
+Phase 2: Display              4 days
+Phase 3: App Decomposition    5 days
+Phase 4: Session              3 days
+Phase 5: Tool Registration    4 days
+Phase 6: Package Org          3 days
+Phase 7: Testing              4 days
+Phase 8: Documentation        3 days
+Phase 9: Quality (Optional)   4 days
+----------------------------------------
+Total:                        32 days (6-7 weeks)
+```
+
+### Aggressive Estimate (Some Parallelization)
+```
+Phase 1: Foundation           2 days
+Phase 2 + 6: Display + Org    5 days  (can parallelize)
+Phase 3: App Decomposition    5 days
+Phase 4: Session              3 days
+Phase 5: Tool Registration    4 days
+Phase 7: Testing              4 days  (concurrent with docs)
+Phase 8: Documentation        3 days
+Phase 9: Quality              4 days  (optional)
+----------------------------------------
+Total:                        26-30 days (5-6 weeks)
+```
 
 ---
 
 ## Success Criteria
 
-Phase completion checklist:
-- [ ] All unit tests pass (100%)
-- [ ] All integration tests pass (100%)
-- [ ] No visual regressions in display
-- [ ] Code review approved
-- [ ] Documentation updated
-- [ ] Cyclomatic complexity reduced
-- [ ] Package coupling reduced
-- [ ] New developers can understand code faster
+### Must Have (Phase Completion)
+- ✅ All existing tests pass (0% regression)
+- ✅ Test coverage remains ≥ baseline (ideally improves)
+- ✅ No new bugs introduced
+- ✅ Application behavior unchanged from user perspective
+- ✅ Code compiles without warnings
+- ✅ All import paths updated and working
 
----
+### Nice to Have (Quality Improvements)
+- ⭐ Test coverage improves by >10%
+- ⭐ Reduced package coupling (fewer interdependencies)
+- ⭐ Faster test execution
+- ⭐ Better error messages
+- ⭐ Comprehensive documentation
 
-## Post-Refactoring Benefits
+### Acceptance Testing Checklist
+After each phase:
+```bash
+# 1. Run full test suite
+make test
 
-1. **Developer Velocity** ↑ 30-40%
-   - Smaller packages = easier to understand
-   - Clear boundaries = fewer surprises
-   - Better error messages = faster debugging
+# 2. Check test coverage
+make coverage
 
-2. **Code Quality** ↑
-   - Testable components = more tests written
-   - Reduced coupling = fewer bugs
-   - Clear interfaces = easier to maintain
+# 3. Run linters
+make lint
 
-3. **Extensibility** ↑
-   - Add new formatter = implement interface + register
-   - Add new backend = implement LLMProvider interface
-   - Add new tool = already solved by tools/ package
+# 4. Build the application
+make build
 
-4. **Maintainability** ↑
-   - Onboarding new contributors = 50% less time
-   - Bug fixes = faster isolation and repair
-   - Feature additions = follow clear patterns
+# 5. Manual smoke test
+./bin/code-agent --help
+./bin/code-agent new-session test-refactor
+# Test basic interactions
 
----
-
-## Next Steps
-
-1. ✅ **Review this plan** – Stakeholder sign-off
-2. ✅ **Create feature branch** – `refactor/phase-1-config`
-3. ✅ **Phase 1 Implementation** – Extract config layer (3-5 days)
-4. ✅ **Phase 2 Implementation** – Refactor orchestrator (5-7 days)
-5. ✅ **Phase 3 Implementation** – Display reorganization (4-6 days)
-6. ✅ **Phase 4 Implementation** – LLM abstraction (5-7 days)
-7. ✅ **Phase 5 Implementation** – Data layer (3-5 days)
-8. ✅ **Integration & QA** – Full regression testing (2-3 days)
-9. ✅ **Merge to main** – Code review, approval, deployment
-10. ✅ **Update documentation** – Architecture docs, runbook updates
-
----
-
-## Appendix: Example: Phase 1 in Detail
-
-### What We'll Do
-
-Move from:
-```go
-// main.go
-cliConfig, args := cli.ParseCLIFlags()
-app, err := app.New(ctx, &cliConfig)
+# 6. Check for regressions
+./bin/code-agent list-sessions  # Should show test-refactor
 ```
 
-To:
-```go
-// main.go
-cfg, args := config.LoadFromEnv()
-app, err := app.New(ctx, cfg)
+---
+
+## Risk Mitigation
+
+### Before Each Phase
+1. Create feature branch: `refactor/phase-N-description`
+2. Document current behavior/tests
+3. Take coverage snapshot
+4. Review implementation plan with team
+
+### During Each Phase
+1. Commit frequently with clear messages
+2. Run tests after each logical change
+3. Document any issues or deviations
+4. Keep rollback plan ready
+
+### After Each Phase
+1. Run full test suite including manual tests
+2. Review code coverage changes
+3. Update documentation
+4. Merge to main only after validation
+5. Tag release: `v1.x.x-phase-N`
+
+### Emergency Rollback Plan
+```bash
+# Rollback to previous phase
+git checkout main
+git revert <phase-commit-range>
+
+# Or rollback to specific tag
+git checkout v1.x.x-phase-N-1
+
+# Verify tests pass
+make test
 ```
 
-### Step-by-Step
+---
 
-1. Create `internal/config/config.go`
-   - Define `type Config struct`
-   - Implement `LoadFromEnv()`
-   - Implement `Validate()`
+## Open Questions / Decisions Needed
 
-2. Move CLI types
-   - `CLIConfig` → `internal/config/cli.go`
-   - Move model selection logic here
+1. **Display Package**: Should we keep a facade in the root display/ for backward compatibility indefinitely, or deprecate after some time?
+   - **Recommendation**: Keep facade for at least 2 releases with deprecation warnings
 
-3. Update main.go
-   - Change import from `pkg/cli` to `internal/config`
-   - Update flag parsing call
+2. **Tool Registration**: Should we support both init() and explicit patterns during transition?
+   - **Recommendation**: Hard cutover (remove init()) to avoid confusion
 
-4. Update app.New()
-   - Change signature: `New(ctx context.Context, cfg *cli.CLIConfig)` → `New(ctx context.Context, cfg *config.Config)`
-   - Update references: `a.config` type is now `*config.Config`
+3. **Session Package Location**: Keep session/ as top-level or move to internal/session?
+   - **Recommendation**: Move to internal/session - it's app-specific, not reusable
 
-5. Test
-   - `go test ./...` – all green?
-   - `./code-agent` – manual smoke test?
-   - `git log --oneline` – clean commits?
+4. **Testing Strategy**: Should we require minimum coverage % for new code?
+   - **Recommendation**: Yes, require 70% coverage for new packages
 
-6. Commit
-   - `git commit -am "refactor: extract config layer"`
+5. **Performance**: Should Phase 9 (performance) be required or optional?
+   - **Recommendation**: Optional unless performance issues identified
+
+---
+
+## Appendix A: File Move Checklist Template
+
+Use this checklist for each file move:
+
+```markdown
+### Moving: `<source_path>` → `<dest_path>`
+
+- [ ] Create destination directory
+- [ ] Copy file (don't delete original yet)
+- [ ] Update package declaration
+- [ ] Fix internal imports in the file
+- [ ] Update all external imports to new path
+- [ ] Run tests for affected packages
+- [ ] Verify functionality unchanged
+- [ ] Delete original file
+- [ ] Commit with descriptive message
+```
+
+---
+
+## Appendix B: Backward Compatibility Pattern
+
+When changing public APIs, use this pattern:
+
+```go
+// Old location: session/manager.go
+package session
+
+import "code_agent/internal/session"
+
+// Deprecated: Use internal/session.Manager instead
+type Manager = session.Manager
+
+// Deprecated: Use internal/session.NewManager instead
+func NewManager(appName, dbPath string) (*Manager, error) {
+    return session.NewManager(appName, dbPath)
+}
+```
+
+---
+
+## Appendix C: Testing Commands
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+go test -cover ./...
+
+# Run tests with race detector
+go test -race ./...
+
+# Run specific package tests
+go test ./internal/app/...
+
+# Run with verbose output
+go test -v ./...
+
+# Generate coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+
+# Check for test cache issues
+go clean -testcache
+go test ./...
+```
 
 ---
 
 ## Conclusion
 
-This refactoring plan delivers a **more modular, maintainable, and professional Go codebase** while maintaining **100% backward compatibility** and **zero functional changes**. Each phase is independent and can be reviewed/approved separately.
+This refactoring plan addresses the key architectural issues while maintaining pragmatism and zero regression. Each phase is designed to be:
 
-**Status**: Ready for implementation. No blocking issues identified.
+1. **Independent**: Can be executed separately
+2. **Testable**: Clear validation criteria
+3. **Reversible**: Defined rollback procedures
+4. **Incremental**: Small, manageable changes
 
-**Recommendation**: Start with Phase 1 (extract config) immediately. It has the lowest risk and highest immediate impact on code clarity.
+The plan prioritizes high-impact changes (Display and App restructuring) while deferring optional improvements (Phase 9) that can be done later. The estimated timeline of 5-7 weeks is realistic for a careful, test-driven refactoring that maintains quality and stability.
+
+**Recommendation**: Start with Phase 1 (Foundation) immediately to establish baseline, then proceed to Phase 2 (Display) as the highest-impact improvement. Evaluate progress after each phase before committing to the next.

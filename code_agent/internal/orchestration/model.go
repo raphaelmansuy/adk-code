@@ -1,4 +1,4 @@
-package app
+package orchestration
 
 import (
 	"context"
@@ -20,8 +20,8 @@ type modelInitializer struct {
 	llm      model.LLM
 }
 
-// initializeModelComponents sets up the LLM model and related components
-func initializeModelComponents(ctx context.Context, cfg *config.Config) (*ModelComponents, error) {
+// InitializeModelComponents sets up the LLM model and related components
+func InitializeModelComponents(ctx context.Context, cfg *config.Config) (*ModelComponents, error) {
 	initializer := &modelInitializer{
 		registry: models.NewRegistry(),
 	}

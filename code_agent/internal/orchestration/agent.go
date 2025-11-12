@@ -1,4 +1,4 @@
-package app
+package orchestration
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"code_agent/internal/config"
 )
 
-// initializeAgentComponent creates the coding agent
-func initializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM) (agent.Agent, error) {
+// InitializeAgentComponent creates the coding agent
+func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM) (agent.Agent, error) {
 	ag, err := codingagent.NewCodingAgent(ctx, codingagent.Config{
 		Model:            llm,
 		WorkingDirectory: cfg.WorkingDirectory,

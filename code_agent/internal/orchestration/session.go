@@ -1,4 +1,4 @@
-package app
+package orchestration
 
 import (
 	"context"
@@ -20,8 +20,8 @@ type sessionInitializer struct {
 	tokens  *tracking.SessionTokens
 }
 
-// initializeSessionComponents sets up session management
-func initializeSessionComponents(ctx context.Context, cfg *config.Config, ag agent.Agent, bannerRenderer *display.BannerRenderer) (*SessionComponents, error) {
+// InitializeSessionComponents sets up session management
+func InitializeSessionComponents(ctx context.Context, cfg *config.Config, ag agent.Agent, bannerRenderer *display.BannerRenderer) (*SessionComponents, error) {
 	initializer := &sessionInitializer{}
 
 	var err error

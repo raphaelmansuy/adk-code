@@ -1,13 +1,13 @@
-package app
+package repl
 
 import (
+	"path/filepath"
 	"testing"
 
 	"code_agent/display"
 )
 
-// TestNewREPL_CreatesAndCloses tests the facade
-func TestNewREPL_CreatesAndCloses(t *testing.T) {
+func TestNew_CreatesAndCloses(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 
@@ -16,22 +16,19 @@ func TestNewREPL_CreatesAndCloses(t *testing.T) {
 		t.Fatalf("failed to create renderer: %v", err)
 	}
 
-	cfg := REPLConfig{
+	cfg := Config{
 		Renderer:       renderer,
 		BannerRenderer: display.NewBannerRenderer(renderer),
 	}
 
-	r, err := NewREPL(cfg)
+	r, err := New(cfg)
 	if err != nil {
-		t.Fatalf("NewREPL error: %v", err)
+		t.Fatalf("New error: %v", err)
 	}
+	defer r.Close()
 
-	if r == nil {
-		t.Fatal("expected REPL instance, got nil")
-	}
-
-	err = r.Close()
-	if err != nil {
-		t.Fatalf("Close error: %v", err)
+	expected := filepath.Join(tmpHome, ".code_agent_history")
+	if r.historyFile != expected {
+		t.Fatalf("expected history file %s, got %s", expected, r.historyFile)
 	}
 }

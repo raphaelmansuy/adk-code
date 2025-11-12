@@ -1,4 +1,4 @@
-package app
+package orchestration
 
 import (
 	"fmt"
@@ -15,8 +15,8 @@ type displayInitializer struct {
 	streamDisplay  *display.StreamingDisplay
 }
 
-// initializeDisplayComponents sets up display components
-func initializeDisplayComponents(cfg *config.Config) (*DisplayComponents, error) {
+// InitializeDisplayComponents sets up display components
+func InitializeDisplayComponents(cfg *config.Config) (*DisplayComponents, error) {
 	initializer := &displayInitializer{}
 
 	var err error

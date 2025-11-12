@@ -11,6 +11,7 @@ import (
 
 	"code_agent/display"
 	"code_agent/internal/config"
+	"code_agent/internal/runtime"
 	"code_agent/pkg/models"
 	"code_agent/session"
 	"code_agent/tracking"
@@ -162,7 +163,7 @@ func TestApplicationRun_ExitsWhenContextCanceled(t *testing.T) {
 	}
 
 	// Build application with a canceled signal handler
-	handler := NewSignalHandler(context.Background())
+	handler := runtime.NewSignalHandler(context.Background())
 	handler.Cancel()
 
 	a := &Application{repl: repl, signalHandler: handler, ctx: handler.Context()}
