@@ -20,9 +20,9 @@ func NewToolResultParser(mdRenderer *MarkdownRenderer) *ToolResultParser {
 
 // ParseToolResult parses and formats tool results for display
 func (trp *ToolResultParser) ParseToolResult(toolName string, result map[string]any) string {
-	// Check for errors first
-	if errStr, ok := result["error"].(string); ok && errStr != "" {
-		return trp.formatError(errStr)
+	// Check for errors first - handle multiple error formats
+	if err := trp.extractError(result); err != "" {
+		return trp.formatError(err)
 	}
 
 	// Tool-specific parsing
@@ -44,6 +44,58 @@ func (trp *ToolResultParser) ParseToolResult(toolName string, result map[string]
 	default:
 		return trp.parseGeneric(result)
 	}
+}
+
+// extractError extracts error messages from various error formats in tool results
+// Handles: string errors, empty objects {}, objects with message/details fields
+func (trp *ToolResultParser) extractError(result map[string]any) string {
+	errorValue, hasError := result["error"]
+	if !hasError {
+		return ""
+	}
+
+	// Handle string error (most common case)
+	if errStr, ok := errorValue.(string); ok && errStr != "" {
+		return errStr
+	}
+
+	// Handle empty error object {} (common with MCP tools that fail)
+	if errorMap, ok := errorValue.(map[string]any); ok {
+		// If error object is empty, return generic message
+		if len(errorMap) == 0 {
+			// Check if there's any other useful information in the result
+			if output, ok := result["output"].(string); ok && output != "" {
+				return output
+			}
+			// Try to extract tool name for more context
+			if toolName, ok := result["tool"].(string); ok && toolName != "" {
+				return fmt.Sprintf("Tool '%s' failed with no error details provided", toolName)
+			}
+			return "Tool execution failed with no error details provided"
+		}
+
+		// Try common error field names in the error object
+		if msg, ok := errorMap["message"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["error"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["details"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["text"].(string); ok && msg != "" {
+			return msg
+		}
+
+		// If error object has fields but none match common patterns, stringify it
+		if jsonBytes, err := json.MarshalIndent(errorMap, "", "  "); err == nil {
+			return fmt.Sprintf("Error details:\n%s", string(jsonBytes))
+		}
+	}
+
+	// Fallback: convert any other error type to string
+	return fmt.Sprintf("%v", errorValue)
 }
 
 // formatError formats an error message

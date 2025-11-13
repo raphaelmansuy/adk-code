@@ -72,6 +72,9 @@ func (m *Manager) loadServer(ctx context.Context, name string, cfg config.Server
 
 	m.servers[name] = &server{name: name, toolset: toolset}
 	m.toolsets = append(m.toolsets, toolset)
+
+	// Log successful server load
+	fmt.Printf("✓ MCP server '%s' loaded successfully\n", name)
 	return nil
 }
 

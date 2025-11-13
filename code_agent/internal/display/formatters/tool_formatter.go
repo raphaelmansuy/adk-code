@@ -129,14 +129,60 @@ func (tf *ToolFormatter) getToolHeader(toolName string, args map[string]any) str
 	}
 }
 
+// extractError extracts error messages from various error formats in tool results
+// Handles: string errors, empty objects {}, objects with message/details fields
+func (tf *ToolFormatter) extractError(result map[string]any) string {
+	errorValue, hasError := result["error"]
+	if !hasError {
+		return ""
+	}
+
+	// Handle string error (most common case)
+	if errStr, ok := errorValue.(string); ok && errStr != "" {
+		return errStr
+	}
+
+	// Handle empty error object {} (common with MCP tools that fail)
+	if errorMap, ok := errorValue.(map[string]any); ok {
+		// If error object is empty, return generic message
+		if len(errorMap) == 0 {
+			// Check if there's any other useful information in the result
+			if output, ok := result["output"].(string); ok && output != "" {
+				return output
+			}
+			return "Tool execution failed with no error details provided"
+		}
+
+		// Try common error field names in the error object
+		if msg, ok := errorMap["message"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["error"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["details"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := errorMap["text"].(string); ok && msg != "" {
+			return msg
+		}
+
+		// If error object has fields but none match common patterns, return generic message
+		return "Tool execution failed"
+	}
+
+	// Fallback: convert any other error type to string
+	return fmt.Sprintf("%v", errorValue)
+}
+
 // RenderToolResult renders a tool result with contextual formatting
 func (tf *ToolFormatter) RenderToolResult(toolName string, result map[string]any) string {
-	// Check for errors
-	if errStr, ok := result["error"].(string); ok && errStr != "" {
+	// Check for errors - handle multiple error formats
+	if err := tf.extractError(result); err != "" {
 		errorStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("1")). // Red
 			Bold(false)
-		return "  " + errorStyle.Render("✗ "+errStr) + "\n"
+		return "  " + errorStyle.Render("✗ "+err) + "\n"
 	}
 
 	// Subtle success indicator
