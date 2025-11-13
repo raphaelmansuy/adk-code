@@ -17,6 +17,7 @@ type Orchestrator struct {
 	displayComponents *DisplayComponents
 	modelComponents   *ModelComponents
 	agentComponent    agent.Agent
+	mcpComponents     *MCPComponents
 	sessionComponents *SessionComponents
 	err               error
 }
@@ -59,7 +60,7 @@ func (o *Orchestrator) WithAgent() *Orchestrator {
 		return o
 	}
 
-	o.agentComponent, o.err = InitializeAgentComponent(o.ctx, o.cfg, o.modelComponents.LLM)
+	o.agentComponent, o.mcpComponents, o.err = InitializeAgentComponent(o.ctx, o.cfg, o.modelComponents.LLM)
 	return o
 }
 
@@ -107,6 +108,7 @@ func (o *Orchestrator) Build() (*Components, error) {
 		Display: o.displayComponents,
 		Model:   o.modelComponents,
 		Agent:   o.agentComponent,
+		MCP:     o.mcpComponents,
 		Session: o.sessionComponents,
 	}, nil
 }
@@ -116,6 +118,7 @@ type Components struct {
 	Display *DisplayComponents
 	Model   *ModelComponents
 	Agent   agent.Agent
+	MCP     *MCPComponents
 	Session *SessionComponents
 }
 
@@ -132,6 +135,11 @@ func (c *Components) ModelRegistry() *ModelComponents {
 // AgentComponent returns the agent component
 func (c *Components) AgentComponent() agent.Agent {
 	return c.Agent
+}
+
+// MCPManager returns the MCP components
+func (c *Components) MCPManager() *MCPComponents {
+	return c.MCP
 }
 
 // SessionManager returns the session components

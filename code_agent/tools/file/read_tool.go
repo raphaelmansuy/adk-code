@@ -10,7 +10,7 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 
 	"code_agent/pkg/errors"
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // ReadFileInput defines the input parameters for reading a file.
@@ -110,7 +110,7 @@ func NewReadFileTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "read_file",
+		Name:        "builtin_read_file",
 		Description: "Reads the content of a file from the filesystem with optional line range support. By default, returns up to 1000 lines from the file. Use offset to start at a specific line number (1-indexed, default: 1) and limit to control the maximum number of lines returned (omit to use default of 1000). Use this to examine code, configuration files, or any text files.",
 	}, handler)
 

@@ -10,7 +10,7 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 
 	"code_agent/pkg/errors"
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // WriteFileInput defines the input parameters for writing a file.
@@ -108,7 +108,7 @@ func NewWriteFileTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "write_file",
+		Name:        "builtin_write_file",
 		Description: "Writes content to a file with atomic write support and size validation for safety. Creates the file if it doesn't exist, or overwrites it if it does. Automatically creates parent directories. Prevents accidental data loss by rejecting writes that reduce file size by >90% (override with allow_size_reduce=true).",
 	}, handler)
 

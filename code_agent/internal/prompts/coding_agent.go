@@ -8,6 +8,7 @@ import (
 	agentiface "google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model"
+	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
 	pkgerrors "code_agent/pkg/errors"
@@ -27,6 +28,8 @@ type Config struct {
 	EnableThinking bool
 	// ThinkingBudget sets the token budget for thinking (only used if EnableThinking is true)
 	ThinkingBudget int32
+	// MCPToolsets are external MCP server toolsets to be added to the agent
+	MCPToolsets []tool.Toolset
 }
 
 // GetProjectRoot traverses to find the project root,
@@ -98,6 +101,7 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		WorkspaceSummary:     wsManager.GetSummary(),
 		EnvironmentMetadata:  envContext,
 		EnableMultiWorkspace: cfg.EnableMultiWorkspace,
+		HasMCPTools:          len(cfg.MCPToolsets) > 0, // Indicate if MCP tools are available
 	}
 
 	instruction := BuildEnhancedPromptWithContext(registry, promptCtx)
@@ -115,13 +119,14 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		}
 	}
 
-	// Create the coding agent with dynamically registered tools
+	// Create the coding agent with dynamically registered tools and MCP toolsets
 	codingAgent, err := llmagent.New(llmagent.Config{
 		Name:                  "coding_agent",
 		Model:                 cfg.Model,
 		Description:           "An expert coding assistant that can read, write, and modify code, execute commands, and solve programming tasks.",
 		Instruction:           instruction,
 		Tools:                 registeredTools, // Use tools from registry
+		Toolsets:              cfg.MCPToolsets, // Add MCP toolsets
 		GenerateContentConfig: generateConfig,
 	})
 	if err != nil {

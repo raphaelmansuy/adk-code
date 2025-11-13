@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "comment": "NOTE: The deepwiki server is currently broken - returns invalid JSON instead of MCP protocol responses. Disabled by default.",
+  "servers": {
+    "deepwiki": {
+      "type": "sse",
+      "url": "https://mcp.deepwiki.com/sse",
+      "timeout": 30000
+    }
+  }
+}

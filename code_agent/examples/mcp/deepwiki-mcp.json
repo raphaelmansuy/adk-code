@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "comment": "DeepWiki MCP server: Provides documentation search tools for GitHub repositories via ask_question, read_wiki_structure, and read_wiki_contents. Uses a custom filtering transport to work around MCP SDK bug #636 (https://github.com/modelcontextprotocol/go-sdk/issues/636) where the SDK fails to handle SSE ping events. The filteringTransport in manager.go strips out non-'message' events before they reach the SDK.",
+  "servers": {
+    "deepwiki": {
+      "type": "streamable",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "timeout": 15000
+    }
+  }
+}

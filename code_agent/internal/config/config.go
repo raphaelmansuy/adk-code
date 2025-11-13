@@ -3,6 +3,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"code_agent/pkg/models"
@@ -33,6 +34,10 @@ type Config struct {
 	// Thinking configuration
 	EnableThinking bool  // Enable model thinking/reasoning output
 	ThinkingBudget int32 // Token budget for thinking
+
+	// MCP configuration
+	MCPConfigPath string
+	MCPConfig     *MCPConfig
 }
 
 // LoadFromEnv loads configuration from environment and CLI flags
@@ -61,6 +66,9 @@ func LoadFromEnv() (Config, []string) {
 	enableThinking := flag.Bool("enable-thinking", true, "Enable model thinking/reasoning output (default: true)")
 	thinkingBudget := flag.Int("thinking-budget", 1024, "Token budget for thinking when enabled (default: 1024)")
 
+	// MCP configuration flags
+	mcpConfigPath := flag.String("mcp-config", "", "Path to MCP config file (optional)")
+
 	flag.Parse()
 
 	// Auto-detect backend from environment if not specified
@@ -79,6 +87,18 @@ func LoadFromEnv() (Config, []string) {
 		}
 	}
 
+		// Load MCP config if path specified
+	var mcpConfig *MCPConfig
+	if *mcpConfigPath != "" {
+		loadedConfig, err := LoadMCP(*mcpConfigPath)
+		if err != nil {
+			// Log error but don't fail - MCP is optional
+			fmt.Fprintf(os.Stderr, "Warning: Failed to load MCP config from %s: %v\n", *mcpConfigPath, err)
+		} else {
+			mcpConfig = loadedConfig
+		}
+	}
+
 	return Config{
 		OutputFormat:      *outputFormat,
 		TypewriterEnabled: *typewriterEnabled,
@@ -92,6 +112,8 @@ func LoadFromEnv() (Config, []string) {
 		Model:             *model,
 		EnableThinking:    *enableThinking,
 		ThinkingBudget:    int32(*thinkingBudget),
+		MCPConfigPath:     *mcpConfigPath,
+		MCPConfig:         mcpConfig,
 	}, flag.Args()
 }
 

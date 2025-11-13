@@ -15,6 +15,8 @@ import (
 
 	"code_agent/internal/cli"
 	"code_agent/internal/display"
+	"code_agent/internal/mcp"
+	"code_agent/internal/orchestration"
 	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
 )
@@ -31,6 +33,7 @@ type Config struct {
 	SessionTokens    *tracking.SessionTokens
 	ModelRegistry    *models.Registry
 	SelectedModel    models.Config
+	MCPComponents    *orchestration.MCPComponents
 }
 
 // REPL manages the read-eval-print loop
@@ -112,7 +115,11 @@ func (r *REPL) Run(ctx context.Context) {
 		}
 
 		// Handle built-in commands
-		if cli.HandleBuiltinCommand(input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel) {
+		var mcpManager *mcp.Manager
+		if r.config.MCPComponents != nil {
+			mcpManager = r.config.MCPComponents.Manager
+		}
+		if cli.HandleBuiltinCommand(input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel, mcpManager) {
 			continue
 		}
 

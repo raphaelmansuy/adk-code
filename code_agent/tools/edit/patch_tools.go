@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 	"code_agent/tools/file"
 )
 
@@ -297,7 +297,7 @@ func NewApplyPatchTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "apply_patch",
+		Name:        "builtin_apply_patch",
 		Description: "Applies a unified diff format patch to a file. Supports dry-run preview and strict mode. More robust than string replacement for targeted edits.",
 	}, handler)
 

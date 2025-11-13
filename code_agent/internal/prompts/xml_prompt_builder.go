@@ -17,6 +17,7 @@ type PromptContext struct {
 	EnvironmentMetadata  string
 	TaskType             string
 	EnableMultiWorkspace bool
+	HasMCPTools          bool // Indicates if MCP (Model Context Protocol) tools are available
 }
 
 // PromptBuilder builds XML-tagged prompts from registered tools and context
@@ -58,6 +59,22 @@ func (pb *PromptBuilder) BuildXMLPrompt(ctx PromptContext) string {
 
 	// Tools section
 	buf.WriteString("\n<tools>\n")
+	if ctx.HasMCPTools {
+		buf.WriteString("<tool_sources>\n")
+		buf.WriteString("You have access to two types of tools:\n\n")
+		buf.WriteString("1. **Built-in tools** (prefixed with `builtin_`): Native code-agent tools optimized for coding tasks\n")
+		buf.WriteString("   - Use these for standard file operations, code editing, and command execution\n")
+		buf.WriteString("   - Examples: builtin_read_file, builtin_write_file, builtin_list_directory\n\n")
+		buf.WriteString("2. **MCP tools** (no prefix): External Model Context Protocol server tools\n")
+		buf.WriteString("   - Use these when explicitly requested (e.g., \"use MCP\", \"use filesystem tool\")\n")
+		buf.WriteString("   - Examples: read_text_file, write_file, list_directory, edit_file\n")
+		buf.WriteString("   - Provide additional capabilities and integrations\n\n")
+		buf.WriteString("**When to use which:**\n")
+		buf.WriteString("- By default, use built-in tools for faster and more integrated operations\n")
+		buf.WriteString("- Use MCP tools when the user explicitly requests them or when they provide specific capabilities not available in built-in tools\n")
+		buf.WriteString("- MCP tools may have different parameter formats and response structures\n")
+		buf.WriteString("</tool_sources>\n\n")
+	}
 	buf.WriteString(pb.renderToolsXML())
 	buf.WriteString("</tools>\n")
 

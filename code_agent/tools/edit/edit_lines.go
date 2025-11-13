@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 	"code_agent/tools/file"
 )
 
@@ -186,7 +186,7 @@ func NewEditLinesTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "edit_lines",
+		Name:        "builtin_edit_lines",
 		Description: "Edit specific lines in a file by line number. Supports replace, insert, and delete operations. More precise than string-based replacement for structural changes.",
 	}, handler)
 

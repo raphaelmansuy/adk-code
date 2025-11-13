@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // ListDirectoryInput defines the input parameters for listing directory contents.
@@ -104,7 +104,7 @@ func NewListDirectoryTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "list_directory",
+		Name:        "builtin_list_directory",
 		Description: "Lists the contents of a directory. Can list recursively to explore entire directory trees. Use this to understand project structure.",
 	}, handler)
 

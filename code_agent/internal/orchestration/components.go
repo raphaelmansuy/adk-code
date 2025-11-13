@@ -5,6 +5,7 @@ import (
 	"google.golang.org/adk/runner"
 
 	"code_agent/internal/display"
+	"code_agent/internal/mcp"
 	"code_agent/internal/session"
 	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
@@ -30,4 +31,10 @@ type SessionComponents struct {
 	Manager *session.SessionManager
 	Runner  *runner.Runner
 	Tokens  *tracking.SessionTokens
+}
+
+// MCPComponents groups MCP-related fields
+type MCPComponents struct {
+	Manager *mcp.Manager
+	Enabled bool
 }

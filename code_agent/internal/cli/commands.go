@@ -8,6 +8,7 @@ import (
 
 	clicommands "code_agent/internal/cli/commands"
 	"code_agent/internal/display"
+	"code_agent/internal/mcp"
 	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
 )
@@ -50,6 +51,10 @@ func HandleCLICommands(ctx context.Context, args []string, dbPath string) bool {
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in repl.go to break the loop
-func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config) bool {
-	return clicommands.HandleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, currentModel)
+func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager interface{}) bool {
+	var mgr *mcp.Manager
+	if mcpManager != nil {
+		mgr, _ = mcpManager.(*mcp.Manager)
+	}
+	return clicommands.HandleBuiltinCommand(input, renderer, sessionTokens, modelRegistry, currentModel, mgr)
 }

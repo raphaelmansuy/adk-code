@@ -13,7 +13,7 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 
 	"code_agent/pkg/errors"
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // ExecuteCommandInput defines the input parameters for executing a command.
@@ -93,7 +93,7 @@ func NewExecuteCommandTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "execute_command",
+		Name:        "builtin_execute_command",
 		Description: "Executes a shell command and returns its output. Use this to run tests, build code, install dependencies, or run any command-line tools. The command runs in a shell environment with a timeout.",
 	}, handler)
 
@@ -316,7 +316,7 @@ func NewGrepSearchTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "grep_search",
+		Name:        "builtin_grep_search",
 		Description: "Searches for text patterns in files (like grep). Returns matching lines with file paths and line numbers. Useful for finding specific code patterns, function definitions, or error messages.",
 	}, handler)
 

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // PreviewReplaceInput defines the input for previewing a replace operation.
@@ -185,7 +185,7 @@ func NewPreviewReplaceTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "preview_replace_in_file",
+		Name:        "builtin_preview_replace_in_file",
 		Description: "Preview changes before applying a replace operation. Shows a unified diff and context for the changes.",
 	}, handler)
 

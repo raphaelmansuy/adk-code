@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "servers": {
+    "test-server": {
+      "type": "stdio",
+      "command": "echo",
+      "args": ["hello"]
+    }
+  }
+}

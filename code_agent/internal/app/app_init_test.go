@@ -99,7 +99,7 @@ func TestNew_GeminiMissingAPIKeyReturnsError(t *testing.T) {
 func TestInitializeAgent_ReturnsErrorWhenMissingModel(t *testing.T) {
 	cfg := &config.Config{WorkingDirectory: t.TempDir()}
 	// nil LLM should cause error
-	if _, err := orchestration.InitializeAgentComponent(context.Background(), cfg, nil); err == nil {
+	if _, _, err := orchestration.InitializeAgentComponent(context.Background(), cfg, nil); err == nil {
 		t.Fatalf("expected InitializeAgentComponent to error when LLM model is nil")
 	}
 }

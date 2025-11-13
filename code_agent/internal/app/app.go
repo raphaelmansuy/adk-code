@@ -26,6 +26,7 @@ type Application struct {
 	display       *DisplayComponents
 	model         *ModelComponents
 	agent         agent.Agent
+	mcp           *MCPComponents
 	session       *SessionComponents
 	repl          *repl.REPL
 }
@@ -59,6 +60,7 @@ func New(ctx context.Context, cfg *config.Config) (*Application, error) {
 	app.display = components.Display
 	app.model = components.Model
 	app.agent = components.Agent
+	app.mcp = components.MCP
 	app.session = components.Session
 
 	// Print welcome banner
@@ -111,6 +113,7 @@ func (a *Application) initializeREPL() error {
 		SessionTokens:    a.session.Tokens,
 		ModelRegistry:    a.model.Registry,
 		SelectedModel:    a.model.Selected,
+		MCPComponents:    a.mcp,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create REPL: %w", err)

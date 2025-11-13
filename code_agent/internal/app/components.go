@@ -13,3 +13,6 @@ type ModelComponents = orchcomp.ModelComponents
 
 // SessionComponents is a facade for backward compatibility
 type SessionComponents = orchcomp.SessionComponents
+
+// MCPComponents is a facade for backward compatibility
+type MCPComponents = orchcomp.MCPComponents

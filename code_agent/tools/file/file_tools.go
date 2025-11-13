@@ -10,7 +10,7 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 
 	"code_agent/pkg/errors"
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // ReplaceInFileInput defines the input parameters for replacing text in a file.
@@ -110,7 +110,7 @@ func NewReplaceInFileTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "replace_in_file",
+		Name:        "builtin_replace_in_file",
 		Description: "Finds and replaces text in a file with safety guards. The old_text must match exactly (including whitespace). Useful for making targeted edits to existing files.",
 	}, handler)
 

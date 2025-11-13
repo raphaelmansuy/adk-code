@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"code_agent/internal/display"
+	"code_agent/internal/mcp"
 	agentprompts "code_agent/internal/prompts"
 	"code_agent/internal/tracking"
 	"code_agent/pkg/models"
@@ -15,7 +16,7 @@ import (
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in repl.go to break the loop
-func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config) bool {
+func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager *mcp.Manager) bool {
 	switch input {
 	case "/prompt":
 		handlePromptCommand(renderer)
@@ -50,6 +51,11 @@ func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		if strings.HasPrefix(input, "/set-model ") {
 			modelSpec := strings.TrimPrefix(input, "/set-model ")
 			HandleSetModel(renderer, modelRegistry, modelSpec)
+			return true
+		}
+		// Check if it's an /mcp command
+		if strings.HasPrefix(input, "/mcp") {
+			handleMCPCommand(input, renderer, mcpManager)
 			return true
 		}
 		return false
@@ -117,6 +123,124 @@ func handleProvidersCommand(renderer *display.Renderer, registry *models.Registr
 func handleTokensCommand(sessionTokens *tracking.SessionTokens) {
 	summary := sessionTokens.GetSummary()
 	fmt.Print(tracking.FormatSessionSummary(summary))
+}
+
+// handleMCPCommand handles /mcp commands and subcommands
+func handleMCPCommand(input string, renderer *display.Renderer, mcpManager *mcp.Manager) {
+	// Handle case where MCP is disabled or not available
+	if mcpManager == nil {
+		fmt.Println(renderer.Yellow("⚠ MCP is not enabled. Use --mcp-config flag to enable MCP support."))
+		return
+	}
+
+	parts := strings.Fields(input)
+	if len(parts) == 1 {
+		// Just "/mcp" - show help
+		handleMCPHelp(renderer)
+		return
+	}
+
+	subcommand := parts[1]
+	switch subcommand {
+	case "list":
+		handleMCPList(renderer, mcpManager)
+	case "status":
+		handleMCPStatus(renderer, mcpManager)
+	case "tools":
+		handleMCPTools(renderer, mcpManager)
+	case "help":
+		handleMCPHelp(renderer)
+	default:
+		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Unknown /mcp subcommand: %s", subcommand)))
+		handleMCPHelp(renderer)
+	}
+}
+
+// handleMCPHelp shows MCP command help
+func handleMCPHelp(renderer *display.Renderer) {
+	fmt.Println()
+	fmt.Println(renderer.Bold("MCP Commands:"))
+	fmt.Println()
+	fmt.Println(renderer.Cyan("  /mcp list") + "     - List all configured MCP servers")
+	fmt.Println(renderer.Cyan("  /mcp status") + "   - Show status and errors for MCP servers")
+	fmt.Println(renderer.Cyan("  /mcp tools") + "    - List all tools provided by MCP servers")
+	fmt.Println(renderer.Cyan("  /mcp help") + "     - Show this help message")
+	fmt.Println()
+}
+
+// handleMCPList lists all configured MCP servers
+func handleMCPList(renderer *display.Renderer, mcpManager *mcp.Manager) {
+	servers := mcpManager.List()
+
+	if len(servers) == 0 {
+		fmt.Println(renderer.Yellow("⚠ No MCP servers configured"))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Bold("Configured MCP Servers:"))
+	fmt.Println()
+
+	for _, serverName := range servers {
+		fmt.Println(renderer.Cyan("  • ") + serverName)
+	}
+	fmt.Println()
+	fmt.Println(renderer.Dim(fmt.Sprintf("Total: %d server(s)", len(servers))))
+	fmt.Println()
+}
+
+// handleMCPStatus shows status and errors for MCP servers
+func handleMCPStatus(renderer *display.Renderer, mcpManager *mcp.Manager) {
+	status := mcpManager.Status()
+
+	if len(status) == 0 {
+		fmt.Println(renderer.Yellow("⚠ No MCP servers configured"))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Bold("MCP Server Status:"))
+	fmt.Println()
+
+	hasErrors := false
+	for serverName, err := range status {
+		if err != nil {
+			hasErrors = true
+			fmt.Println(renderer.Red("  ✗ ") + renderer.Bold(serverName))
+			fmt.Println(renderer.Dim("    Error: ") + err.Error())
+		} else {
+			fmt.Println(renderer.Green("  ✓ ") + renderer.Bold(serverName))
+			fmt.Println(renderer.Dim("    Status: Connected"))
+		}
+		fmt.Println()
+	}
+
+	if !hasErrors {
+		fmt.Println(renderer.Green("All servers connected successfully"))
+		fmt.Println()
+	}
+}
+
+// handleMCPTools lists all tools from MCP servers
+func handleMCPTools(renderer *display.Renderer, mcpManager *mcp.Manager) {
+	toolsets := mcpManager.Toolsets()
+
+	if len(toolsets) == 0 {
+		fmt.Println(renderer.Yellow("⚠ No tools available from MCP servers"))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Bold("Tools from MCP Servers:"))
+	fmt.Println()
+
+	// Note: Tools() requires an agent.ReadonlyContext which is only available during agent execution
+	// For now, we just show the number of toolsets loaded
+	fmt.Println(renderer.Green(fmt.Sprintf("  ✓ %d MCP toolset(s) loaded successfully", len(toolsets))))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  Note: Tool details are only available during agent execution."))
+	fmt.Println(renderer.Dim("  The agent will have access to all MCP tools when processing requests."))
+	fmt.Println()
 }
 
 // Helper functions for building display lines

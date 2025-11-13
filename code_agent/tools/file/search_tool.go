@@ -9,7 +9,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"code_agent/tools/base"
+	common "code_agent/tools/base"
 )
 
 // SearchFilesInput defines the input parameters for searching files.
@@ -84,7 +84,7 @@ func NewSearchFilesTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "search_files",
+		Name:        "builtin_search_files",
 		Description: "Searches for files matching a pattern in a directory tree. Supports wildcards (* for any characters, ? for single character). Example: '*.go' finds all Go files.",
 	}, handler)
 
