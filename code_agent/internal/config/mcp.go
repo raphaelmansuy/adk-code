@@ -29,6 +29,7 @@ type ServerConfig struct {
 
 // LoadMCP loads MCP config from file or returns disabled config
 // Supports relative paths, absolute paths, and tilde (~) expansion
+// Supports both native format and Claude Desktop format (mcpServers)
 func LoadMCP(configPath string) (*MCPConfig, error) {
 	if configPath == "" {
 		return &MCPConfig{Enabled: false}, nil
@@ -48,9 +49,26 @@ func LoadMCP(configPath string) (*MCPConfig, error) {
 		return nil, fmt.Errorf("failed to read config file %s: %w", resolvedPath, err)
 	}
 
-	var cfg MCPConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	// Try to detect which format we're dealing with
+	var rawConfig map[string]interface{}
+	if err := json.Unmarshal(data, &rawConfig); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	var cfg MCPConfig
+
+	// Check if this is Claude Desktop format (has "mcpServers" key)
+	if mcpServers, hasClaudeFormat := rawConfig["mcpServers"]; hasClaudeFormat {
+		// Convert Claude format to internal format
+		cfg, err = convertClaudeFormat(mcpServers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert Claude format: %w", err)
+		}
+	} else {
+		// Use native format
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			return nil, fmt.Errorf("failed to parse config file: %w", err)
+		}
 	}
 
 	// Set server names from map keys
@@ -68,6 +86,58 @@ func LoadMCP(configPath string) (*MCPConfig, error) {
 	}
 
 	return &cfg, nil
+}
+
+// convertClaudeFormat converts Claude Desktop format to internal MCPConfig format
+func convertClaudeFormat(mcpServersData interface{}) (MCPConfig, error) {
+	// Re-marshal and unmarshal to convert to ServerConfig map
+	data, err := json.Marshal(mcpServersData)
+	if err != nil {
+		return MCPConfig{}, fmt.Errorf("failed to marshal Claude format: %w", err)
+	}
+
+	var servers map[string]ClaudeServerConfig
+	if err := json.Unmarshal(data, &servers); err != nil {
+		return MCPConfig{}, fmt.Errorf("failed to unmarshal Claude format: %w", err)
+	}
+
+	// Convert Claude server configs to internal format
+	internalServers := make(map[string]ServerConfig)
+	for name, claudeSrv := range servers {
+		internalServers[name] = claudeSrv.toServerConfig()
+	}
+
+	return MCPConfig{
+		Enabled: true, // Claude format implies enabled
+		Servers: internalServers,
+	}, nil
+}
+
+// ClaudeServerConfig represents Claude Desktop's server configuration format
+type ClaudeServerConfig struct {
+	Command string            `json:"command,omitempty"`
+	Args    []string          `json:"args,omitempty"`
+	Env     map[string]string `json:"env,omitempty"`
+	URL     string            `json:"url,omitempty"` // For SSE/HTTP servers
+}
+
+// toServerConfig converts Claude format to internal ServerConfig format
+func (c ClaudeServerConfig) toServerConfig() ServerConfig {
+	// Determine type based on what's present
+	// If command is present, it's stdio
+	// If URL is present, it's SSE/streamable
+	serverType := "stdio"
+	if c.URL != "" {
+		serverType = "sse"
+	}
+
+	return ServerConfig{
+		Type:    serverType,
+		Command: c.Command,
+		Args:    c.Args,
+		Env:     c.Env,
+		URL:     c.URL,
+	}
 }
 
 // resolvePath resolves a file path, handling:

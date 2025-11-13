@@ -54,3 +54,6 @@ Thumbs.db
 go.sum.local
 
 research/** 
+
+.pytest_cache/
+logs/
