@@ -2,7 +2,7 @@
 
 ## Quick Start: Create Your First Tool in 5 Minutes
 
-This guide teaches you the **4-step pattern** for building tools in Code Agent.
+This guide teaches you the **4-step pattern** for building tools in adk-code.
 
 ---
 
@@ -10,12 +10,25 @@ This guide teaches you the **4-step pattern** for building tools in Code Agent.
 
 Every tool follows this exact structure:
 
-```go
-// Step 1: Input/Output Types
-// Step 2: Handler Function
-// Step 3: Tool Creation (functiontool.New)
-// Step 4: Registration (common.Register)
+```mermaid
+graph LR
+    A["Step 1<br/>Input/Output<br/>Types"] --> B["Step 2<br/>Handler<br/>Function"]
+    B --> C["Step 3<br/>functiontool<br/>.New"]
+    C --> D["Step 4<br/>common<br/>.Register"]
+    D --> E["Tool<br/>Available<br/>to Agent"]
+    
+    style A fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style B fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style C fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style D fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style E fill:#F7D5F7,stroke:#E79FE7,color:#333
 ```
+
+The workflow:
+1. **Define** input/output structures with JSON schema
+2. **Implement** the handler function with business logic
+3. **Wrap** the handler with `functiontool.New()`
+4. **Register** the tool with `common.Register()` in an `init()` function
 
 ---
 
@@ -155,6 +168,28 @@ func init() {
 - `functiontool.Config.Description`: Shown in `/help` and to LLM
 - `Priority`: 1 (highest) for common tools, 2+ for specialized
 - `UsageHint`: Brief tip for when to use this tool
+
+**Tool Registration Flow**:
+
+```mermaid
+graph TD
+    A["1. Define Tool<br/>Input/Output"] -->|Create| B["2. Write Handler<br/>Function"]
+    B -->|Wrap| C["3. functiontool.New<br/>Config + Handler"]
+    C -->|Register| D["4. common.Register<br/>ToolMetadata"]
+    D -->|At startup| E["Tool Init Functions<br/>Run via init()"]
+    E -->|Discovery| F["Tool Registry<br/>All Tools"]
+    F -->|Available to| G["Agent Loop<br/>Can call tools"]
+    G -->|User calls| H["✅ Tool Execution<br/>Success/Error"]
+    
+    style A fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style B fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style C fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style D fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style E fill:#F7D5D5,stroke:#E79F9F,color:#333
+    style F fill:#D5F7F2,stroke:#9FE7E0,color:#333
+    style G fill:#F0E8F7,stroke:#D9B3E8,color:#333
+    style H fill:#FFF9E6,stroke:#FFE680,color:#333
+```
 
 #### Step 4: Register in tools/tools.go
 
@@ -462,7 +497,7 @@ cd adk-code/tools/analysis
 go test -v ./...
 
 # Or run all tool tests
-cd code_agent
+cd adk-code
 make test
 ```
 
@@ -473,7 +508,7 @@ make test
 Once registered, your tool is **automatically available** to the agent:
 
 ```bash
-$ code-agent
+$ ./adk-code
 
 ❯ How many lines are in main.go?
 Agent calls: count_lines(path="main.go", only_non_empty=false)
@@ -672,15 +707,15 @@ handler := func(ctx tool.Context, input Input) Output {
 
 ## 11. Building Tools for MCP Servers (Advanced)
 
-While this guide focuses on **built-in tools** within Code Agent, you can also extend the agent with **unlimited tools via MCP (Model Context Protocol) servers**.
+While this guide focuses on **built-in tools** within adk-code, you can also extend the agent with **unlimited tools via MCP (Model Context Protocol) servers**.
 
 ### What is MCP?
 
-**Model Context Protocol** enables Code Agent to connect to external tool servers at runtime. Instead of building every tool into Code Agent, you can:
+**Model Context Protocol** enables adk-code to connect to external tool servers at runtime. Instead of building every tool into adk-code, you can:
 
 1. Create a separate MCP server with custom tools
 2. Configure it in `~/.adk-code/config.json`
-3. Let Code Agent discover and use those tools automatically
+3. Let adk-code discover and use those tools automatically
 
 ### When to Build an MCP Server vs. a Built-in Tool
 
@@ -689,11 +724,11 @@ While this guide focuses on **built-in tools** within Code Agent, you can also e
 | **Built-in Tool** | Frequently used, general purpose | `read_file`, `execute_command` |
 | **MCP Server** | Domain-specific, external service | GitHub API integration, database client |
 | **MCP Server** | Heavy dependencies | Node.js ecosystem, Python data science |
-| **MCP Server** | Want to avoid modifying Code Agent | Community-contributed tools |
+| **MCP Server** | Want to avoid modifying adk-code | Community-contributed tools |
 
 ### Example: GitHub MCP Server
 
-Instead of building GitHub tools into Code Agent, you could:
+Instead of building GitHub tools into adk-code, you could:
 
 1. Create a standalone MCP server:
 
@@ -709,7 +744,7 @@ go mod init github.com/user/mcp-server-github
    - `list_issues(repo: string) → Issue[]`
    - `create_pr(repo: string, title: string, body: string) → PR`
 
-4. Configure in Code Agent:
+4. Configure in adk-code:
 
 ```json
 {
@@ -727,7 +762,7 @@ go mod init github.com/user/mcp-server-github
 }
 ```
 
-5. Now Code Agent can use all GitHub tools:
+5. Now adk-code can use all GitHub tools:
 
 ```bash
 ❯ Clone the repository
@@ -737,9 +772,9 @@ go mod init github.com/user/mcp-server-github
 ### Benefits of MCP Approach
 
 - Isolation: Separate process, separate dependencies
-- Scalability: Add unlimited tools without modifying Code Agent
+- Scalability: Add unlimited tools without modifying adk-code
 - Community: Share MCP servers across tools
-- Maintenance: Code Agent team doesn't need to maintain every tool
+- Maintenance: adk-code team doesn't need to maintain every tool
 
 ### For More Information
 

@@ -1,4 +1,4 @@
-# Code Agent: Visual Architecture Guide
+# adk-code: Visual Architecture Guide
 
 One-page visual overview of the entire system.
 
@@ -285,7 +285,7 @@ Tools/ (8 categories, ~30 total)
 ## Model Selection Flow
 
 ```
-User runs: code-agent --model gpt-4o --backend gemini
+User runs: adk-code --model gpt-4o --backend gemini
 
                       │
                       ▼
@@ -535,7 +535,7 @@ main.go
 ## Configuration Precedence
 
 ```
-User runs: code-agent --model gpt-4o --api-key sk-...
+User runs: adk-code --model gpt-4o --api-key sk-...
 
         ┌────────────────────────────┐
         │ CLI Flags (Highest)        │
@@ -565,7 +565,7 @@ Final Config used to initialize all components.
 ## Learning Path Flowchart
 
 ```
-START: New to Code Agent?
+START: New to adk-code?
    │
    ├─ Yes → Read QUICK_REFERENCE.md (2 min)
    │        └─ Build & run app

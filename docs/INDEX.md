@@ -1,4 +1,4 @@
-# Code Agent Documentation - Complete Index
+# adk-code Documentation - Complete Index
 
 **Status**: ✅ Complete (November 12, 2025)  
 **Coverage**: Architecture, Tool Development, Quick Reference, Visual Guide, Deep Analysis  
@@ -215,7 +215,7 @@ Comprehensive technical reference document capturing all design decisions.
 
 ## Documentation Update: MCP Support (NEW)
 
-**Model Context Protocol (MCP)** support has been added to Code Agent, enabling connection to unlimited external tool servers via a simple JSON configuration.
+**Model Context Protocol (MCP)** support has been added to adk-code, enabling connection to unlimited external tool servers via a simple JSON configuration.
 
 **Updated Sections**:
 - **ARCHITECTURE.md § 5**: Complete MCP subsystem design (data flow, configuration, CLI commands)
@@ -388,7 +388,7 @@ When the codebase changes:
 
 ## Summary
 
-**6 comprehensive documents** provide complete coverage of the Code Agent codebase:
+**6 comprehensive documents** provide complete coverage of the adk-code codebase:
 - **3,327 total lines** of documentation
 - **Multiple learning paths** for different users
 - **15+ visual diagrams** for system understanding

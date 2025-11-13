@@ -1,8 +1,8 @@
-# Code Agent: System Architecture & Design
+# adk-code: System Architecture & Design
 
 ## Executive Summary
 
-**Code Agent** is an intelligent CLI coding assistant built on Google's ADK framework. It orchestrates three major subsystems—**Display** (terminal UI), **Model** (LLM provider abstraction), and **Agent** (agentic reasoning loop)—through a clean component composition pattern.
+**adk-code** is an intelligent CLI coding assistant built on Google's ADK framework. It orchestrates three major subsystems—**Display** (terminal UI), **Model** (LLM provider abstraction), and **Agent** (agentic reasoning loop)—through a clean component composition pattern.
 
 ### Key Metrics
 - **~1000 lines** of critical code (highly scalable for learning)
@@ -63,6 +63,43 @@
 ### 1.2 Component Architecture (4-Part System)
 
 The application uses **composition over inheritance**. Four components work together:
+
+```mermaid
+graph TB
+    subgraph Core["Core Components"]
+        A["🖥️ Display<br/>Terminal UI & Rendering"]
+        B["🤖 Model<br/>LLM Provider Abstraction"]
+        C["🔄 Agent<br/>Agentic Loop"]
+        D["💾 Session<br/>Persistence & Tracking"]
+    end
+    
+    subgraph External["External Systems"]
+        E["🛠️ Tools<br/>30+ Callables"]
+        F["🌐 LLM Backends<br/>Gemini, OpenAI, VertexAI"]
+        G["📂 Filesystem<br/>User Code"]
+    end
+    
+    A -->|renders| H["Terminal Output"]
+    B -->|selects| F
+    C -->|calls| F
+    C -->|executes| E
+    C -->|manages context| D
+    C -->|receives tools| E
+    E -->|accesses| G
+    F -->|returns| C
+    D -->|stores| G
+    
+    style A fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style B fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style C fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style D fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style E fill:#F7D5D5,stroke:#E79F9F,color:#333
+    style F fill:#D5F7F2,stroke:#9FE7E0,color:#333
+    style G fill:#F0F0F0,stroke:#CCCCCC,color:#333
+    style H fill:#FFF9E6,stroke:#FFE680,color:#333
+    style Core fill:#FFFAEB,stroke:#FFD700,color:#333
+    style External fill:#F5F5F5,stroke:#999,color:#333
+```
 
 | Component | Package | Role | Key Type(s) |
 |-----------|---------|------|------------|
@@ -181,6 +218,40 @@ func (r *Registry) ResolveModel(modelID, backend string) Config
 
 **Supported Models**:
 
+```mermaid
+graph TD
+    A["Model Selection Decision"] --> B{Explicit Model ID?}
+    B -->|Yes| C["Use specified model"]
+    B -->|No| D{Explicit Backend?}
+    D -->|Yes| E["Use backend default"]
+    D -->|No| F["Use global default<br/>gemini-2.5-flash"]
+    
+    C --> G["Gemini"]
+    C --> H["OpenAI"]
+    C --> I["Vertex AI"]
+    E --> G
+    E --> H
+    E --> I
+    F --> G
+    
+    G --> J["gemini-2.5-flash<br/>gemini-1.5-pro<br/>gemini-1.5-flash"]
+    H --> K["gpt-4o<br/>gpt-4-turbo"]
+    I --> L["gemini-2.5-flash-vertex<br/>gemini-1.5-pro-vertex"]
+    
+    style A fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style B fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style D fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style C fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style E fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style F fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style G fill:#FFE6E6,stroke:#FF9999,color:#333
+    style H fill:#E6F3FF,stroke:#99CCFF,color:#333
+    style I fill:#F0E6FF,stroke:#CC99FF,color:#333
+    style J fill:#FFE6E6,stroke:#FF9999,color:#333
+    style K fill:#E6F3FF,stroke:#99CCFF,color:#333
+    style L fill:#F0E6FF,stroke:#CC99FF,color:#333
+```
+
 | Backend | Models |
 |---------|--------|
 | **Gemini** | gemini-2.5-flash (default), gemini-1.5-pro, gemini-1.5-flash |
@@ -213,20 +284,38 @@ type Config struct {
 **Integration Point**: `google.golang.org/adk/agent`
 
 **Agentic Loop**:
-```
-1. Agent receives user message + context
-2. Calls LLM backend with:
-   - System prompt (from internal/prompts/)
-   - Conversation history
-   - Available tools (with JSON schema)
-3. LLM responds with:
-   - Thinking (optional, if enabled)
-   - Tool calls or final response
-4. Agent executes tools:
-   - Invokes each tool with validated input
-   - Collects outputs
-5. Agent appends tool results to context
-6. Loop back to step 2 (until stop_reason = END_TURN or ERROR)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant R as REPL
+    participant A as Agent Loop
+    participant LLM as LLM Backend
+    participant T as Tools
+    participant D as Display
+
+    U->>R: Ask question
+    R->>A: genai.Content(user msg)
+    
+    loop Until stop_reason
+        A->>LLM: Call with system prompt<br/>+ history + tools
+        LLM-->>A: Response with<br/>tool calls or end
+        
+        alt Tool Calls Present
+            A->>T: Execute each tool
+            T-->>A: Tool results
+            A->>D: Stream tool execution
+            D->>U: Show execution
+            A->>LLM: Append tool results<br/>to context
+        else Final Response
+            A->>D: Stream final message
+            D->>U: Display answer
+            A->>A: Loop ends
+        end
+    end
+    
+    A->>R: Return result
+    R->>U: Prompt ready
 ```
 
 **Tool Registration**:
@@ -448,6 +537,49 @@ func NewMyTool() tool.Tool {
 
 ### 4.2 Tool Categories (8 Total)
 
+```mermaid
+graph TB
+    subgraph Categories["Tool Ecosystem (8 Categories)"]
+        F["📁 File Operations<br/>ReadFile, WriteFile<br/>ListDirectory, SearchFiles"]
+        E["✏️ Code Editing<br/>ApplyPatch, EditLines<br/>SearchReplace"]
+        S["🔍 Search & Discovery<br/>GrepSearch<br/>PreviewReplace"]
+        X["⚙️ Execution<br/>ExecuteCommand<br/>ExecuteProgram"]
+        W["🏢 Workspace<br/>FileInfo, Analysis<br/>ProjectStats"]
+        D["💬 Display<br/>DisplayMessage<br/>UpdateTaskList"]
+        V["📦 V4A Patches<br/>ApplyV4APatch<br/>DiffFormat"]
+        B["🎛️ Base/Registry<br/>ToolRegistry<br/>ErrorCodes"]
+    end
+    
+    subgraph Usage["Frequency of Use"]
+        Daily["🔴 Daily Use"]
+        Common["🟡 Common Use"]
+        Special["🟢 Specialized"]
+    end
+    
+    F --> Daily
+    E --> Common
+    S --> Common
+    X --> Daily
+    W --> Special
+    D --> Common
+    V --> Special
+    B --> Special
+    
+    style F fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style E fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style S fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style X fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style W fill:#F7D5D5,stroke:#E79F9F,color:#333
+    style D fill:#D5F7F2,stroke:#9FE7E0,color:#333
+    style V fill:#F0E8F7,stroke:#D9B3E8,color:#333
+    style B fill:#F7F7D5,stroke:#E7E79F,color:#333
+    style Daily fill:#FFE6E6,stroke:#FF9999,color:#333
+    style Common fill:#FFFACD,stroke:#FFD700,color:#333
+    style Special fill:#E6F7E6,stroke:#99FF99,color:#333
+    style Categories fill:#FFFAEB,stroke:#FFD700,color:#333
+    style Usage fill:#F5F5F5,stroke:#999,color:#333
+```
+
 | Category | Purpose | Tools |
 |----------|---------|-------|
 | **File Operations** | Read, write, list files | ReadFile, WriteFile, ReplaceInFile, ListDirectory, SearchFiles |
@@ -484,11 +616,11 @@ func NewMyTool() tool.Tool {
 
 ### 5.1 What is MCP?
 
-**Model Context Protocol (MCP)** enables the agent to dynamically connect to external tool servers at runtime, extending capabilities beyond built-in tools. Instead of coding tools directly into Code Agent, you can spin up MCP servers and configure them in a JSON file.
+**Model Context Protocol (MCP)** enables the agent to dynamically connect to external tool servers at runtime, extending capabilities beyond built-in tools. Instead of coding tools directly into adk-code, you can spin up MCP servers and configure them in a JSON file.
 
 **Key Benefits**:
 
-- 🔌 **Unlimited Tools**: Add new tools without modifying Code Agent
+- 🔌 **Unlimited Tools**: Add new tools without modifying adk-code
 - 🌐 **External Servers**: Connect to community-provided or custom MCP servers
 - ⚡ **Easy Integration**: Simple JSON configuration
 - 🔄 **Hot Reload**: Reload servers without restarting agent
@@ -711,24 +843,24 @@ Priority (highest to lowest):
 
 ```bash
 # LLM Configuration
-code-agent --model gemini/2.5-flash          # Explicit model
-code-agent --backend gemini                  # Explicit backend
-code-agent --model gpt-4o                    # OpenAI model
+adk-code --model gemini-2.5-flash          # Explicit model
+adk-code --backend gemini                  # Explicit backend
+adk-code --model gpt-4o                    # OpenAI model
 
 # Session Management
-code-agent --session my-session              # Named session
-code-agent --db /path/to/sessions.db        # Custom DB location
+adk-code --session my-session              # Named session
+adk-code --db /path/to/sessions.db        # Custom DB location
 
 # Output & UI
-code-agent --output-format plain             # plain | rich | json
-code-agent --typewriter                      # Enable typewriter effect
+adk-code --output-format plain             # plain | rich | json
+adk-code --typewriter                      # Enable typewriter effect
 
 # Working Directory
-code-agent --working-directory /path/to/src # Agent's working dir
+adk-code --working-directory /path/to/src # Agent's working dir
 
 # Thinking/Reasoning
-code-agent --enable-thinking                 # Enable long thinking
-code-agent --thinking-budget 5000            # Max thinking tokens
+adk-code --enable-thinking                 # Enable long thinking
+adk-code --thinking-budget 5000            # Max thinking tokens
 ```
 
 ### 6.3 Environment Variables
@@ -861,7 +993,7 @@ Session ────┘
 ### 8.1 Interactive Mode (Default)
 
 ```bash
-$ code-agent
+$ adk-code
 ❯ How do I write a Python FastAPI server?
 [Agent thinks, executes tools, displays results]
 ❯ Can you add authentication?
@@ -871,7 +1003,18 @@ $ code-agent
 ### 8.2 Batch Mode (Via Stdin)
 
 ```bash
-$ echo "Create a Rust CLI app" | code-agent --session batch-1
+$ adk-code
+
+❯ Hello! I'm adk-code. How can I help?
+❯ Create a Rust CLI app
+
+$ echo "Create a Rust CLI app" | adk-code --session batch-1
+
+# Later
+
+$ adk-code --session project-alpha
+
+$ adk-code --session project-alpha  # Resumes with history
 [Executes once, exits]
 ```
 
@@ -879,11 +1022,11 @@ $ echo "Create a Rust CLI app" | code-agent --session batch-1
 
 ```bash
 # Create session
-$ code-agent --session project-alpha
+$ adk-code --session project-alpha
 
 # Session state saved to ~/.adk-code/sessions.db
 # Later:
-$ code-agent --session project-alpha  # Resumes with history
+$ adk-code --session project-alpha  # Resumes with history
 ```
 
 ---

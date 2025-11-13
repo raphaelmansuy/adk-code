@@ -1,4 +1,4 @@
-# 🎉 Code Agent Documentation - Complete
+# 🎉 adk-code Documentation - Complete
 
 ## ✅ Project Status: COMPLETE
 
@@ -423,7 +423,7 @@ Explore code (60+ min)
 
 ## 📝 Summary
 
-**A complete documentation suite** has been created for Code Agent:
+**A complete documentation suite** has been created for adk-code:
 
 - **7 documents** covering all aspects
 - **3,803 lines** of high-value content
@@ -479,7 +479,7 @@ The documentation is:
 
 ## 🎉 Conclusion
 
-The Code Agent codebase now has **professional-grade documentation** that enables:
+The adk-code codebase now has **professional-grade documentation** that enables:
 - New users to get started in 5 minutes
 - Tool developers to implement features in 1 hour
 - Core contributors to understand the system in 3-4 hours

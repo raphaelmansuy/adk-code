@@ -1,17 +1,17 @@
-# README: Code Agent Documentation Suite
+# README: adk-code Documentation Suite
 
-Complete documentation for the Code Agent codebase. Start here.
+Complete documentation for the adk-code codebase. Start here.
 
 ---
 
 ## 📚 Documentation Overview
 
-This documentation suite provides **multiple entry points** for understanding Code Agent, from high-level architecture to implementation details.
+This documentation suite provides **multiple entry points** for understanding adk-code, from high-level architecture to implementation details.
 
 ### Which Document Should I Read?
 
 ```
-Are you new to Code Agent?
+Are you new to adk-code?
   ↓
   Start with QUICK_REFERENCE.md (2 min read)
   
@@ -44,7 +44,7 @@ Need deep technical analysis?
 - Common issues & solutions
 - Key file locations
 
-**When to use**: You're ready to **start using** Code Agent
+**When to use**: You're ready to **start using** adk-code
 
 ---
 
@@ -111,6 +111,48 @@ Need deep technical analysis?
 
 ## 🎯 Learning Paths
 
+```mermaid
+graph LR
+    Start["Start Here"] -->|5 min| P1["👤 User<br/>Use adk-code"]
+    Start -->|1 hour| P2["🔧 Contributor<br/>Build tools"]
+    Start -->|3 hours| P3["🏗️ Core Dev<br/>Modify core"]
+    
+    P1 -->|Next| QREF["QUICK_REFERENCE<br/>QUICK_REFERENCE"]
+    P1 -->|Then| Run["▶️ make run"]
+    Run -->|Ready| Use["✅ Can use adk-code"]
+    
+    P2 -->|Read| ARCH["ARCHITECTURE<br/>System Design"]
+    P2 -->|Then| TOOL["TOOL_DEVELOPMENT<br/>4-step pattern"]
+    TOOL -->|Then| Build["Build first tool"]
+    Build -->|Ready| Contrib["✅ Can build tools"]
+    
+    P3 -->|Read| DRAFT["draft.md<br/>Deep Analysis"]
+    P3 -->|Then| Explore["Explore Codebase"]
+    Explore -->|Study| Core["Core files<br/>~1000 LOC"]
+    Core -->|Ready| Mod["✅ Can modify core"]
+    
+    QREF -->|5 min| Read1["✓ Building & Running"]
+    ARCH -->|15 min| Read2["✓ Component Overview"]
+    TOOL -->|20 min| Read3["✓ Tool Pattern"]
+    DRAFT -->|30 min| Read4["✓ Deep Design"]
+    
+    style Start fill:#FFE6E6,stroke:#FF9999,color:#333
+    style P1 fill:#E6F7E6,stroke:#99FF99,color:#333
+    style P2 fill:#E6F3FF,stroke:#99CCFF,color:#333
+    style P3 fill:#F0E6FF,stroke:#CC99FF,color:#333
+    style Use fill:#FFFACD,stroke:#FFD700,color:#333
+    style Contrib fill:#FFFACD,stroke:#FFD700,color:#333
+    style Mod fill:#FFFACD,stroke:#FFD700,color:#333
+    style QREF fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style ARCH fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style TOOL fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style DRAFT fill:#F7E8D5,stroke:#E7C59F,color:#333
+    style Run fill:#FFF9E6,stroke:#FFE680,color:#333
+    style Build fill:#FFF9E6,stroke:#FFE680,color:#333
+    style Explore fill:#FFF9E6,stroke:#FFE680,color:#333
+    style Core fill:#FFF9E6,stroke:#FFE680,color:#333
+```
+
 ### Path 1: User (5 Minutes)
 1. Read QUICK_REFERENCE.md sections:
    - Building & Running
@@ -118,7 +160,7 @@ Need deep technical analysis?
 2. Run `make build && make run`
 3. Try some commands
 
-**Result**: Can use Code Agent effectively
+**Result**: Can use adk-code effectively
 
 ---
 
@@ -222,7 +264,7 @@ adk-code/
 cd /path/to/adk_training_go
 
 # 2. Build
-cd code_agent
+cd adk-code
 make build
 
 # 3. Run tests
@@ -239,7 +281,7 @@ make check
 # 2. Create tools/CATEGORY/new_tool.go
 # 3. Implement 4-step pattern
 # 4. Test
-cd code_agent
+cd adk-code
 make test
 # 5. Run full quality check
 make check
@@ -297,7 +339,7 @@ make check
 
 ## 🚀 Common Tasks
 
-### "I want to use Code Agent"
+### "I want to use adk-code"
 → Read QUICK_REFERENCE.md → Run `make build && make run`
 
 ### "I want to add a new tool"
@@ -321,7 +363,7 @@ make check
 
 These documents are **maintained** and **kept in sync** with the codebase.
 
-When modifying Code Agent:
+When modifying adk-code:
 1. Update relevant code
 2. Update corresponding documentation
 3. Verify examples still work
@@ -407,7 +449,7 @@ For detailed information, refer to:
 
 **After these steps, you'll have:**
 - Working understanding of the system
-- Ability to use Code Agent effectively
+- Ability to use adk-code effectively
 - Skills to implement new tools
 - Knowledge to extend the codebase
 

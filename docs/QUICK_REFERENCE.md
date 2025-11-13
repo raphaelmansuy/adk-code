@@ -1,6 +1,6 @@
 # Quick Reference Guide
 
-One-page cheat sheet for common Code Agent tasks.
+One-page cheat sheet for common adk-code tasks.
 
 ---
 
@@ -11,13 +11,14 @@ One-page cheat sheet for common Code Agent tasks.
 make build              # Binary goes to ../bin/adk-code
 
 # Run with default settings
-../bin/adk-code
+cd ../bin
+./adk-code
 
 # Run with specific model
-../bin/adk-code --model gemini-2.5-flash
+./adk-code --model gemini-2.5-flash
 
 # Run with custom session
-../bin/adk-code --session my-project
+./adk-code --session my-project
 
 # Build + run in one command
 make run
@@ -27,11 +28,47 @@ make run
 
 ## Environment Setup
 
+```mermaid
+graph TD
+    A["Choose Your Provider"] --> B{Which backend?}
+    B -->|Google AI<br/>Free Tier| C["Gemini"]
+    B -->|GCP Enterprise| D["Vertex AI"]
+    B -->|OpenAI| E["OpenAI"]
+    
+    C --> C1["🔑 Get API Key<br/>aistudio.google.com"]
+    C1 --> C2["export GOOGLE_API_KEY=..."]
+    C2 --> C3["./adk-code"]
+    
+    D --> D1["🔑 Create GCP Project<br/>console.cloud.google.com"]
+    D1 --> D2["export GOOGLE_CLOUD_PROJECT=..."]
+    D2 --> D3["export GOOGLE_CLOUD_LOCATION=..."]
+    D3 --> D4["export GOOGLE_GENAI_USE_VERTEXAI=true"]
+    D4 --> D5["./adk-code"]
+    
+    E --> E1["🔑 Get API Key<br/>platform.openai.com"]
+    E1 --> E2["export OPENAI_API_KEY=..."]
+    E2 --> E3["./adk-code --model gpt-4o"]
+    
+    C3 --> F["✅ Ready!"]
+    D5 --> F
+    E3 --> F
+    
+    style A fill:#FFE6E6,stroke:#FF9999,color:#333
+    style B fill:#E6F3FF,stroke:#99CCFF,color:#333
+    style C fill:#D5E8F7,stroke:#9FC9E7,color:#333
+    style D fill:#D5F7E8,stroke:#9FE7C0,color:#333
+    style E fill:#E8D5F2,stroke:#B19CD9,color:#333
+    style C1 fill:#FFF9E6,stroke:#FFE680,color:#333
+    style D1 fill:#FFF9E6,stroke:#FFE680,color:#333
+    style E1 fill:#FFF9E6,stroke:#FFE680,color:#333
+    style F fill:#E6F7E6,stroke:#99FF99,color:#333
+```
+
 ### Gemini (Google AI) - Default
 
 ```bash
 export GOOGLE_API_KEY=your-api-key-here
-../bin/adk-code
+./adk-code
 ```
 
 ### Vertex AI (GCP)
@@ -40,14 +77,14 @@ export GOOGLE_API_KEY=your-api-key-here
 export GOOGLE_CLOUD_PROJECT=your-project-id
 export GOOGLE_CLOUD_LOCATION=us-central1
 export GOOGLE_GENAI_USE_VERTEXAI=true
-../bin/adk-code
+./adk-code
 ```
 
 ### OpenAI
 
 ```bash
 export OPENAI_API_KEY=sk-...
-../bin/adk-code --model gpt-4o
+./adk-code --model gpt-4o
 ```
 
 ---
@@ -266,7 +303,7 @@ adk-code/
 ~/.adk-code/sessions.db
 
 # History file
-~/.code_agent_history
+~/.adk-code/history
 
 # Config file (future)
 ~/.adk-code/config.json
@@ -315,7 +352,8 @@ go test -v -run TestReadFile
 # Test with coverage
 go test -v -cover ./...
 
-# Run from code_agent root
+# Run from adk-code directory
+cd adk-code
 make test
 ```
 
@@ -330,7 +368,7 @@ Most tools support quiet flags or environment variables:
 ```bash
 # Set verbosity
 export DEBUG=1
-../bin/adk-code
+./adk-code
 
 # Or via RUST_LOG-like pattern (if supported)
 export RUST_LOG=debug
@@ -358,7 +396,7 @@ echo $OPENAI_API_KEY
 
 ### View Session History
 
-Sessions are stored in SQLite:
+Sessions are stored in SQLite at `~/.adk-code/sessions.db`:
 ```bash
 # Install sqlite3 CLI if needed
 brew install sqlite3
@@ -393,9 +431,11 @@ Then use one of the listed models:
 
 ### "Permission denied" on binary
 
-**Solution**: Make executable
+**Solution**: Make executable (or rebuild)
 ```bash
 chmod +x ../bin/adk-code
+# or
+make build
 ```
 
 ### Tests failing
