@@ -38,8 +38,11 @@ vendor/
 # Test workspace
 /adk-code/test_workspace/
 
-# Research directory
+# Directories to ignore
 /research/
+features/
+logs/
+tutorials/
 
 # Temporary files
 *.tmp
@@ -53,10 +56,4 @@ Thumbs.db
 # Go mod/sum local overrides
 go.sum.local
 
-research/** 
-
 .pytest_cache/
-logs/
-
-features/**
-tutorials/**
