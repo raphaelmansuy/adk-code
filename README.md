@@ -4,7 +4,7 @@
 
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/your-username/adk-code?style=flat-square)](https://github.com/your-username/adk-code)
+[![GitHub Stars](https://img.shields.io/github/stars/raphaelmansuy/adk-code?style=flat-square)](https://github.com/raphaelmansuy/adk-code)
 
 
 ## What is adk-code?
@@ -27,7 +27,7 @@
 
 ```bash
 # Clone and build
-git clone https://github.com/your-username/adk-code.git
+git clone https://github.com/raphaelmansuy/adk-code.git
 cd adk-code/adk-code
 make build
 
@@ -313,8 +313,8 @@ A: Yes! Follow the 4-step pattern in TOOL_DEVELOPMENT.md.
 
 ## 💬 Community
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/adk-code/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/adk-code/discussions)
+- **Issues**: [GitHub Issues](https://github.com/raphaelmansuy/adk-code/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/raphaelmansuy/adk-code/discussions)
 - **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 🙏 Acknowledgments
@@ -337,6 +337,6 @@ Built on:
 
 **Made with ❤️ by the adk-code community**
 
-[⭐ Star us on GitHub](https://github.com/your-username/adk-code) | [🐛 Report Bug](https://github.com/your-username/adk-code/issues) | [💡 Request Feature](https://github.com/your-username/adk-code/issues)
+[⭐ Star us on GitHub](https://github.com/raphaelmansuy/adk-code) | [🐛 Report Bug](https://github.com/raphaelmansuy/adk-code/issues) | [💡 Request Feature](https://github.com/raphaelmansuy/adk-code/issues)
 
 </div>
