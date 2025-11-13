@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "servers": {
+    "streamable-server": {
+      "type": "streamable",
+      "url": "http://localhost:3000/mcp",
+      "timeout": 60000
+    }
+  }
+}

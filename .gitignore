@@ -30,7 +30,6 @@ vendor/
 # Build artifacts
 /bin/
 /bin
-/adk-code
 /adk-code/adk-code
 /adk-code/demo/calculate
 /adk-code/demo/fibonacci
