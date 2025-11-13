@@ -91,6 +91,67 @@ export OPENAI_API_KEY=sk-...
 
 ---
 
+## MCP (Model Context Protocol) Commands
+
+### Setup
+
+```bash
+# Create or edit configuration file
+~/.adk-code/config.json
+```
+
+### Example Configuration
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "type": "stdio",
+        "command": "mcp-server-filesystem"
+      },
+      "github": {
+        "type": "stdio",
+        "command": "mcp-server-github",
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        }
+      }
+    }
+  }
+}
+```
+
+### In-REPL MCP Commands
+
+```bash
+❯ /mcp list               # Show all MCP servers and status
+❯ /mcp tools <server>     # List tools from a server
+❯ /mcp reload             # Hot-reload MCP servers
+❯ /mcp status             # Show server connection details
+```
+
+### Example MCP Session
+
+```bash
+❯ /mcp list
+Connected MCP Servers:
+  ✓ filesystem  (stdio) - 15 tools
+  ✓ github      (stdio) - 8 tools
+
+❯ /mcp tools filesystem
+Tools from filesystem:
+  • read_file(path: string) → string
+  • write_file(path: string, content: string) → bool
+  • list_directory(path: string) → string[]
+  ... (12 more)
+
+❯ Read the README from the repo
+[Agent uses mcp_filesystem_read_file tool]
+```
+
+---
+
 ## Common Prompts & Examples
 
 ### Code Generation

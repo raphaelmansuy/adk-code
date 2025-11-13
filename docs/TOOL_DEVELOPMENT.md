@@ -33,7 +33,7 @@ package analysis
 import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
-	
+
 	"adk-code/tools/base"
 )
 
@@ -41,7 +41,7 @@ import (
 type CountLinesInput struct {
 	// Path is the file to analyze
 	Path string `json:"path" jsonschema:"Path to the file to analyze"`
-	
+
 	// OnlyNonEmpty counts only non-empty lines (optional)
 	OnlyNonEmpty *bool `json:"only_non_empty,omitempty" jsonschema:"Count only non-empty lines (default: false)"`
 }
@@ -57,6 +57,7 @@ type CountLinesOutput struct {
 ```
 
 **Key Points**:
+
 - JSON tags for input/output marshaling
 - jsonschema tags for LLM prompt generation
 - Optional fields use `*type` with `omitempty`
@@ -77,11 +78,11 @@ func countLinesHandler(ctx tool.Context, input CountLinesInput) CountLinesOutput
 			Error:   fmt.Sprintf("Failed to read file: %v", err),
 		}
 	}
-	
+
 	// Count lines
 	lines := strings.Split(string(content), "\n")
 	totalLines := len(lines)
-	
+
 	nonEmptyLines := 0
 	if input.OnlyNonEmpty != nil && *input.OnlyNonEmpty {
 		for _, line := range lines {
@@ -92,7 +93,7 @@ func countLinesHandler(ctx tool.Context, input CountLinesInput) CountLinesOutput
 	} else {
 		nonEmptyLines = totalLines
 	}
-	
+
 	return CountLinesOutput{
 		Success:       true,
 		TotalLines:    totalLines,
@@ -103,6 +104,7 @@ func countLinesHandler(ctx tool.Context, input CountLinesInput) CountLinesOutput
 ```
 
 **Handler Best Practices**:
+
 - Never panic (return error in output struct)
 - Use descriptive error messages
 - Validate input early
@@ -122,11 +124,11 @@ func NewCountLinesTool() (tool.Tool, error) {
 		},
 		countLinesHandler,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return t, nil
 }
 
@@ -137,7 +139,7 @@ func init() {
 		// Tool registration failed, but don't panic
 		return
 	}
-	
+
 	common.Register(common.ToolMetadata{
 		Tool:      tool,
 		Category:  common.CategoryAnalysis,  // or existing category
@@ -148,6 +150,7 @@ func init() {
 ```
 
 **Key Considerations**:
+
 - `functiontool.Config.Name`: Used in CLI (must be lowercase, snake_case)
 - `functiontool.Config.Description`: Shown in `/help` and to LLM
 - `Priority`: 1 (highest) for common tools, 2+ for specialized
@@ -203,10 +206,10 @@ handler := func(ctx tool.Context, input FileOpInput) FileOpOutput {
 	if _, err := os.Stat(input.Path); err != nil {
 		return FileOpOutput{Success: false, Error: "File not found"}
 	}
-	
+
 	// 2. Perform operation
 	// ... implementation ...
-	
+
 	// 3. Return success with results
 	return FileOpOutput{Success: true, FilePath: absPath}
 }
@@ -234,18 +237,18 @@ type ExecOutput struct {
 handler := func(ctx tool.Context, input ExecInput) ExecOutput {
 	// 1. Create command
 	cmd := exec.CommandContext(ctx, input.Command, input.Args...)
-	
+
 	// 2. Capture output
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	
+
 	// 3. Execute with timeout handling
 	if input.Timeout != nil {
 		ctx, cancel := context.WithTimeout(ctx, time.Duration(*input.Timeout)*time.Second)
 		defer cancel()
 	}
-	
+
 	// 4. Return results
 	err := cmd.Run()
 	return ExecOutput{
@@ -280,12 +283,12 @@ handler := func(ctx tool.Context, input SearchInput) SearchOutput {
 	if input.Pattern == "" {
 		return SearchOutput{Success: false, Error: "Pattern required"}
 	}
-	
+
 	// 2. Compile regex if needed
-	
+
 	// 3. Search
 	matches := findMatches(input.Pattern)
-	
+
 	// 4. Limit results
 	limit := 100
 	if input.Limit != nil && *input.Limit > 0 {
@@ -294,7 +297,7 @@ handler := func(ctx tool.Context, input SearchInput) SearchOutput {
 	if len(matches) > limit {
 		matches = matches[:limit]
 	}
-	
+
 	return SearchOutput{
 		Success: true,
 		Matches: matches,
@@ -316,17 +319,17 @@ handler := func(ctx tool.Context, input MyInput) MyOutput {
 	if input.Path == "" {
 		return MyOutput{Success: false, Error: "Path is required"}
 	}
-	
+
 	// Validate field values
 	if input.Timeout != nil && *input.Timeout < 0 {
 		return MyOutput{Success: false, Error: "Timeout must be positive"}
 	}
-	
+
 	// Validate file exists
 	if _, err := os.Stat(input.Path); err != nil {
 		return MyOutput{Success: false, Error: "File not found"}
 	}
-	
+
 	// ... proceed with operation ...
 }
 ```
@@ -368,7 +371,7 @@ handler := func(ctx tool.Context, input ReplaceInFileInput) ReplaceInFileOutput 
 				"Use edit_lines with mode='delete' for intentional deletions.",
 		}
 	}
-	
+
 	// Safeguard 2: Warn if too many replacements
 	if input.MaxReplacements != nil && count > *input.MaxReplacements {
 		return ReplaceInFileOutput{
@@ -380,7 +383,7 @@ handler := func(ctx tool.Context, input ReplaceInFileInput) ReplaceInFileOutput 
 			),
 		}
 	}
-	
+
 	// Proceed with operation
 	// ...
 }
@@ -430,15 +433,15 @@ func TestCountLinesTool(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			output := countLinesHandler(nil, tt.input)
-			
+
 			if (output.Error != "") != tt.wantErr {
 				t.Errorf("Expected error: %v, got: %s", tt.wantErr, output.Error)
 			}
-			
+
 			if output.TotalLines != tt.want && !tt.wantErr {
 				t.Errorf("Expected %d lines, got %d", tt.want, output.TotalLines)
 			}
@@ -482,6 +485,7 @@ Result: tools/file/read_tool.go has 95 non-empty lines
 ```
 
 The agent uses your tool **because**:
+
 1. Tool is registered in `common.Registry` during `init()`
 2. Tool name/description are visible to LLM
 3. Input schema is JSON-validated
@@ -533,16 +537,16 @@ type MyOutput struct {
 	Success bool     `json:"success"`
 	Items   []string `json:"items"`
 	Count   int      `json:"count"` // Always include count
-	
+
 	// Optional: Include URL/path if results too large
 	ResultsFile *string `json:"results_file,omitempty"`
-	
+
 	Error   string   `json:"error,omitempty"`
 }
 
 handler := func(ctx tool.Context, input MyInput) MyOutput {
 	results := findAllResults(input.Query)
-	
+
 	// If results are large, write to file and return path
 	if len(results) > 1000 {
 		filename := "/tmp/results.json"
@@ -553,7 +557,7 @@ handler := func(ctx tool.Context, input MyInput) MyOutput {
 			ResultsFile: &filename,
 		}
 	}
-	
+
 	// Otherwise return directly
 	return MyOutput{
 		Success: true,
@@ -588,13 +592,13 @@ handler := func(ctx tool.Context, input MyInput) MyOutput {
 
 For inspiration, study existing tools:
 
-| Tool | File | Pattern | Size |
-|------|------|---------|------|
-| ReadFile | `tools/file/read_tool.go` | File reading | 100 lines |
-| WriteFile | `tools/file/write_tool.go` | File writing | 120 lines |
-| ExecuteCommand | `tools/exec/exec_tool.go` | Process execution | 150 lines |
-| ApplyPatch | `tools/edit/patch_tool.go` | Complex parsing | 200+ lines |
-| GrepSearch | `tools/exec/grep_tool.go` | Regex patterns | 120 lines |
+| Tool           | File                       | Pattern           | Size       |
+| -------------- | -------------------------- | ----------------- | ---------- |
+| ReadFile       | `tools/file/read_tool.go`  | File reading      | 100 lines  |
+| WriteFile      | `tools/file/write_tool.go` | File writing      | 120 lines  |
+| ExecuteCommand | `tools/exec/exec_tool.go`  | Process execution | 150 lines  |
+| ApplyPatch     | `tools/edit/patch_tool.go` | Complex parsing   | 200+ lines |
+| GrepSearch     | `tools/exec/grep_tool.go`  | Regex patterns    | 120 lines  |
 
 ---
 
@@ -666,6 +670,88 @@ handler := func(ctx tool.Context, input Input) Output {
 
 ---
 
+## 11. Building Tools for MCP Servers (Advanced)
+
+While this guide focuses on **built-in tools** within Code Agent, you can also extend the agent with **unlimited tools via MCP (Model Context Protocol) servers**.
+
+### What is MCP?
+
+**Model Context Protocol** enables Code Agent to connect to external tool servers at runtime. Instead of building every tool into Code Agent, you can:
+
+1. Create a separate MCP server with custom tools
+2. Configure it in `~/.adk-code/config.json`
+3. Let Code Agent discover and use those tools automatically
+
+### When to Build an MCP Server vs. a Built-in Tool
+
+| Approach | When to Use | Example |
+|----------|------------|---------|
+| **Built-in Tool** | Frequently used, general purpose | `read_file`, `execute_command` |
+| **MCP Server** | Domain-specific, external service | GitHub API integration, database client |
+| **MCP Server** | Heavy dependencies | Node.js ecosystem, Python data science |
+| **MCP Server** | Want to avoid modifying Code Agent | Community-contributed tools |
+
+### Example: GitHub MCP Server
+
+Instead of building GitHub tools into Code Agent, you could:
+
+1. Create a standalone MCP server:
+
+```bash
+mkdir mcp-server-github
+go mod init github.com/user/mcp-server-github
+```
+
+2. Implement MCP protocol (see Google ADK documentation)
+
+3. Add tools like:
+   - `clone_repo(repo: string) → string`
+   - `list_issues(repo: string) → Issue[]`
+   - `create_pr(repo: string, title: string, body: string) → PR`
+
+4. Configure in Code Agent:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "github": {
+        "type": "stdio",
+        "command": "mcp-server-github",
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        }
+      }
+    }
+  }
+}
+```
+
+5. Now Code Agent can use all GitHub tools:
+
+```bash
+❯ Clone the repository
+[Agent uses mcp_github_clone_repo]
+```
+
+### Benefits of MCP Approach
+
+- Isolation: Separate process, separate dependencies
+- Scalability: Add unlimited tools without modifying Code Agent
+- Community: Share MCP servers across tools
+- Maintenance: Code Agent team doesn't need to maintain every tool
+
+### For More Information
+
+See **ARCHITECTURE.md § 5: MCP Support** for complete details:
+
+- Configuration format
+- Supported transport types (stdio, SSE, HTTP)
+- In-REPL commands (`/mcp list`, `/mcp tools`, `/mcp reload`)
+- Tool naming conventions in MCP
+
+---
+
 ## Summary
 
 1. **Define Input/Output types** with JSON + jsonschema tags
@@ -677,4 +763,3 @@ handler := func(ctx tool.Context, input Input) Output {
 7. **Done!** Tool is now available to the agent
 
 **That's it.** Follow this pattern and you can create tools in minutes.
-

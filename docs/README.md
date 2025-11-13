@@ -57,6 +57,7 @@ Need deep technical analysis?
 - Detailed component analysis
 - Application lifecycle
 - Tool ecosystem overview
+- **🔌 MCP (Model Context Protocol) Support** - Connect external tool servers
 - Configuration & environment
 - Error handling strategy
 - Design patterns (Builder, Adapter, Composition)
@@ -65,6 +66,8 @@ Need deep technical analysis?
 - Extensibility guide
 
 **When to use**: You want to **understand the big picture** or **extend the system**
+
+**New in this version**: Section 5 covers MCP support for connecting unlimited external tool servers
 
 ---
 

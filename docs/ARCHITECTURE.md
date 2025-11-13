@@ -480,11 +480,226 @@ func NewMyTool() tool.Tool {
 
 ---
 
-## 5. Configuration & Environment
+## 5. MCP (Model Context Protocol) Support
 
-### 5.1 Configuration Loading (config.LoadFromEnv)
+### 5.1 What is MCP?
+
+**Model Context Protocol (MCP)** enables the agent to dynamically connect to external tool servers at runtime, extending capabilities beyond built-in tools. Instead of coding tools directly into Code Agent, you can spin up MCP servers and configure them in a JSON file.
+
+**Key Benefits**:
+
+- 🔌 **Unlimited Tools**: Add new tools without modifying Code Agent
+- 🌐 **External Servers**: Connect to community-provided or custom MCP servers
+- ⚡ **Easy Integration**: Simple JSON configuration
+- 🔄 **Hot Reload**: Reload servers without restarting agent
+- 🛡️ **Isolation**: Tools run in separate processes (safer, easier to manage)
+
+### 5.2 MCP Architecture
+
+**Components**:
+
+| Component | Package | Role |
+|-----------|---------|------|
+| **MCP Config** | `internal/config/mcp.go` | Loads MCP server definitions from JSON |
+| **MCP Manager** | `pkg/mcp/manager.go` | Multi-server orchestration |
+| **Transport Factory** | `pkg/mcp/transport.go` | Creates MCP client transports (stdio, SSE, HTTP) |
+| **MCP Commands** | `internal/cli/commands/mcp.go` | User-facing `/mcp` commands in REPL |
+| **ADK mcptoolset** | `google.golang.org/adk/tool/mcptoolset` | MCP protocol implementation (Google ADK) |
+
+**Data Flow**:
 
 ```
+┌─────────────────┐
+│  MCP Config     │
+│  (JSON file)    │
+└────────┬────────┘
+         │ {servers: {...}}
+         ▼
+┌─────────────────────────┐
+│   MCP Manager           │
+│  (Multi-server coord)   │
+└──────┬──────┬──────┬────┘
+       │      │      │
+       ▼      ▼      ▼
+  ┌────────┐ ┌────────┐ ┌────────┐
+  │Server 1│ │Server 2│ │Server 3│
+  │(stdio) │ │(SSE)   │ │(HTTP)  │
+  └────┬───┘ └───┬────┘ └───┬────┘
+       │        │           │
+       ▼        ▼           ▼
+  ┌─────────────────────────────┐
+  │   Agent (via mcptoolset)    │
+  │  Tools available to LLM     │
+  └─────────────────────────────┘
+```
+
+### 5.3 Configuration Format
+
+**File Location**: `~/.adk-code/config.json` (default) or `AK_CONFIG_PATH` env var
+
+**Example Configuration**:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "type": "stdio",
+        "command": "mcp-server-filesystem",
+        "args": ["--root", "/home/user/projects"]
+      },
+      "github": {
+        "type": "stdio",
+        "command": "mcp-server-github",
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        }
+      },
+      "web_scraper": {
+        "type": "sse",
+        "url": "http://localhost:8080/sse"
+      },
+      "database": {
+        "type": "http",
+        "url": "http://localhost:3000",
+        "headers": {
+          "Authorization": "Bearer ${DB_TOKEN}"
+        }
+      }
+    }
+  }
+}
+```
+
+**Server Configuration Options**:
+
+```go
+type ServerConfig struct {
+    // Transport type
+    Type     string                 // "stdio" | "sse" | "http"
+    
+    // For stdio transport
+    Command  string                 // e.g., "mcp-server-filesystem"
+    Args     []string               // Command arguments
+    
+    // For SSE/HTTP transport
+    URL      string                 // e.g., "http://localhost:8080/sse"
+    
+    // Shared options
+    Env      map[string]string      // Environment variables (supports ${VAR} substitution)
+    Headers  map[string]string      // HTTP headers for SSE/HTTP (supports ${VAR})
+    Timeout  int                    // Connection timeout (seconds)
+    Tools    []string               // Optional: whitelist specific tools (if empty, all tools exposed)
+}
+```
+
+### 5.4 MCP Manager
+
+**Responsibilities**:
+
+- Load server configurations from JSON
+- Create MCP transports (stdio, SSE, HTTP)
+- Initialize mcptoolset instances for each server
+- Aggregate tools from all servers
+- Handle server lifecycle (start, stop, reload)
+- Track server connection status
+
+**Usage in Agent**:
+
+```go
+// In orchestration/agent.go
+func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM) (agent.Agent, error) {
+    // 1. Initialize built-in tools
+    builtinTools := registerBuiltinTools()
+    
+    // 2. Initialize MCP servers and aggregate tools
+    mcpManager, err := mcp.NewManager(cfg.MCP)
+    mcpTools, err := mcpManager.LoadAllTools(ctx)
+    
+    // 3. Combine built-in + MCP tools
+    allTools := append(builtinTools, mcpTools...)
+    
+    // 4. Create agent with combined tools
+    return agent.New(llm, allTools, systemPrompt)
+}
+```
+
+### 5.5 CLI Commands for MCP
+
+**In-REPL Commands**:
+
+```bash
+/mcp list
+  → Displays all connected MCP servers and status
+  
+/mcp tools <server>
+  → Lists all tools available from a specific server
+  
+/mcp reload
+  → Hot-reload MCP servers without restarting agent
+  
+/mcp status
+  → Shows connection details and health of each server
+```
+
+**Example Session**:
+
+```bash
+> /mcp list
+Connected MCP Servers:
+  ✓ filesystem  (stdio) - 15 tools
+  ✓ github      (stdio) - 8 tools
+  ○ web_scraper (sse)   - Connection pending...
+  ✗ database    (http)  - Failed: Connection refused
+
+> /mcp tools filesystem
+Tools from filesystem:
+  • read_file(path: string) → string
+  • write_file(path: string, content: string) → bool
+  • list_directory(path: string) → string[]
+  ... (12 more)
+
+> /mcp reload
+Reloading MCP servers...
+✓ filesystem reloaded
+✓ github reloaded
+✗ web_scraper failed: timeout
+```
+
+### 5.6 How MCP Tools Appear to the Agent
+
+Once configured, MCP tools are indistinguishable from built-in tools. The agent can:
+
+```bash
+User: "Clone the repo and read the README"
+       ↓
+Agent: [Uses github MCP tool to clone]
+       [Uses filesystem MCP tool to read]
+       ↓
+User: [Gets result]
+```
+
+**Tool Naming**:
+
+- Built-in: `read_file`, `execute_command`, etc.
+- MCP: `mcp_<server>_<tool_name>` (e.g., `mcp_github_clone_repo`)
+- Optional: Configure tool prefix in config
+
+### 5.7 Transport Types
+
+| Transport | Best For | Setup |
+|-----------|----------|-------|
+| **stdio** | Local CLI tools, simple deployment | Run command, inherit stdin/stdout |
+| **SSE** | Web services, long-running servers | HTTP GET with event stream |
+| **HTTP** | REST APIs, microservices | HTTP POST with request body |
+
+---
+
+## 6. Configuration & Environment
+
+### 6.1 Configuration Loading (config.LoadFromEnv)
+
+```text
 Priority (highest to lowest):
 1. CLI flags           (e.g., --model gemini-2.5-flash)
 2. Environment vars    (e.g., GOOGLE_API_KEY)
@@ -492,7 +707,7 @@ Priority (highest to lowest):
 4. Defaults            (e.g., gemini-2.5-flash, ~/.adk-code/sessions.db)
 ```
 
-### 5.2 CLI Flags
+### 6.2 CLI Flags
 
 ```bash
 # LLM Configuration
@@ -516,7 +731,7 @@ code-agent --enable-thinking                 # Enable long thinking
 code-agent --thinking-budget 5000            # Max thinking tokens
 ```
 
-### 5.3 Environment Variables
+### 6.3 Environment Variables
 
 ```bash
 # Gemini (Google AI)

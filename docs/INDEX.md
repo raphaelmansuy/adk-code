@@ -36,6 +36,14 @@ Comprehensive system architecture documentation with detailed component analysis
 - Executive Summary
 - System Architecture Overview (with ASCII diagrams)
 - Detailed Component Analysis (Display, Model, Agent, Session)
+- **🔌 MCP (Model Context Protocol) Support** (NEW)
+  - What is MCP?
+  - Architecture & data flow
+  - Configuration format
+  - Manager and transport factory
+  - CLI commands for MCP management
+  - Tool naming conventions
+  - Transport types (stdio, SSE, HTTP)
 - Application Lifecycle
 - Tool Ecosystem Overview
 - Configuration & Environment
@@ -191,6 +199,7 @@ Comprehensive technical reference document capturing all design decisions.
 | Architecture | ✓ | ✓✓ | | | ✓✓ | ✓ |
 | Components | | ✓ | | | ✓ | ✓ |
 | Tools | | ✓ | ✓✓ | ✓ | ✓ | ✓ |
+| **MCP Support** | ✓ | **✓✓** | | **✓** | | |
 | CLI Usage | ✓ | | | ✓✓ | | |
 | Setup/Config | ✓ | ✓ | | ✓✓ | | |
 | Development | ✓ | ✓ | ✓✓ | ✓ | | |
@@ -201,6 +210,22 @@ Comprehensive technical reference document capturing all design decisions.
 | Visual Diagrams | | ✓ | | | ✓✓ | |
 
 **✓✓ = Primary coverage, ✓ = Secondary mention**
+
+---
+
+## Documentation Update: MCP Support (NEW)
+
+**Model Context Protocol (MCP)** support has been added to Code Agent, enabling connection to unlimited external tool servers via a simple JSON configuration.
+
+**Updated Sections**:
+- **ARCHITECTURE.md § 5**: Complete MCP subsystem design (data flow, configuration, CLI commands)
+- **QUICK_REFERENCE.md**: MCP CLI commands and configuration examples
+- **README.md**: Highlights MCP as new feature
+
+**Where to Start**:
+1. Read ARCHITECTURE.md § 5 (10 minutes) for complete understanding
+2. See QUICK_REFERENCE.md "MCP Commands" for practical usage
+3. Check `features/mcp_support_code_agent/` directory for detailed design docs
 
 ---
 
