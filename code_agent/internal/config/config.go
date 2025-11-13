@@ -87,7 +87,7 @@ func LoadFromEnv() (Config, []string) {
 		}
 	}
 
-		// Load MCP config if path specified
+	// Load MCP config if path specified
 	var mcpConfig *MCPConfig
 	if *mcpConfigPath != "" {
 		loadedConfig, err := LoadMCP(*mcpConfigPath)
