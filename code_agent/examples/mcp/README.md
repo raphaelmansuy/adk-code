@@ -44,9 +44,11 @@ Advanced configuration with multiple MCP servers of different types.
 ./code-agent --mcp-config examples/mcp/multi-server.json
 ```
 
-## Configuration Format
+## Configuration Formats
 
-MCP configuration files use JSON format:
+The code_agent supports **two configuration formats**: the native format and the Claude Desktop format.
+
+### Native Format
 
 ```json
 {
@@ -64,6 +66,72 @@ MCP configuration files use JSON format:
     }
   }
 }
+```
+
+### Claude Desktop Format
+
+The code_agent also supports the same configuration format used by Claude Desktop (from Anthropic). This makes it easy to share configurations between Claude Desktop and code_agent.
+
+```json
+{
+  "mcpServers": {
+    "Bright Data": {
+      "command": "npx",
+      "args": ["@brightdata/mcp"],
+      "env": {
+        "API_TOKEN": "your-token-here",
+        "PRO_MODE": "true"
+      }
+    }
+  }
+}
+```
+
+**Claude Format Features:**
+
+- No need to specify `"type"` - it's automatically inferred from the presence of `command` (stdio) or `url` (SSE)
+- No need for `"enabled"` field - presence of `mcpServers` implies enabled
+- Drop-in compatible with Claude Desktop's `claude_desktop_config.json`
+
+**Example configurations:**
+
+- `examples/mcp/claude-format.json` - Multiple stdio servers in Claude format
+- `examples/mcp/claude-format-sse.json` - SSE server in Claude format
+
+**Usage:**
+
+```bash
+# Use Claude Desktop format
+./code-agent --mcp-config examples/mcp/claude-format.json
+
+# Or use native format
+./code-agent --mcp-config examples/mcp/basic-stdio.json
+```
+
+Both formats work identically - choose whichever you prefer!
+
+## Claude Desktop Format Examples
+
+### claude-format.json
+
+Complete example using Claude Desktop's configuration format with multiple servers:
+
+```bash
+./code-agent --mcp-config examples/mcp/claude-format.json
+```
+
+This configuration includes:
+
+- **Bright Data MCP Server** with environment variables
+- **Filesystem Server** for file access
+- **Homebrew MCP Server** for package management
+
+### claude-format-sse.json
+
+HTTP/SSE server example in Claude Desktop format:
+
+```bash
+./code-agent --mcp-config examples/mcp/claude-format-sse.json
 ```
 
 ## Transport Types

@@ -357,3 +357,234 @@ func TestLoadMCPWithTildePath(t *testing.T) {
 		t.Error("expected enabled config")
 	}
 }
+
+// TestLoadMCPClaudeFormat tests loading Claude Desktop config format
+func TestLoadMCPClaudeFormat(t *testing.T) {
+	f, err := os.CreateTemp("", "*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+
+	// Claude Desktop format
+	configJSON := `{
+		"mcpServers": {
+			"Bright Data": {
+				"command": "npx",
+				"args": ["@brightdata/mcp"],
+				"env": {
+					"API_TOKEN": "your-token-here",
+					"PRO_MODE": "true"
+				}
+			}
+		}
+	}`
+	if _, err := f.WriteString(configJSON); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	cfg, err := LoadMCP(f.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Enabled {
+		t.Error("expected enabled config for Claude format")
+	}
+	if len(cfg.Servers) != 1 {
+		t.Fatalf("expected 1 server, got %d", len(cfg.Servers))
+	}
+
+	srv, ok := cfg.Servers["Bright Data"]
+	if !ok {
+		t.Fatal("expected 'Bright Data' server")
+	}
+	if srv.Type != "stdio" {
+		t.Errorf("expected type 'stdio', got %s", srv.Type)
+	}
+	if srv.Command != "npx" {
+		t.Errorf("expected command 'npx', got %s", srv.Command)
+	}
+	if len(srv.Args) != 1 || srv.Args[0] != "@brightdata/mcp" {
+		t.Errorf("expected args ['@brightdata/mcp'], got %v", srv.Args)
+	}
+	if srv.Env["API_TOKEN"] != "your-token-here" {
+		t.Errorf("expected API_TOKEN 'your-token-here', got %s", srv.Env["API_TOKEN"])
+	}
+	if srv.Env["PRO_MODE"] != "true" {
+		t.Errorf("expected PRO_MODE 'true', got %s", srv.Env["PRO_MODE"])
+	}
+}
+
+// TestLoadMCPClaudeFormatSSE tests Claude format with URL (SSE server)
+func TestLoadMCPClaudeFormatSSE(t *testing.T) {
+	f, err := os.CreateTemp("", "*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+
+	configJSON := `{
+		"mcpServers": {
+			"Remote Server": {
+				"url": "http://localhost:8080/mcp"
+			}
+		}
+	}`
+	if _, err := f.WriteString(configJSON); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	cfg, err := LoadMCP(f.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	srv, ok := cfg.Servers["Remote Server"]
+	if !ok {
+		t.Fatal("expected 'Remote Server'")
+	}
+	if srv.Type != "sse" {
+		t.Errorf("expected type 'sse', got %s", srv.Type)
+	}
+	if srv.URL != "http://localhost:8080/mcp" {
+		t.Errorf("expected URL 'http://localhost:8080/mcp', got %s", srv.URL)
+	}
+}
+
+// TestLoadMCPClaudeFormatMultiple tests multiple servers in Claude format
+func TestLoadMCPClaudeFormatMultiple(t *testing.T) {
+	f, err := os.CreateTemp("", "*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+
+	configJSON := `{
+		"mcpServers": {
+			"Homebrew": {
+				"command": "brew",
+				"args": ["mcp-server"]
+			},
+			"Filesystem": {
+				"command": "npx",
+				"args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+			},
+			"Remote": {
+				"url": "https://api.example.com/mcp"
+			}
+		}
+	}`
+	if _, err := f.WriteString(configJSON); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	cfg, err := LoadMCP(f.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Servers) != 3 {
+		t.Fatalf("expected 3 servers, got %d", len(cfg.Servers))
+	}
+
+	// Check Homebrew server
+	homebrew, ok := cfg.Servers["Homebrew"]
+	if !ok {
+		t.Error("expected 'Homebrew' server")
+	} else {
+		if homebrew.Command != "brew" {
+			t.Errorf("expected command 'brew', got %s", homebrew.Command)
+		}
+		if len(homebrew.Args) != 1 || homebrew.Args[0] != "mcp-server" {
+			t.Errorf("expected args ['mcp-server'], got %v", homebrew.Args)
+		}
+	}
+
+	// Check Filesystem server
+	fs, ok := cfg.Servers["Filesystem"]
+	if !ok {
+		t.Error("expected 'Filesystem' server")
+	} else {
+		if fs.Command != "npx" {
+			t.Errorf("expected command 'npx', got %s", fs.Command)
+		}
+		if len(fs.Args) != 3 {
+			t.Errorf("expected 3 args, got %d", len(fs.Args))
+		}
+	}
+
+	// Check Remote server
+	remote, ok := cfg.Servers["Remote"]
+	if !ok {
+		t.Error("expected 'Remote' server")
+	} else {
+		if remote.Type != "sse" {
+			t.Errorf("expected type 'sse', got %s", remote.Type)
+		}
+		if remote.URL != "https://api.example.com/mcp" {
+			t.Errorf("expected URL 'https://api.example.com/mcp', got %s", remote.URL)
+		}
+	}
+}
+
+// TestClaudeServerConfigToServerConfig tests the conversion function
+func TestClaudeServerConfigToServerConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		claude   ClaudeServerConfig
+		wantType string
+		wantCmd  string
+		wantURL  string
+	}{
+		{
+			name: "stdio server",
+			claude: ClaudeServerConfig{
+				Command: "node",
+				Args:    []string{"server.js"},
+				Env: map[string]string{
+					"DEBUG": "1",
+				},
+			},
+			wantType: "stdio",
+			wantCmd:  "node",
+		},
+		{
+			name: "sse server",
+			claude: ClaudeServerConfig{
+				URL: "http://localhost:8080",
+			},
+			wantType: "sse",
+			wantURL:  "http://localhost:8080",
+		},
+		{
+			name: "server with both (URL takes precedence for type)",
+			claude: ClaudeServerConfig{
+				Command: "node",
+				URL:     "http://localhost:8080",
+			},
+			wantType: "sse", // URL takes precedence when both present
+			wantURL:  "http://localhost:8080",
+			wantCmd:  "node", // Command is still preserved
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.claude.toServerConfig()
+
+			if got.Type != tt.wantType {
+				t.Errorf("Type = %v, want %v", got.Type, tt.wantType)
+			}
+
+			if got.Command != tt.wantCmd {
+				t.Errorf("Command = %v, want %v", got.Command, tt.wantCmd)
+			}
+
+			if got.URL != tt.wantURL {
+				t.Errorf("URL = %v, want %v", got.URL, tt.wantURL)
+			}
+		})
+	}
+}
