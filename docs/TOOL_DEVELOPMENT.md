@@ -34,7 +34,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 	
-	"code_agent/tools/base"
+	"adk-code/tools/base"
 )
 
 // CountLinesInput defines the input for counting lines in a file
@@ -455,7 +455,7 @@ func boolPtr(v bool) *bool {
 
 ```bash
 # Run tests for your tool
-cd code_agent/tools/analysis
+cd adk-code/tools/analysis
 go test -v ./...
 
 # Or run all tool tests

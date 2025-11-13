@@ -3,7 +3,7 @@
 ## Quick Context
 
 **What**: AI-powered CLI agent (Google ADK Go) with file I/O, terminal execution, and code search.
-**Structure**: `code_agent/` (main), `research/` (reference impls), `doc/` (design docs)
+**Structure**: `adk-code/` (main), `research/` (reference impls), `doc/` (design docs)
 **Tech Stack**: Go 1.24+, Gemini 2.5 Flash API, ADK llmagent framework
 
 ## Architecture Essentials
@@ -32,7 +32,7 @@
 ```bash
 make check              # Quality gate: fmt, vet, lint, test (RUN BEFORE COMMITTING)
 make test               # Run all tests
-make build              # Compile to ./code-agent
+make build              # Compile to ./adk-code
 make run                # Build and run (requires GOOGLE_API_KEY)
 ```
 

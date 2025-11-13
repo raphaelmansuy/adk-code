@@ -359,7 +359,7 @@ User runs: code-agent --model gpt-4o --backend gemini
     ┌─────────────────────┐
     │ SQLite Database     │
     │                     │
-    │ ~/.code_agent/      │
+    │ ~/.adk-code/      │
     │  sessions.db        │
     │                     │
     │ Tables:             │
@@ -553,7 +553,7 @@ User runs: code-agent --model gpt-4o --api-key sk-...
         ┌────────────▼──────────────────┐
         │ Defaults (Lowest)            │
         │ model: gemini-2.5-flash      │
-        │ db: ~/.code_agent/sessions.db│
+        │ db: ~/.adk-code/sessions.db│
         │ format: rich                 │
         └───────────────────────────────┘
 

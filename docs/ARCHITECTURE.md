@@ -294,7 +294,7 @@ type SessionTokens struct {
 
 **Persistence**: SQLite via GORM
 ```
-~/.code_agent/sessions.db
+~/.adk-code/sessions.db
   ├── sessions table
   │   ├── app_name
   │   ├── user_id
@@ -488,8 +488,8 @@ func NewMyTool() tool.Tool {
 Priority (highest to lowest):
 1. CLI flags           (e.g., --model gemini-2.5-flash)
 2. Environment vars    (e.g., GOOGLE_API_KEY)
-3. Config file         (e.g., ~/.code_agent/config.json) [future]
-4. Defaults            (e.g., gemini-2.5-flash, ~/.code_agent/sessions.db)
+3. Config file         (e.g., ~/.adk-code/config.json) [future]
+4. Defaults            (e.g., gemini-2.5-flash, ~/.adk-code/sessions.db)
 ```
 
 ### 5.2 CLI Flags
@@ -666,7 +666,7 @@ $ echo "Create a Rust CLI app" | code-agent --session batch-1
 # Create session
 $ code-agent --session project-alpha
 
-# Session state saved to ~/.code_agent/sessions.db
+# Session state saved to ~/.adk-code/sessions.db
 # Later:
 $ code-agent --session project-alpha  # Resumes with history
 ```
@@ -678,7 +678,7 @@ $ code-agent --session project-alpha  # Resumes with history
 ### 9.1 Test Organization
 
 ```
-code_agent/
+adk-code/
 ├── internal/app/
 │   ├── app.go
 │   ├── app_init_test.go          # Initialization tests

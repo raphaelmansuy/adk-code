@@ -170,7 +170,7 @@ Need deep technical analysis?
 ### Package Organization
 
 ```
-code_agent/
+adk-code/
 ├── main.go                          Entry point
 ├── internal/
 │   ├── app/                         Application lifecycle
@@ -247,7 +247,7 @@ make check
 ```bash
 # 1. Start with key file list (above)
 # 2. Read ARCHITECTURE.md relevant section
-# 3. Study the actual code in code_agent/
+# 3. Study the actual code in adk-code/
 # 4. Run the app and test the component
 # 5. Check tests in *_test.go files
 ```
@@ -395,10 +395,10 @@ For detailed information, refer to:
 
 1. ✅ Read QUICK_REFERENCE.md (2 min)
 2. ✅ Build the app: `make build`
-3. ✅ Run the app: `../bin/code-agent`
+3. ✅ Run the app: `../bin/adk-code`
 4. ✅ Try a command: `How do I read a file?`
 5. ✅ Read ARCHITECTURE.md (15 min)
-6. ✅ Explore a tool: `code_agent/tools/file/read_tool.go`
+6. ✅ Explore a tool: `adk-code/tools/file/read_tool.go`
 7. ✅ Read TOOL_DEVELOPMENT.md (20 min)
 8. ✅ Create your first tool (30 min)
 

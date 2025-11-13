@@ -1,7 +1,0 @@
-{
-  "mcpServers": {
-    "Remote MCP Server": {
-      "url": "http://localhost:8080/mcp"
-    }
-  }
-}

@@ -30,13 +30,13 @@ vendor/
 # Build artifacts
 /bin/
 /bin
-/code-agent
-/code_agent/code-agent
-/code_agent/demo/calculate
-/code_agent/demo/fibonacci
+/adk-code
+/adk-code/adk-code
+/adk-code/demo/calculate
+/adk-code/demo/fibonacci
 
 # Test workspace
-/code_agent/test_workspace/
+/adk-code/test_workspace/
 
 # Research directory
 /research/
@@ -57,3 +57,6 @@ research/**
 
 .pytest_cache/
 logs/
+
+features/**
+tutorials/**

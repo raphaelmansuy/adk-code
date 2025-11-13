@@ -8,16 +8,16 @@ One-page cheat sheet for common Code Agent tasks.
 
 ```bash
 # Build the application
-make build              # Binary goes to ../bin/code-agent
+make build              # Binary goes to ../bin/adk-code
 
 # Run with default settings
-../bin/code-agent
+../bin/adk-code
 
 # Run with specific model
-../bin/code-agent --model gemini-2.5-flash
+../bin/adk-code --model gemini-2.5-flash
 
 # Run with custom session
-../bin/code-agent --session my-project
+../bin/adk-code --session my-project
 
 # Build + run in one command
 make run
@@ -31,7 +31,7 @@ make run
 
 ```bash
 export GOOGLE_API_KEY=your-api-key-here
-../bin/code-agent
+../bin/adk-code
 ```
 
 ### Vertex AI (GCP)
@@ -40,14 +40,14 @@ export GOOGLE_API_KEY=your-api-key-here
 export GOOGLE_CLOUD_PROJECT=your-project-id
 export GOOGLE_CLOUD_LOCATION=us-central1
 export GOOGLE_GENAI_USE_VERTEXAI=true
-../bin/code-agent
+../bin/adk-code
 ```
 
 ### OpenAI
 
 ```bash
 export OPENAI_API_KEY=sk-...
-../bin/code-agent --model gpt-4o
+../bin/adk-code --model gpt-4o
 ```
 
 ---
@@ -158,7 +158,7 @@ make deps-verify       # Verify dependencies
 ## Project Structure At A Glance
 
 ```
-code_agent/
+adk-code/
 ├── main.go                      # Entry point (140 lines)
 ├── go.mod, go.sum              # Dependencies
 ├── Makefile                    # Build targets
@@ -199,16 +199,16 @@ code_agent/
 
 ```bash
 # Executable
-../bin/code-agent
+../bin/adk-code
 
 # Session database
-~/.code_agent/sessions.db
+~/.adk-code/sessions.db
 
 # History file
 ~/.code_agent_history
 
 # Config file (future)
-~/.code_agent/config.json
+~/.adk-code/config.json
 ```
 
 ---
@@ -245,7 +245,7 @@ code_agent/
 
 ```bash
 # Test a specific package
-cd code_agent/tools/file
+cd adk-code/tools/file
 go test -v ./...
 
 # Test one file
@@ -269,11 +269,11 @@ Most tools support quiet flags or environment variables:
 ```bash
 # Set verbosity
 export DEBUG=1
-../bin/code-agent
+../bin/adk-code
 
 # Or via RUST_LOG-like pattern (if supported)
 export RUST_LOG=debug
-../bin/code-agent
+../bin/adk-code
 ```
 
 ### Check Tool Registration
@@ -292,7 +292,7 @@ echo $GOOGLE_API_KEY
 echo $OPENAI_API_KEY
 
 # Check model resolution
-../bin/code-agent --model gpt-4o  # Should work if OpenAI key is set
+../bin/adk-code --model gpt-4o  # Should work if OpenAI key is set
 ```
 
 ### View Session History
@@ -303,8 +303,8 @@ Sessions are stored in SQLite:
 brew install sqlite3
 
 # View sessions
-sqlite3 ~/.code_agent/sessions.db "SELECT * FROM sessions;"
-sqlite3 ~/.code_agent/sessions.db "SELECT * FROM messages;"
+sqlite3 ~/.adk-code/sessions.db "SELECT * FROM sessions;"
+sqlite3 ~/.adk-code/sessions.db "SELECT * FROM messages;"
 ```
 
 ---
@@ -327,14 +327,14 @@ export GOOGLE_API_KEY=your-key
 
 Then use one of the listed models:
 ```bash
-../bin/code-agent --model gemini-1.5-pro
+../bin/adk-code --model gemini-1.5-pro
 ```
 
 ### "Permission denied" on binary
 
 **Solution**: Make executable
 ```bash
-chmod +x ../bin/code-agent
+chmod +x ../bin/adk-code
 ```
 
 ### Tests failing
@@ -410,7 +410,7 @@ make vet            # Run go vet
 - **Architecture Details**: `docs/ARCHITECTURE.md`
 - **Tool Development**: `docs/TOOL_DEVELOPMENT.md`
 - **Deep Analysis**: `docs/draft.md`
-- **Codebase**: `code_agent/`
+- **Codebase**: `adk-code/`
 
 ---
 

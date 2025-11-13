@@ -9,14 +9,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Path to the binary
-BINARY="$SCRIPT_DIR/bin/code-agent"
+BINARY="$SCRIPT_DIR/bin/adk-code"
 
 # Check if binary exists
 if [ ! -f "$BINARY" ]; then
-    echo "Error: code-agent binary not found at $BINARY"
+    echo "Error: adk-code binary not found at $BINARY"
     echo ""
     echo "Building the code agent..."
-    cd "$SCRIPT_DIR/code_agent"
+    cd "$SCRIPT_DIR/adk-code"
     make build
     cd "$SCRIPT_DIR"
 fi
