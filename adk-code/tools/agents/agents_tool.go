@@ -192,6 +192,11 @@ func formatSummary(count int, input ListAgentsInput, errorCount int) string {
 // RegisterAgentTools registers all agent-related tools
 func RegisterAgentTools() error {
 	_, err := NewListAgentsTool()
+	if err != nil {
+		return err
+	}
+
+	_, err = NewDiscoverPathsTool()
 	return err
 }
 
