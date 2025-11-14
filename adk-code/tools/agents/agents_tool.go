@@ -14,19 +14,26 @@ import (
 
 // ListAgentsInput defines input parameters for listing agents
 type ListAgentsInput struct {
-	AgentType string `json:"agent_type,omitempty" jsonschema:"Filter by agent type (subagent, skill, command, plugin)"`
-	Source    string `json:"source,omitempty" jsonschema:"Filter by agent source (project, user, plugin, cli)"`
-	Detailed  bool   `json:"detailed,omitempty" jsonschema:"Include detailed metadata for each agent"`
+	AgentType   string `json:"agent_type,omitempty" jsonschema:"Filter by agent type (subagent, skill, command, plugin)"`
+	Source      string `json:"source,omitempty" jsonschema:"Filter by agent source (project, user, plugin, cli)"`
+	Tag         string `json:"tag,omitempty" jsonschema:"Filter by tag (exact match)"`
+	Author      string `json:"author,omitempty" jsonschema:"Filter by author"`
+	Detailed    bool   `json:"detailed,omitempty" jsonschema:"Include detailed metadata (path, modified, version, author, tags, dependencies)"`
+	IncludeDeps bool   `json:"include_deps,omitempty" jsonschema:"Show dependencies for agents"`
 }
 
 // AgentEntry represents a single agent in output
 type AgentEntry struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	Source      string `json:"source"`
-	Path        string `json:"path,omitempty"`
-	Modified    string `json:"modified,omitempty"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Type         string   `json:"type"`
+	Source       string   `json:"source"`
+	Version      string   `json:"version,omitempty"`
+	Author       string   `json:"author,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	Path         string   `json:"path,omitempty"`
+	Modified     string   `json:"modified,omitempty"`
 }
 
 // ListAgentsOutput defines the output of listing agents
@@ -77,15 +84,22 @@ func NewListAgentsTool() (tool.Tool, error) {
 		// Convert to output format
 		for _, agent := range filtered {
 			entry := AgentEntry{
-				Name:        agent.Name,
-				Description: agent.Description,
-				Type:        agent.Type.String(),
-				Source:      agent.Source.String(),
+				Name:         agent.Name,
+				Description:  agent.Description,
+				Type:         agent.Type.String(),
+				Source:       agent.Source.String(),
+				Version:      agent.Version,
+				Author:       agent.Author,
+				Tags:         agent.Tags,
+				Dependencies: agent.Dependencies,
 			}
 
-			if input.Detailed {
+			if input.Detailed || input.IncludeDeps {
 				entry.Path = agent.Path
 				entry.Modified = agent.ModTime.Format("2006-01-02 15:04:05")
+				// Always include tags and dependencies in detailed view
+				entry.Tags = agent.Tags
+				entry.Dependencies = agent.Dependencies
 			}
 
 			output.Agents = append(output.Agents, entry)
@@ -125,12 +139,35 @@ func filterAgents(agentList []*agents.Agent, input ListAgentsInput) []*agents.Ag
 	var filtered []*agents.Agent
 
 	for _, agent := range agentList {
+		// Filter by type
 		if input.AgentType != "" && agent.Type.String() != input.AgentType {
 			continue
 		}
+
+		// Filter by source
 		if input.Source != "" && agent.Source.String() != input.Source {
 			continue
 		}
+
+		// Filter by author (exact match)
+		if input.Author != "" && agent.Author != input.Author {
+			continue
+		}
+
+		// Filter by tag (check if agent has the tag)
+		if input.Tag != "" {
+			hasTag := false
+			for _, t := range agent.Tags {
+				if t == input.Tag {
+					hasTag = true
+					break
+				}
+			}
+			if !hasTag {
+				continue
+			}
+		}
+
 		filtered = append(filtered, agent)
 	}
 

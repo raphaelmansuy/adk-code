@@ -821,3 +821,273 @@ description: User level agent
 		t.Errorf("Expected user-agent source to be SourceUser, got %s", sourceMap["user-agent"])
 	}
 }
+
+// TestParseAgentFileWithMetadata tests parsing agents with full metadata
+func TestParseAgentFileWithMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agentContent := `---
+name: full-metadata-agent
+description: Agent with complete metadata
+version: 1.2.3
+author: test@example.com
+tags: [python, refactoring, analysis]
+dependencies: [base-agent, helper-agent]
+---
+# Full Metadata Agent
+
+This agent has all metadata fields.
+`
+	filePath := filepath.Join(tmpDir, "full.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	// Verify all metadata fields
+	if agent.Name != "full-metadata-agent" {
+		t.Errorf("Expected name 'full-metadata-agent', got '%s'", agent.Name)
+	}
+	if agent.Version != "1.2.3" {
+		t.Errorf("Expected version '1.2.3', got '%s'", agent.Version)
+	}
+	if agent.Author != "test@example.com" {
+		t.Errorf("Expected author 'test@example.com', got '%s'", agent.Author)
+	}
+
+	// Verify tags array
+	if len(agent.Tags) != 3 {
+		t.Errorf("Expected 3 tags, got %d", len(agent.Tags))
+	}
+	expectedTags := map[string]bool{"python": true, "refactoring": true, "analysis": true}
+	for _, tag := range agent.Tags {
+		if !expectedTags[tag] {
+			t.Errorf("Unexpected tag: %s", tag)
+		}
+	}
+
+	// Verify dependencies array
+	if len(agent.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(agent.Dependencies))
+	}
+	expectedDeps := map[string]bool{"base-agent": true, "helper-agent": true}
+	for _, dep := range agent.Dependencies {
+		if !expectedDeps[dep] {
+			t.Errorf("Unexpected dependency: %s", dep)
+		}
+	}
+}
+
+// TestParseAgentFilePartialMetadata tests parsing with only some metadata fields
+func TestParseAgentFilePartialMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Only version and author, no tags or dependencies
+	agentContent := `---
+name: partial-agent
+description: Agent with partial metadata
+version: 2.0.0
+author: author@example.com
+---
+Partial metadata agent.
+`
+	filePath := filepath.Join(tmpDir, "partial.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	if agent.Version != "2.0.0" {
+		t.Errorf("Expected version '2.0.0', got '%s'", agent.Version)
+	}
+	if agent.Author != "author@example.com" {
+		t.Errorf("Expected author, got '%s'", agent.Author)
+	}
+
+	// Tags and dependencies should be empty slices, not nil
+	if agent.Tags != nil && len(agent.Tags) != 0 {
+		t.Errorf("Expected empty tags, got %d", len(agent.Tags))
+	}
+	if agent.Dependencies != nil && len(agent.Dependencies) != 0 {
+		t.Errorf("Expected empty dependencies, got %d", len(agent.Dependencies))
+	}
+}
+
+// TestParseAgentFileNoMetadata tests backward compatibility with Phase 0 agents
+func TestParseAgentFileNoMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Phase 0 format: only name and description
+	agentContent := `---
+name: legacy-agent
+description: A legacy agent from Phase 0
+---
+# Legacy Agent
+
+This is an agent that has no metadata fields.
+`
+	filePath := filepath.Join(tmpDir, "legacy.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	// Required fields should work
+	if agent.Name != "legacy-agent" {
+		t.Errorf("Expected name 'legacy-agent', got '%s'", agent.Name)
+	}
+	if agent.Description != "A legacy agent from Phase 0" {
+		t.Errorf("Expected description, got '%s'", agent.Description)
+	}
+
+	// Metadata should be empty/zero values
+	if agent.Version != "" {
+		t.Errorf("Expected empty version for legacy agent, got '%s'", agent.Version)
+	}
+	if agent.Author != "" {
+		t.Errorf("Expected empty author for legacy agent, got '%s'", agent.Author)
+	}
+}
+
+// TestParseAgentFileEmptyMetadata tests with empty metadata fields
+func TestParseAgentFileEmptyMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agentContent := `---
+name: empty-metadata-agent
+description: Agent with empty metadata fields
+version: ""
+author: ""
+tags: []
+dependencies: []
+---
+Content here
+`
+	filePath := filepath.Join(tmpDir, "empty.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	if agent.Version != "" {
+		t.Errorf("Expected empty version, got '%s'", agent.Version)
+	}
+	if agent.Author != "" {
+		t.Errorf("Expected empty author, got '%s'", agent.Author)
+	}
+	if len(agent.Tags) != 0 {
+		t.Errorf("Expected 0 tags, got %d", len(agent.Tags))
+	}
+	if len(agent.Dependencies) != 0 {
+		t.Errorf("Expected 0 dependencies, got %d", len(agent.Dependencies))
+	}
+}
+
+// TestParseAgentFileSingleTag tests with single tag in array
+func TestParseAgentFileSingleTag(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agentContent := `---
+name: single-tag-agent
+description: Agent with single tag
+tags: [javascript]
+---
+Content
+`
+	filePath := filepath.Join(tmpDir, "single.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	if len(agent.Tags) != 1 {
+		t.Errorf("Expected 1 tag, got %d", len(agent.Tags))
+	}
+	if agent.Tags[0] != "javascript" {
+		t.Errorf("Expected tag 'javascript', got '%s'", agent.Tags[0])
+	}
+}
+
+// TestParseAgentFileManyDependencies tests with multiple dependencies
+func TestParseAgentFileManyDependencies(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agentContent := `---
+name: multi-dep-agent
+description: Agent with multiple dependencies
+dependencies: [agent-a, agent-b, agent-c, agent-d, agent-e]
+---
+Content
+`
+	filePath := filepath.Join(tmpDir, "multi.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	if len(agent.Dependencies) != 5 {
+		t.Errorf("Expected 5 dependencies, got %d", len(agent.Dependencies))
+	}
+
+	expectedDeps := []string{"agent-a", "agent-b", "agent-c", "agent-d", "agent-e"}
+	for i, dep := range expectedDeps {
+		if agent.Dependencies[i] != dep {
+			t.Errorf("Expected dependency '%s' at position %d, got '%s'", dep, i, agent.Dependencies[i])
+		}
+	}
+}
+
+// TestParseAgentFileMetadataWithSpecialCharacters tests metadata with special chars
+func TestParseAgentFileMetadataWithSpecialCharacters(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agentContent := `---
+name: special-chars-agent
+description: Agent with special characters in metadata
+author: john.doe+test@example.com
+tags: [c++, c#, "node.js", "test-tag"]
+---
+Content
+`
+	filePath := filepath.Join(tmpDir, "special.md")
+	if err := os.WriteFile(filePath, []byte(agentContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	agent, err := ParseAgentFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to parse agent file: %v", err)
+	}
+
+	if agent.Author != "john.doe+test@example.com" {
+		t.Errorf("Expected author with special chars, got '%s'", agent.Author)
+	}
+
+	if len(agent.Tags) != 4 {
+		t.Errorf("Expected 4 tags, got %d", len(agent.Tags))
+	}
+}

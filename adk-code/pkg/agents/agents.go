@@ -66,7 +66,7 @@ func (s AgentSource) String() string {
 }
 
 // Agent represents a discovered agent definition.
-// Phase 0 version includes minimal fields needed for discovery and listing.
+// Includes Phase 0 discovery fields and Phase 1 metadata enhancement.
 type Agent struct {
 	// Identity
 	Name        string
@@ -79,6 +79,12 @@ type Agent struct {
 	// File Information
 	Path    string    // File path relative to project root
 	ModTime time.Time // Last modified time
+
+	// Phase 1 Metadata Enhancement
+	Version      string   // Semantic versioning (e.g., "1.0.0")
+	Author       string   // Email or name of agent author
+	Tags         []string // Categories/tags for the agent
+	Dependencies []string // Names of agents this depends on
 
 	// Content (preserved for future phases)
 	Content string // Markdown content after frontmatter
@@ -245,6 +251,7 @@ func (d *Discoverer) DiscoverProjectAgents() (*DiscoveryResult, error) {
 
 // ParseAgentFile reads and parses an agent definition file.
 // The file format is YAML frontmatter followed by markdown content.
+// Phase 1: Supports extended metadata (version, author, tags, dependencies)
 func ParseAgentFile(path string) (*Agent, error) {
 	// Read file content
 	content, err := os.ReadFile(path)
@@ -258,10 +265,14 @@ func ParseAgentFile(path string) (*Agent, error) {
 		return nil, err
 	}
 
-	// Parse YAML fields
+	// Parse YAML fields (all optional except name and description)
 	var frontmatter struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
+		Name         string   `yaml:"name"`
+		Description  string   `yaml:"description"`
+		Version      string   `yaml:"version,omitempty"`
+		Author       string   `yaml:"author,omitempty"`
+		Tags         []string `yaml:"tags,omitempty"`
+		Dependencies []string `yaml:"dependencies,omitempty"`
 	}
 
 	if err := yaml.Unmarshal(yamlContent, &frontmatter); err != nil {
@@ -276,14 +287,18 @@ func ParseAgentFile(path string) (*Agent, error) {
 		return nil, ErrMissingDescription
 	}
 
-	// Create agent
+	// Create agent with all metadata
 	agent := &Agent{
-		Name:        frontmatter.Name,
-		Description: frontmatter.Description,
-		Type:        TypeSubagent, // Phase 0: default type for all agents
-		Content:     string(markdownContent),
-		RawYAML:     string(yamlContent),
-		Path:        path,
+		Name:         frontmatter.Name,
+		Description:  frontmatter.Description,
+		Version:      frontmatter.Version,
+		Author:       frontmatter.Author,
+		Tags:         frontmatter.Tags,
+		Dependencies: frontmatter.Dependencies,
+		Type:         TypeSubagent, // Phase 0: default type for all agents
+		Content:      string(markdownContent),
+		RawYAML:      string(yamlContent),
+		Path:         path,
 	}
 
 	// Get file modification time
