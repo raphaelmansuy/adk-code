@@ -249,7 +249,7 @@ func (c *ProvidersCommand) Description() string {
 
 // Execute runs the providers command
 func (c *ProvidersCommand) Execute(ctx context.Context, args []string) error {
-	handleProvidersCommand(c.renderer, c.registry)
+	handleProvidersCommand(ctx, c.renderer, c.registry)
 	return nil
 }
 

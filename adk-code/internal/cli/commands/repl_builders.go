@@ -2,10 +2,12 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"adk-code/internal/display"
+	"adk-code/internal/llm/backends"
 	"adk-code/pkg/models"
 )
 
@@ -241,7 +243,7 @@ func buildCurrentModelInfoLines(renderer *display.Renderer, model models.Config)
 }
 
 // buildProvidersListLines builds the providers list as an array of lines for pagination
-func buildProvidersListLines(renderer *display.Renderer, registry *models.Registry) []string {
+func buildProvidersListLines(ctx context.Context, renderer *display.Renderer, registry *models.Registry) []string {
 	var lines []string
 
 	lines = append(lines, "")
@@ -261,7 +263,34 @@ func buildProvidersListLines(renderer *display.Renderer, registry *models.Regist
 		lines = append(lines, "")
 
 		// List models for this provider
-		modelsCfg := registry.GetProviderModels(providerName)
+		var modelsCfg []models.Config
+
+		// For Ollama, try to dynamically discover models from the server
+		if providerName == "ollama" {
+			ollamaProvider := backends.NewOllamaProvider()
+			if dynamicModels, err := ollamaProvider.ListModels(ctx, false); err == nil && len(dynamicModels) > 0 {
+				// Display dynamic models from Ollama
+				lines = append(lines, renderer.Dim("   Dynamic models from Ollama server:"))
+				lines = append(lines, "")
+
+				for _, modelInfo := range dynamicModels {
+					icon := "○"
+					costIcon := "💰"
+					modelSyntax := fmt.Sprintf("ollama/%s", modelInfo.Name)
+					description := ""
+					if modelInfo.Description != "" {
+						description = fmt.Sprintf(" - %s", modelInfo.Description)
+					}
+					lines = append(lines, fmt.Sprintf("   %s %s %s%s", icon, costIcon, renderer.Bold(modelSyntax), description))
+				}
+				lines = append(lines, "")
+				continue
+			}
+			// Fall back to static models if dynamic discovery fails
+		}
+
+		// Use static models from registry (fallback)
+		modelsCfg = registry.GetProviderModels(providerName)
 		for _, model := range modelsCfg {
 			icon := "○"
 			if model.IsDefault {

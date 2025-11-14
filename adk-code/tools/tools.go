@@ -17,7 +17,8 @@
 package tools
 
 import (
-	"adk-code/tools/base"
+	common "adk-code/tools/base"
+	"adk-code/tools/discovery"
 	"adk-code/tools/display"
 	"adk-code/tools/edit"
 	"adk-code/tools/exec"
@@ -86,6 +87,14 @@ type (
 	DisplayMessageOutput = display.DisplayMessageOutput
 	UpdateTaskListInput  = display.UpdateTaskListInput
 	UpdateTaskListOutput = display.UpdateTaskListOutput
+
+	// Discovery tool types
+	ListModelsInput  = discovery.ListModelsInput
+	ListModelsOutput = discovery.ListModelsOutput
+	ModelInfoInput   = discovery.ModelInfoInput
+	ModelInfoOutput  = discovery.ModelInfoOutput
+	ModelEntry       = discovery.ModelEntry
+	CapabilitiesInfo = discovery.CapabilitiesInfo
 )
 
 // Re-export category constants for tool classification
@@ -130,6 +139,10 @@ var (
 
 	// V4A tools
 	NewApplyV4APatchTool = v4a.NewApplyV4APatchTool
+
+	// Discovery tools
+	NewListModelsTool = discovery.NewListModelsTool
+	NewModelInfoTool  = discovery.NewModelInfoTool
 )
 
 // Re-export registry functions for tool access and registration

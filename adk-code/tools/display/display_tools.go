@@ -8,7 +8,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"adk-code/tools/base"
+	common "adk-code/tools/base"
 )
 
 // DisplayMessageInput defines the input parameters for displaying a message to the user.
@@ -17,6 +17,9 @@ type DisplayMessageInput struct {
 	Title string `json:"title,omitempty" jsonschema:"Optional title/header for the message"`
 	// Content is the main message content in markdown format.
 	Content string `json:"content" jsonschema:"Message content in markdown format (supports lists, formatting, etc.)"`
+	// Text is an alias for Content to support different model implementations.
+	// Some models may use 'text' instead of 'content'. This field is used if Content is empty.
+	Text string `json:"text,omitempty" jsonschema:"Message content in markdown format (alias for 'content')"`
 	// MessageType indicates the type of message (info, task, update, warning, success).
 	MessageType string `json:"message_type,omitempty" jsonschema:"Type of message: info, task, update, warning, success (default: info)"`
 	// ShowTimestamp indicates whether to show a timestamp with the message.
@@ -42,6 +45,20 @@ func NewDisplayMessageTool() (tool.Tool, error) {
 			messageType = "info"
 		}
 
+		// Get content: use Content field, fallback to Text if Content is empty
+		content := input.Content
+		if content == "" {
+			content = input.Text
+		}
+
+		// Validate that we have some content
+		if content == "" {
+			return DisplayMessageOutput{
+				Success: false,
+				Error:   "content or text field is required",
+			}
+		}
+
 		// Build the formatted message
 		var builder strings.Builder
 
@@ -57,7 +74,7 @@ func NewDisplayMessageTool() (tool.Tool, error) {
 		}
 
 		// Add the content
-		builder.WriteString(input.Content)
+		builder.WriteString(content)
 		builder.WriteString("\n")
 
 		// The message will be displayed to the user via the tool result

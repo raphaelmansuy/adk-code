@@ -38,6 +38,17 @@ type ProviderBackend interface {
 	Name() string
 }
 
+// ModelDiscovery is an optional interface for providers that support model discovery
+// Providers can implement this interface to expose available models and their capabilities
+type ModelDiscovery interface {
+	// ListModels returns a list of available models for this provider
+	// forceRefresh bypasses any caching and fetches fresh data
+	ListModels(ctx context.Context, forceRefresh bool) ([]models.ModelInfo, error)
+
+	// GetModelInfo retrieves detailed information about a specific model
+	GetModelInfo(ctx context.Context, modelName string) (*models.ModelInfo, error)
+}
+
 // Registry manages available LLM providers
 type Registry struct {
 	providers map[string]ProviderBackend

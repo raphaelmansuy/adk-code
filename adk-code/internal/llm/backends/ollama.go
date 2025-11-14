@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ollama/ollama/api"
 	adkmodel "google.golang.org/adk/model"
 
 	"adk-code/pkg/models"
@@ -13,12 +14,15 @@ import (
 // OllamaProvider implements the ProviderBackend interface for Ollama
 type OllamaProvider struct {
 	metadata models.ProviderMetadata
+	registry *models.OllamaModelRegistry
 }
 
 // NewOllamaProvider creates a new Ollama provider instance
 func NewOllamaProvider() *OllamaProvider {
 	return &OllamaProvider{
 		metadata: models.GetProviderMetadata(models.ProviderOllama),
+		// Registry will be initialized lazily on first use
+		registry: nil,
 	}
 }
 
@@ -56,4 +60,42 @@ func (p *OllamaProvider) GetMetadata() models.ProviderMetadata {
 // Name implements ProviderBackend.Name for Ollama
 func (p *OllamaProvider) Name() string {
 	return "ollama"
+}
+
+// ListModels implements ModelDiscovery.ListModels for Ollama
+func (p *OllamaProvider) ListModels(ctx context.Context, forceRefresh bool) ([]models.ModelInfo, error) {
+	// Initialize registry if needed
+	if p.registry == nil {
+		client, err := p.getClient()
+		if err != nil {
+			return nil, err
+		}
+		p.registry = models.NewOllamaModelRegistry(client, 0) // Use default 5-minute TTL
+	}
+
+	return p.registry.ListModels(ctx, forceRefresh)
+}
+
+// GetModelInfo implements ModelDiscovery.GetModelInfo for Ollama
+func (p *OllamaProvider) GetModelInfo(ctx context.Context, modelName string) (*models.ModelInfo, error) {
+	// Initialize registry if needed
+	if p.registry == nil {
+		client, err := p.getClient()
+		if err != nil {
+			return nil, err
+		}
+		p.registry = models.NewOllamaModelRegistry(client, 0) // Use default 5-minute TTL
+	}
+
+	return p.registry.GetModelInfo(ctx, modelName)
+}
+
+// getClient creates or retrieves an Ollama API client
+func (p *OllamaProvider) getClient() (*api.Client, error) {
+	// Use default client from environment (OLLAMA_HOST env var or default local endpoint)
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Ollama client: %w", err)
+	}
+	return client, nil
 }
