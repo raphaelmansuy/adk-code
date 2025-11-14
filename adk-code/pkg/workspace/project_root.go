@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -9,6 +8,8 @@ import (
 // GetProjectRoot traverses to find the project root,
 // identified by the presence of a "go.mod" file.
 // It searches: current path, immediate subdirectories, and parent directories.
+// If no go.mod is found, it returns the start path as a fallback to support
+// usage in non-Go projects or when installed as a global CLI tool.
 func GetProjectRoot(startPath string) (string, error) {
 	// First, check if go.mod exists in the start path
 	if _, err := os.Stat(filepath.Join(startPath, "go.mod")); err == nil {
@@ -33,8 +34,9 @@ func GetProjectRoot(startPath string) (string, error) {
 	for {
 		parentPath := filepath.Dir(currentPath)
 		if parentPath == currentPath {
-			// Reached the root of the filesystem
-			return "", fmt.Errorf("go.mod not found in %s, its subdirectories, or any parent directories", startPath)
+			// Reached the root of the filesystem without finding go.mod
+			// Fall back to using startPath to support non-Go projects
+			return startPath, nil
 		}
 		currentPath = parentPath
 

@@ -68,14 +68,14 @@ func TestGetProjectRoot_FindsGoModInParentDirectory(t *testing.T) {
 	}
 }
 
-func TestGetProjectRoot_NoGoModReturnsError(t *testing.T) {
+func TestGetProjectRoot_NoGoModReturnsFallback(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Don't create any go.mod file
-	_, err := GetProjectRoot(tmpDir)
-	if err == nil {
-		t.Fatalf("expected error when go.mod not found, got nil")
+	root, err := GetProjectRoot(tmpDir)
+	if err != nil {
+		t.Fatalf("GetProjectRoot should not fail when go.mod not found, got error: %v", err)
 	}
-	if !os.IsNotExist(err) && err.Error() == "" {
-		t.Fatalf("expected proper error message, got: %v", err)
+	if root != tmpDir {
+		t.Fatalf("expected fallback to start path %s, got %s", tmpDir, root)
 	}
 }
