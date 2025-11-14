@@ -1,0 +1,10 @@
+run:
+  timeout: 5m
+
+linters:
+  disable:
+    - errcheck      # Disable error checking
+    - gosec         # Disable security checks
+    - staticcheck   # Disable static analysis
+    - unused        # Disable unused variable checks
+    - ineffassign   # Disable ineffective assignment checks

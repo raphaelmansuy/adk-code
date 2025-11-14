@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    name: Format Check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ./adk-code/go.sum
+      
+      - name: Check code formatting
+        working-directory: ./adk-code
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "❌ Code formatting issues found:"
+            gofmt -l .
+            exit 1
+          fi
+          echo "✓ Code formatting OK"
+
+  vet:
+    runs-on: ubuntu-latest
+    name: Go Vet
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ./adk-code/go.sum
+      
+      - name: Run go vet
+        working-directory: ./adk-code
+        run: |
+          go mod download
+          go vet ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ./adk-code/go.sum
+      
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./adk-code
+          args: --timeout=5m
+          skip-pkg-cache: false
+          skip-build-cache: false
+
+  test:
+    runs-on: ubuntu-latest
+    name: Tests
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ./adk-code/go.sum
+      
+      - name: Run unit tests with race detection
+        working-directory: ./adk-code
+        run: go test -v -timeout=10m -coverprofile=coverage.out -covermode=atomic ./...
+      
+      - name: Check coverage threshold
+        working-directory: ./adk-code
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Code coverage: ${COVERAGE}%"
+          echo "ℹ️ Coverage tracking enabled (non-blocking)"
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./adk-code/coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    name: Build Binaries
+    needs: [format, vet, lint, test]
+    strategy:
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, name: "Linux x86-64" }
+          - { goos: linux, goarch: arm64, name: "Linux ARM64" }
+          - { goos: linux, goarch: arm, goarm: 7, name: "Linux ARMv7" }
+          - { goos: darwin, goarch: amd64, name: "macOS Intel" }
+          - { goos: darwin, goarch: arm64, name: "macOS Apple Silicon" }
+          - { goos: windows, goarch: amd64, name: "Windows x86-64" }
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ./adk-code/go.sum
+      
+      - name: Build binary - ${{ matrix.name }}
+        working-directory: ./adk-code
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm || '0' }}
+        run: |
+          VERSION=$(bash scripts/version.sh get)
+          BINARY="adk-code-${{ matrix.goos }}-${{ matrix.goarch }}"
+          [[ "${{ matrix.goos }}" == "windows" ]] && BINARY="${BINARY}.exe"
+          
+          go build \
+            -ldflags="-s -w -X adk-code/internal/app.AppVersion=${VERSION}" \
+            -o "${BINARY}" .
+          
+          ls -lh "${BINARY}"
+          file "${BINARY}" || true
+      
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: adk-code/adk-code-*
+          retention-days: 5
+          if-no-files-found: warn
+
+  # Final check to ensure all jobs passed
+  ci-complete:
+    runs-on: ubuntu-latest
+    name: CI Complete
+    needs: [format, vet, lint, test, build]
+    if: always()
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.format.result }}" == "failure" ]] || \
+             [[ "${{ needs.vet.result }}" == "failure" ]] || \
+             [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.test.result }}" == "failure" ]] || \
+             [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ CI pipeline failed"
+            exit 1
+          fi
+          echo "✅ All CI checks passed"

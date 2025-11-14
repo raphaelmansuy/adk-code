@@ -26,7 +26,8 @@ NC=\033[0m # No Color
 
 .PHONY: help all build clean test install uninstall run fmt lint vet deps \
          check coverage bench info todo size watch docker-build release \
-         build-debug test-short deps-tidy deps-update deps-verify display-test
+         build-debug test-short deps-tidy deps-update deps-verify display-test \
+         cross-build dist-clean ci-check
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -47,6 +48,7 @@ help:
 	@echo "  $(YELLOW)make build$(NC)       - Compile the binary to ../bin"
 	@echo "  $(YELLOW)make build-debug$(NC) - Build with debug symbols for debugging"
 	@echo "  $(YELLOW)make release$(NC)     - Optimized release build"
+	@echo "  $(YELLOW)make cross-build$(NC) - Build for all platforms (Linux, macOS, Windows)"
 	@echo "  $(YELLOW)make install$(NC)     - Install binary to GOPATH/bin"
 	@echo "  $(YELLOW)make uninstall$(NC)   - Remove binary from GOPATH/bin"
 	@echo "  $(YELLOW)make clean$(NC)       - Remove all build artifacts"
@@ -56,6 +58,7 @@ help:
 	@echo "  $(YELLOW)make test-short$(NC)  - Run short tests only"
 	@echo "  $(YELLOW)make coverage$(NC)    - Generate coverage report (opens HTML)"
 	@echo "  $(YELLOW)make check$(NC)       - Run fmt, vet, lint, and test"
+	@echo "  $(YELLOW)make ci-check$(NC)    - Same as check (for CI/CD workflows)"
 	@echo "  $(YELLOW)make bench$(NC)       - Run benchmarks"
 	@echo ""
 	@echo "$(GREEN)📝 CODE QUALITY$(NC)"
@@ -79,6 +82,7 @@ help:
 	@echo "  $(YELLOW)make watch$(NC)         - Watch files and rebuild on change"
 	@echo "  $(YELLOW)make display-test$(NC)  - Test display formatting"
 	@echo "  $(YELLOW)make docker-build$(NC)  - Build Docker image (if Dockerfile exists)"
+	@echo "  $(YELLOW)make dist-clean$(NC)    - Remove dist directory (cross-platform builds)"
 	@echo ""
 	@echo "$(YELLOW)ℹ️  Tips:$(NC)"
 	@echo "  • Run '$(YELLOW)make check$(NC)' before committing code"
@@ -292,3 +296,22 @@ release:
 	echo "" && \
 	echo "$(YELLOW)Ready for distribution!$(NC)" && \
 	echo ""
+
+## cross-build: Build for all supported platforms (requires build-release.sh)
+cross-build:
+	@echo "$(GREEN)🔨 Building for all platforms...$(NC)"
+	@bash scripts/build-release.sh
+	@echo "$(GREEN)✓ Cross-platform build complete$(NC)"
+
+## dist-clean: Remove dist directory
+dist-clean:
+	@rm -rf ../dist
+	@echo "$(GREEN)✓ Cleaned dist directory$(NC)"
+
+## ci-check: Run all CI checks locally (fmt, vet, lint, test)
+ci-check: fmt vet lint test
+	@echo ""
+	@echo "$(GREEN)╔════════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)║              ✓ All CI checks passed!                          ║$(NC)"
+	@echo "$(GREEN)╚════════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
