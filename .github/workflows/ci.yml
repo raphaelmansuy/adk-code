@@ -20,8 +20,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Check code formatting
+        working-directory: ./adk-code
         run: |
           if [ -n "$(gofmt -l .)" ]; then
             echo "❌ Code formatting issues found:"
@@ -40,8 +42,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Run go vet
+        working-directory: ./adk-code
         run: go vet ./...
 
   lint:
@@ -54,10 +58,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - uses: golangci/golangci-lint-action@v3
         with:
           version: latest
+          working-directory: ./adk-code
           args: --timeout=5m
           skip-pkg-cache: false
           skip-build-cache: false
@@ -72,20 +78,23 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Run gosec
-        uses: securego/gosec@master
-        with:
-          args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
+        working-directory: ./adk-code
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -no-fail -fmt sarif -out ../gosec-results.sarif ./...
       
       - name: Upload gosec results to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
-          sarif_file: gosec-results.sarif
+          sarif_file: ./gosec-results.sarif
           category: gosec
       
       - name: Run govulncheck
+        working-directory: ./adk-code
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
@@ -100,11 +109,14 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Run unit tests with race detection
+        working-directory: ./adk-code
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
       
       - name: Check coverage threshold
+        working-directory: ./adk-code
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Code coverage: ${COVERAGE}%"
@@ -117,7 +129,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage.out
+          files: ./adk-code/coverage.out
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
@@ -144,14 +156,16 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Build binary - ${{ matrix.name }}
+        working-directory: ./adk-code
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm || '0' }}
         run: |
-          VERSION=$(./scripts/version.sh get)
+          VERSION=$(../scripts/version.sh get)
           BINARY="adk-code-${{ matrix.goos }}-${{ matrix.goarch }}"
           [[ "${{ matrix.goos }}" == "windows" ]] && BINARY="${BINARY}.exe"
           
@@ -166,7 +180,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: adk-code-*
+          path: adk-code/adk-code-*
           retention-days: 5
           if-no-files-found: error
 
