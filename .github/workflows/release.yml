@@ -1,0 +1,220 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    name: Validate Release Tag
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+      is_prerelease: ${{ steps.validate.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate tag format
+        id: validate
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          
+          # Check if it's a prerelease (contains -alpha, -beta, -rc, etc.)
+          if [[ "$TAG" =~ -[a-zA-Z] ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Validate semver format (v1.2.3 or v1.2.3-rc1)
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "❌ Invalid tag format: $TAG"
+            echo "Expected format: v1.2.3 or v1.2.3-rc1"
+            exit 1
+          fi
+          
+          echo "✓ Tag is valid: $TAG"
+
+  build-release:
+    runs-on: ubuntu-latest
+    name: Build Release - ${{ matrix.name }}
+    needs: validate-tag
+    strategy:
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, name: "Linux x86-64" }
+          - { goos: linux, goarch: arm64, name: "Linux ARM64" }
+          - { goos: linux, goarch: arm, goarm: 7, name: "Linux ARMv7" }
+          - { goos: darwin, goarch: amd64, name: "macOS Intel" }
+          - { goos: darwin, goarch: arm64, name: "macOS Apple Silicon" }
+          - { goos: windows, goarch: amd64, name: "Windows x86-64" }
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      
+      - name: Build release binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm || '0' }}
+        run: |
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          BINARY="adk-code-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          
+          [[ "${{ matrix.goos }}" == "windows" ]] && BINARY="${BINARY}.exe"
+          
+          go build \
+            -ldflags="-s -w -X adk-code/internal/app.AppVersion=${VERSION}" \
+            -o "${BINARY}" .
+          
+          # Generate checksums
+          sha256sum "${BINARY}" > "${BINARY}.sha256"
+          
+          echo "✓ Built: ${BINARY}"
+          ls -lh "${BINARY}"*
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-binaries
+          path: |
+            adk-code-*
+            !*.sha256
+          retention-days: 1
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-checksums
+          path: adk-code-*.sha256
+          retention-days: 1
+
+  create-release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    needs: [validate-tag, build-release]
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          
+          # Copy binaries and checksums
+          cp artifacts/release-binaries/* release/ 2>/dev/null || true
+          cp artifacts/release-checksums/* release/ 2>/dev/null || true
+          
+          echo "✓ Prepared $(ls -1 release/ | wc -l) release assets"
+          ls -lh release/
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          CHANGELOG_FILE="RELEASE_NOTES.md"
+          
+          cat > "${CHANGELOG_FILE}" << EOF
+          # ${VERSION} Release
+          
+          ## Download
+          
+          | Platform | Architecture | Binary |
+          |----------|--------------|--------|
+          $(for binary in release/adk-code-*; do
+            if [[ ! "$binary" =~ \.sha256$ ]]; then
+              name=$(basename "$binary")
+              size=$(ls -lh "$binary" | awk '{print $5}')
+              echo "| $(echo $name | cut -d- -f3) | $(echo $name | cut -d- -f4 | sed 's/\.exe//') | [\`$name\`](./$name) ($size) |"
+            fi
+          done)
+          
+          ## Checksums
+          
+          Verify the integrity of downloaded files:
+          
+          \`\`\`bash
+          sha256sum -c adk-code-${VERSION}-*.sha256
+          \`\`\`
+          
+          ### SHA256 Hashes
+          
+          EOF
+          
+          cat release/adk-code-*.sha256 >> "${CHANGELOG_FILE}"
+          
+          # Add changes section if we have previous tags
+          if git describe --tags --abbrev=0 HEAD^ &>/dev/null 2>&1; then
+            echo "" >> "${CHANGELOG_FILE}"
+            echo "## Changes Since Previous Release" >> "${CHANGELOG_FILE}"
+            echo "" >> "${CHANGELOG_FILE}"
+            git log $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null)..HEAD --oneline >> "${CHANGELOG_FILE}" 2>/dev/null || true
+          fi
+          
+          echo "✓ Release notes generated"
+          
+          # Store for next step
+          echo "changelog_file=${CHANGELOG_FILE}" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          body_path: ${{ steps.release_notes.outputs.changelog_file }}
+          draft: false
+          prerelease: ${{ needs.validate-tag.outputs.is_prerelease }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release Summary
+        run: |
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          echo ""
+          echo "✅ Release ${VERSION} created successfully!"
+          echo ""
+          echo "Release assets:"
+          ls -1 release/ | sed 's/^/   • /'
+          echo ""
+          echo "View on GitHub: https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+
+  post-release:
+    runs-on: ubuntu-latest
+    name: Post-Release Tasks
+    needs: [validate-tag, create-release]
+    if: success() && !contains(needs.validate-tag.outputs.is_prerelease, 'true')
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create PR for version bump
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.validate-tag.outputs.version }}'.replace('v', '');
+            const branch = `bump-version-${version}`;
+            
+            console.log(`✓ Release complete for ${version}`);
+            console.log(`Next: Update documentation and changelog`);
+            console.log(`Suggested PR: Bump version in README and docs`);
