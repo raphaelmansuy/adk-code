@@ -401,7 +401,7 @@ chmod +x scripts/update-cask.sh
 ## References
 
 - **ADR 0004**: [Distribution Channels Phase 3](/docs/adr/0004-distribution-channels-phase-3.md)
-- **Implementation Guide**: [Phase 3 Distribution Guide](/docs/PHASE3_DISTRIBUTION_GUIDE.md)
+- **Implementation Guide**: [Phase 3 Distribution Guide](/docs/DISTRIBUTION_GUIDE.md)
 - **Homebrew Docs**: [Homebrew Cask Cookbook](https://docs.brew.sh/Cask-Cookbook)
 - **Homebrew Taps**: [Tap Documentation](https://docs.brew.sh/Taps)
 

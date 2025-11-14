@@ -221,7 +221,7 @@ c275afa docs: add Phase 3 Implementation Guide
 
 - **ADR 0003**: [CI/CD and Build Process](/docs/adr/0003-cicd-and-build-process.md)
 - **ADR 0004**: [Distribution Channels Phase 3](/docs/adr/0004-distribution-channels-phase-3.md)
-- **Implementation Guide**: [Phase 3 Distribution Guide](/docs/PHASE3_DISTRIBUTION_GUIDE.md)
+- **Implementation Guide**: [Phase 3 Distribution Guide](/docs/DISTRIBUTION_GUIDE.md)
 
 ## References Included
 
