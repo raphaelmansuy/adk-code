@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-11-14
+
+### Fixed
+
+- Enable CGO for SQLite support in all build targets to ensure proper database functionality across all platforms
+
 ## [0.2.0] - 2025-11-14
 
 ### Added
