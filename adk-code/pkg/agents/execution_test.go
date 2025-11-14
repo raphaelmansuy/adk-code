@@ -36,7 +36,7 @@ func TestExecutionContextCreation(t *testing.T) {
 func TestExecutionResultFields(t *testing.T) {
 	now := time.Now()
 	later := now.Add(100 * time.Millisecond)
-	
+
 	result := &ExecutionResult{
 		Output:    "test output",
 		Error:     "",

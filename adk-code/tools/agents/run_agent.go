@@ -94,9 +94,9 @@ func NewRunAgentTool() (tool.Tool, error) {
 
 		// Build execution context
 		execCtx := agents.ExecutionContext{
-			Agent:         agent,
-			Params:        input.Params,
-			CaptureOutput: input.CaptureOutput,
+			Agent:           agent,
+			Params:          input.Params,
+			CaptureOutput:   input.CaptureOutput,
 			ReturnRawOutput: !input.Detailed,
 		}
 
