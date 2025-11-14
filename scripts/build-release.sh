@@ -34,13 +34,13 @@ for platform in "${PLATFORMS[@]}"; do
   # Skip GOARM export if 0 (not applicable for non-ARM platforms)
   if [[ "$GOARM" == "0" ]]; then
     echo "Building ${GOOS}/${GOARCH}..."
-    CGO_ENABLED=1 GOOS="$GOOS" GOARCH="$GOARCH" go build \
+    GOOS="$GOOS" GOARCH="$GOARCH" go build \
       -ldflags="-s -w -X adk-code/internal/app.AppVersion=v${VERSION}" \
       -trimpath \
       -o "$OUTPUT" .
   else
     echo "Building ${GOOS}/${GOARCH} (GOARM=${GOARM})..."
-    CGO_ENABLED=1 GOOS="$GOOS" GOARCH="$GOARCH" GOARM="$GOARM" go build \
+    GOOS="$GOOS" GOARCH="$GOARCH" GOARM="$GOARM" go build \
       -ldflags="-s -w -X adk-code/internal/app.AppVersion=v${VERSION}" \
       -trimpath \
       -o "$OUTPUT" .

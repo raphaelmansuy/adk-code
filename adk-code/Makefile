@@ -96,7 +96,7 @@ build:
 	mkdir -p $(BUILD_DIR) && \
 	NEW_VER=$$(bash scripts/version.sh bump) && \
 	echo "$(GREEN)📦 Version: $$NEW_VER$(NC)" && \
-	CGO_ENABLED=1 $(GO) build $(GOFLAGS) -ldflags "-X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
+	$(GO) build $(GOFLAGS) -ldflags "-X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
 	echo "$(GREEN)✓ Build complete: $(BUILD_DIR)/$(BINARY_NAME)$(NC)" && \
 	ls -lh $(BUILD_DIR)/$(BINARY_NAME) | awk '{print "  Size: " $$5}' 2>/dev/null || true
 
@@ -105,7 +105,7 @@ build-debug:
 	@echo "$(GREEN)🐛 Building $(BINARY_NAME) with debug symbols...$(NC)" && \
 	NEW_VER=$$(bash scripts/version.sh bump) && \
 	echo "$(GREEN)📦 Version: $$NEW_VER$(NC)" && \
-	CGO_ENABLED=1 $(GO) build $(GOFLAGS) -gcflags="all=-N -l" -ldflags "-X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
+	$(GO) build $(GOFLAGS) -gcflags="all=-N -l" -ldflags "-X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
 	echo "$(GREEN)✓ Debug build complete: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
 
 ## test: Run all tests with verbose output
@@ -290,7 +290,7 @@ release:
 	@echo "$(GREEN)🚀 Building release version...$(NC)" && \
 	NEW_VER=$$(bash scripts/version.sh bump) && \
 	echo "$(GREEN)📦 Version: $$NEW_VER$(NC)" && \
-	CGO_ENABLED=1 $(GO) build -ldflags="-s -w -X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
+	$(GO) build -ldflags="-s -w -X adk-code/internal/app.AppVersion=$$NEW_VER" -o $(BUILD_DIR)/$(BINARY_NAME) . && \
 	echo "$(GREEN)✓ Release build complete$(NC)" && \
 	ls -lh $(BUILD_DIR)/$(BINARY_NAME) | awk '{print "  Size: " $$5}' 2>/dev/null || true && \
 	echo "" && \

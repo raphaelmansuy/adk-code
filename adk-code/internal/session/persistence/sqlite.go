@@ -17,10 +17,11 @@ import (
 	pkgerrors "adk-code/pkg/errors"
 
 	"github.com/google/uuid"
+	_ "github.com/ncruces/go-sqlite3/embed"
+	"github.com/ncruces/go-sqlite3/gormlite"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -350,8 +351,8 @@ func NewSQLiteSessionService(dbPath string) (*SQLiteSessionService, error) {
 		},
 	)
 
-	// Open SQLite connection
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{Logger: gormLogger})
+	// Open SQLite connection using ncruces/go-sqlite3 (pure Go, no CGO required)
+	db, err := gorm.Open(gormlite.Open(dbPath), &gorm.Config{Logger: gormLogger})
 	if err != nil {
 		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to open SQLite database", err)
 	}
