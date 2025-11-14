@@ -89,6 +89,11 @@ func InitializeModelComponents(ctx context.Context, cfg *config.Config) (*ModelC
 			ModelName: actualModelID,
 		})
 
+	case "ollama":
+		initializer.llm, err = models.CreateOllamaModel(ctx, models.OllamaConfig{
+			ModelName: actualModelID,
+		})
+
 	case "gemini":
 		fallthrough
 	default:

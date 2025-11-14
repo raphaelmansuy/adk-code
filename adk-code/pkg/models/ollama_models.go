@@ -111,6 +111,23 @@ func RegisterOllamaModels(registry *Registry) {
 		IsDefault:      false,
 	})
 
+	registry.RegisterModel(Config{
+		ID:            "gpt-oss-20b",
+		Name:          "GPT OSS 20B",
+		DisplayName:   "GPT OSS 20B",
+		Backend:       "ollama",
+		ContextWindow: 128000,
+		Capabilities: Capabilities{
+			VisionSupport:     false,
+			ToolUseSupport:    true, // Ollama's gpt-oss:20b supports function calling
+			LongContextWindow: true,
+			CostTier:          "free",
+		},
+		Description:    "OpenAI's GPT OSS 20B - Powerful reasoning model with 128K context and agentic capabilities. Run locally with Ollama.",
+		RecommendedFor: []string{"reasoning", "coding", "complex analysis"},
+		IsDefault:      false,
+	})
+
 	// Register aliases for models
 	registry.RegisterModelForProvider("ollama", "llama2", []string{"llama2", "llama-2"})
 	registry.RegisterModelForProvider("ollama", "neural-chat", []string{"neural-chat"})
@@ -118,4 +135,6 @@ func RegisterOllamaModels(registry *Registry) {
 	registry.RegisterModelForProvider("ollama", "dolphin-mixtral", []string{"dolphin-mixtral"})
 	registry.RegisterModelForProvider("ollama", "llama2-uncensored", []string{"llama2-uncensored"})
 	registry.RegisterModelForProvider("ollama", "openhermes", []string{"openhermes", "openhermes-2.5"})
+	registry.RegisterModelForProvider("ollama", "gpt-oss-20b", []string{"gpt-oss-20b", "gpt-oss:20b"})
+
 }

@@ -3,14 +3,23 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"net/url"
+	"strings"
 
 	"github.com/ollama/ollama/api"
 	"google.golang.org/adk/model"
 	"google.golang.org/genai"
 )
+
+// ollamaToolCallAccumulator accumulates tool call data across streaming chunks
+type ollamaToolCallAccumulator struct {
+	id        string
+	name      string
+	arguments map[string]any
+}
 
 // OllamaModelAdapter implements the model.LLM interface for Ollama models
 type OllamaModelAdapter struct {
@@ -23,6 +32,9 @@ func createOllamaModelInternal(ctx context.Context, cfg OllamaConfig) (model.LLM
 	if cfg.ModelName == "" {
 		return nil, fmt.Errorf("Ollama model name is required")
 	}
+
+	// Map internal model IDs to actual Ollama model names
+	actualModelName := mapOllamaModelName(cfg.ModelName)
 
 	// Use provided host or let the client use the default from environment
 	var client *api.Client
@@ -49,7 +61,7 @@ func createOllamaModelInternal(ctx context.Context, cfg OllamaConfig) (model.LLM
 
 	return &OllamaModelAdapter{
 		client:    client,
-		modelName: cfg.ModelName,
+		modelName: actualModelName,
 	}, nil
 }
 
@@ -117,31 +129,137 @@ func (a *OllamaModelAdapter) GenerateContent(
 		var fullContent string
 		var fullResponse *api.ChatResponse
 
+		// Track accumulated tool calls across streaming chunks (tool calls only appear in final chunk)
+		toolCallsAccum := make(map[int]*ollamaToolCallAccumulator)
+
 		// Use the Chat API with streaming
 		err = a.client.Chat(ctx, ollamaReq, func(resp api.ChatResponse) error {
-			// For streaming responses, convert each chunk
+			// For streaming responses, accumulate and convert
 			if stream {
-				modelResp := convertOllamaChatResponseToGenAI(resp, true)
-				if !yield(modelResp, nil) {
-					return context.Canceled
+				// Accumulate content text
+				fullContent += resp.Message.Content
+
+				// Accumulate tool calls (they only appear in the final chunk when done=true)
+				if len(resp.Message.ToolCalls) > 0 {
+					for _, toolCall := range resp.Message.ToolCalls {
+						// Use function index as key if available, otherwise just accumulate
+						idx := 0
+						if toolCall.Function.Index > 0 {
+							idx = int(toolCall.Function.Index)
+						}
+
+						accum, exists := toolCallsAccum[idx]
+						if !exists {
+							accum = &ollamaToolCallAccumulator{}
+							toolCallsAccum[idx] = accum
+						}
+
+						// Update fields (in final chunk, these will be complete)
+						if toolCall.ID != "" {
+							accum.id = toolCall.ID
+						}
+						if toolCall.Function.Name != "" {
+							accum.name = toolCall.Function.Name
+						}
+						// Arguments come as a map directly from Ollama
+						if toolCall.Function.Arguments != nil {
+							accum.arguments = toolCall.Function.Arguments
+						}
+					}
+				}
+
+				// Build response with current state
+				parts := []*genai.Part{}
+
+				// Add text content if present
+				if fullContent != "" {
+					parts = append(parts, &genai.Part{
+						Text: fullContent,
+					})
+				}
+
+				// Add accumulated tool calls if any
+				if len(toolCallsAccum) > 0 {
+					for idx := 0; idx < len(toolCallsAccum); idx++ {
+						if accum, exists := toolCallsAccum[idx]; exists {
+							args := accum.arguments
+							if args == nil {
+								args = make(map[string]any)
+							}
+
+							parts = append(parts, &genai.Part{
+								FunctionCall: &genai.FunctionCall{
+									ID:   accum.id,
+									Name: accum.name,
+									Args: args,
+								},
+							})
+						}
+					}
+				}
+
+				// Only yield if we have something to say
+				if len(parts) > 0 {
+					modelResp := &model.LLMResponse{
+						Content: &genai.Content{
+							Role:  "model",
+							Parts: parts,
+						},
+						Partial:      !resp.Done,
+						TurnComplete: resp.Done,
+						FinishReason: stringToFinishReason(resp.DoneReason),
+					}
+					if !yield(modelResp, nil) {
+						return context.Canceled
+					}
+					// Clear accumulated content and tool calls after yielding
+					// (we'll accumulate fresh for next chunk if needed)
+					fullContent = ""
+					toolCallsAccum = make(map[int]*ollamaToolCallAccumulator)
 				}
 			} else {
 				// Accumulate content for non-streaming
 				fullContent += resp.Message.Content
 				fullResponse = &resp
+				// Also accumulate tool calls
+				if len(resp.Message.ToolCalls) > 0 {
+					for _, toolCall := range resp.Message.ToolCalls {
+						idx := 0
+						if toolCall.Function.Index > 0 {
+							idx = int(toolCall.Function.Index)
+						}
+
+						accum, exists := toolCallsAccum[idx]
+						if !exists {
+							accum = &ollamaToolCallAccumulator{}
+							toolCallsAccum[idx] = accum
+						}
+
+						if toolCall.ID != "" {
+							accum.id = toolCall.ID
+						}
+						if toolCall.Function.Name != "" {
+							accum.name = toolCall.Function.Name
+						}
+						if toolCall.Function.Arguments != nil {
+							accum.arguments = toolCall.Function.Arguments
+						}
+					}
+				}
 			}
 			return nil
 		})
 
 		if err != nil {
-			yield(nil, fmt.Errorf("Ollama chat request failed: %w", err))
+			yield(nil, fmt.Errorf("ollama chat request failed: %w", err))
 			return
 		}
 
 		// For non-streaming mode, yield the accumulated response
 		if !stream && fullResponse != nil {
 			fullResponse.Message.Content = fullContent
-			modelResp := convertOllamaChatResponseToGenAI(*fullResponse, false)
+			modelResp := convertOllamaChatResponseToGenAIWithAccumulatedTools(*fullResponse, fullContent, toolCallsAccum)
+			modelResp.TurnComplete = true
 			yield(modelResp, nil)
 		}
 	}
@@ -162,8 +280,11 @@ func convertToOllamaMessages(contents []*genai.Content) ([]api.Message, error) {
 			role = content.Role
 		}
 
-		// Convert parts to a single string message
-		var contentText string
+		// Collect all parts
+		var textParts []string
+		var toolCalls []api.ToolCall
+		var toolResponses []*genai.FunctionResponse
+
 		for _, part := range content.Parts {
 			if part == nil {
 				continue
@@ -171,15 +292,63 @@ func convertToOllamaMessages(contents []*genai.Content) ([]api.Message, error) {
 
 			// Handle text content
 			if part.Text != "" {
-				contentText += part.Text
+				textParts = append(textParts, part.Text)
 			}
-			// TODO: Handle images/blobs if needed for multimodal models
+
+			// Handle function calls - convert to Ollama tool call format
+			if part.FunctionCall != nil {
+				toolCalls = append(toolCalls, api.ToolCall{
+					ID: part.FunctionCall.ID,
+					Function: api.ToolCallFunction{
+						Name:      part.FunctionCall.Name,
+						Arguments: part.FunctionCall.Args,
+					},
+				})
+			}
+
+			// Handle function responses
+			if part.FunctionResponse != nil {
+				toolResponses = append(toolResponses, part.FunctionResponse)
+			}
 		}
 
-		messages = append(messages, api.Message{
-			Role:    role,
-			Content: contentText,
-		})
+		// Join text parts
+		contentText := strings.Join(textParts, "\n")
+
+		// Add messages based on what we have
+		// For assistant messages with tool calls, include them
+		if len(toolCalls) > 0 && (role == "assistant" || role == "model") {
+			// Create assistant message with tool calls
+			messages = append(messages, api.Message{
+				Role:      role,
+				Content:   contentText,
+				ToolCalls: toolCalls,
+			})
+		} else if len(toolResponses) > 0 {
+			// Tool response messages - add a message for each response
+			// These typically come with role="user" or "tool"
+			for _, toolResp := range toolResponses {
+				// The tool result should be added as a user message with the result
+				respJSON := ""
+				if toolResp.Response != nil {
+					// Convert response to JSON
+					respBytes, err := json.Marshal(toolResp.Response)
+					if err == nil {
+						respJSON = string(respBytes)
+					}
+				}
+				messages = append(messages, api.Message{
+					Role:    "user",
+					Content: respJSON,
+				})
+			}
+		} else if contentText != "" {
+			// Regular text message
+			messages = append(messages, api.Message{
+				Role:    role,
+				Content: contentText,
+			})
+		}
 	}
 
 	return messages, nil
@@ -198,14 +367,20 @@ func convertToOllamaTools(tools []*genai.Tool) ([]api.Tool, error) {
 			params := api.ToolFunctionParameters{
 				Type:       "object",
 				Properties: make(map[string]api.ToolProperty),
+				Required:   []string{},
 			}
 
 			// Convert parameters if available
-			if funcDecl.Parameters != nil {
+			if funcDecl.Parameters != nil && funcDecl.Parameters.Properties != nil {
 				for propName, prop := range funcDecl.Parameters.Properties {
-					params.Properties[propName] = convertSchemaPropertyToTool(prop)
+					if prop != nil {
+						params.Properties[propName] = convertSchemaPropertyToTool(prop)
+					}
 				}
-				params.Required = funcDecl.Parameters.Required
+				// Only set Required if it's not empty
+				if len(funcDecl.Parameters.Required) > 0 {
+					params.Required = funcDecl.Parameters.Required
+				}
 			}
 
 			ollamaTools = append(ollamaTools, api.Tool{
@@ -256,12 +431,10 @@ func convertOllamaChatResponseToGenAI(resp api.ChatResponse, isStreaming bool) *
 	// Convert tool calls if present
 	if len(resp.Message.ToolCalls) > 0 {
 		for _, toolCall := range resp.Message.ToolCalls {
-			// Convert arguments to proper format
-			args := make(map[string]any)
-			if len(toolCall.Function.Arguments) > 0 {
-				for k, v := range toolCall.Function.Arguments {
-					args[k] = v
-				}
+			// Ensure we always have a non-nil args map
+			args := toolCall.Function.Arguments
+			if args == nil {
+				args = make(map[string]any)
 			}
 
 			parts = append(parts, &genai.Part{
@@ -283,7 +456,59 @@ func convertOllamaChatResponseToGenAI(resp api.ChatResponse, isStreaming bool) *
 	// Create the LLMResponse
 	modelResp := &model.LLMResponse{
 		Content:      responseContent,
-		Partial:      isStreaming && resp.Done == false,
+		Partial:      isStreaming && !resp.Done,
+		TurnComplete: resp.Done,
+		FinishReason: stringToFinishReason(resp.DoneReason),
+	}
+
+	return modelResp
+}
+
+// convertOllamaChatResponseToGenAIWithAccumulatedTools converts Ollama response with accumulated tool calls
+// This is used in streaming mode where tool calls may span multiple chunks
+func convertOllamaChatResponseToGenAIWithAccumulatedTools(
+	resp api.ChatResponse,
+	content string,
+	toolCallsAccum map[int]*ollamaToolCallAccumulator,
+) *model.LLMResponse {
+	// Create the response content with accumulated text
+	parts := []*genai.Part{
+		{
+			Text: content,
+		},
+	}
+
+	// Add accumulated tool calls
+	if len(toolCallsAccum) > 0 {
+		// Sort by index to maintain order
+		for idx := 0; idx < len(toolCallsAccum); idx++ {
+			if accum, exists := toolCallsAccum[idx]; exists {
+				args := accum.arguments
+				if args == nil {
+					args = make(map[string]any)
+				}
+
+				parts = append(parts, &genai.Part{
+					FunctionCall: &genai.FunctionCall{
+						ID:   accum.id,
+						Name: accum.name,
+						Args: args,
+					},
+				})
+			}
+		}
+	}
+
+	// Create the response content
+	responseContent := &genai.Content{
+		Role:  "model",
+		Parts: parts,
+	}
+
+	// Create the LLMResponse - mark as complete when done
+	modelResp := &model.LLMResponse{
+		Content:      responseContent,
+		Partial:      false,
 		TurnComplete: resp.Done,
 		FinishReason: stringToFinishReason(resp.DoneReason),
 	}
@@ -304,4 +529,19 @@ func stringToFinishReason(reason string) genai.FinishReason {
 	default:
 		return genai.FinishReasonOther
 	}
+}
+
+// mapOllamaModelName maps internal model IDs to actual Ollama model names
+// Internal IDs use hyphens, but Ollama model names may use colons (e.g., gpt-oss:20b)
+func mapOllamaModelName(modelID string) string {
+	// Map of internal IDs to actual Ollama model names
+	modelMap := map[string]string{
+		"gpt-oss-20b": "gpt-oss:20b",
+	}
+
+	// Return mapped name if it exists, otherwise return the original
+	if mappedName, exists := modelMap[modelID]; exists {
+		return mappedName
+	}
+	return modelID
 }
