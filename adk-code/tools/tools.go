@@ -14,10 +14,12 @@
 //   - display: Message display and task list updates
 //   - workspace: Workspace management and analysis
 //   - v4a: V4A patch format tools
+//   - agents: Agent definition discovery and management tools
 package tools
 
 import (
 	common "adk-code/tools/base"
+	"adk-code/tools/agents"
 	"adk-code/tools/discovery"
 	"adk-code/tools/display"
 	"adk-code/tools/edit"
@@ -95,6 +97,11 @@ type (
 	ModelInfoOutput  = discovery.ModelInfoOutput
 	ModelEntry       = discovery.ModelEntry
 	CapabilitiesInfo = discovery.CapabilitiesInfo
+
+	// Agent tool types
+	ListAgentsInput  = agents.ListAgentsInput
+	ListAgentsOutput = agents.ListAgentsOutput
+	AgentEntry       = agents.AgentEntry
 )
 
 // Re-export category constants for tool classification
@@ -143,6 +150,9 @@ var (
 	// Discovery tools
 	NewListModelsTool = discovery.NewListModelsTool
 	NewModelInfoTool  = discovery.NewModelInfoTool
+
+	// Agent tools
+	NewListAgentsTool = agents.NewListAgentsTool
 )
 
 // Re-export registry functions for tool access and registration
