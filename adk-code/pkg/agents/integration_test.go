@@ -380,3 +380,365 @@ description: Missing name field
 		t.Errorf("Expected valid-agent to be discovered")
 	}
 }
+
+// TestIntegrationMetadataDiscovery tests that metadata is properly parsed and retrieved
+func TestIntegrationMetadataDiscovery(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create agents directory
+	agentsDir := filepath.Join(tmpDir, ".adk", "agents")
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatalf("Failed to create agents directory: %v", err)
+	}
+
+	// Create agent with full metadata
+	agentWithMetadata := `---
+name: comprehensive-agent
+description: An agent with full metadata
+version: 1.2.3
+author: test@example.com
+tags: [refactoring, python, testing]
+dependencies: [base-agent, config-manager]
+---
+# Comprehensive Agent
+
+This agent has complete metadata.
+`
+	if err := os.WriteFile(filepath.Join(agentsDir, "comprehensive.md"), []byte(agentWithMetadata), 0644); err != nil {
+		t.Fatalf("Failed to create agent: %v", err)
+	}
+
+	// Create agent with minimal metadata
+	minimalAgent := `---
+name: minimal-agent
+description: An agent with no extra metadata
+---
+# Minimal Agent
+
+This agent has only required fields.
+`
+	if err := os.WriteFile(filepath.Join(agentsDir, "minimal.md"), []byte(minimalAgent), 0644); err != nil {
+		t.Fatalf("Failed to create agent: %v", err)
+	}
+
+	// Discover agents
+	cfg := NewConfig()
+	cfg.ProjectPath = agentsDir
+
+	discoverer := NewDiscovererWithConfig(tmpDir, cfg)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		t.Fatalf("DiscoverAll() returned error: %v", err)
+	}
+
+	if result.Total != 2 {
+		t.Errorf("Expected 2 agents, got %d", result.Total)
+	}
+
+	// Find comprehensive agent and verify metadata
+	var comprehensiveAgent *Agent
+	for _, agent := range result.Agents {
+		if agent.Name == "comprehensive-agent" {
+			comprehensiveAgent = agent
+			break
+		}
+	}
+
+	if comprehensiveAgent == nil {
+		t.Fatal("Expected to find comprehensive-agent")
+	}
+
+	// Verify version
+	if comprehensiveAgent.Version != "1.2.3" {
+		t.Errorf("Expected version 1.2.3, got %s", comprehensiveAgent.Version)
+	}
+
+	// Verify author
+	if comprehensiveAgent.Author != "test@example.com" {
+		t.Errorf("Expected author test@example.com, got %s", comprehensiveAgent.Author)
+	}
+
+	// Verify tags
+	if len(comprehensiveAgent.Tags) != 3 {
+		t.Errorf("Expected 3 tags, got %d", len(comprehensiveAgent.Tags))
+	}
+
+	expectedTags := map[string]bool{"refactoring": true, "python": true, "testing": true}
+	for _, tag := range comprehensiveAgent.Tags {
+		if !expectedTags[tag] {
+			t.Errorf("Unexpected tag: %s", tag)
+		}
+	}
+
+	// Verify dependencies
+	if len(comprehensiveAgent.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(comprehensiveAgent.Dependencies))
+	}
+
+	expectedDeps := map[string]bool{"base-agent": true, "config-manager": true}
+	for _, dep := range comprehensiveAgent.Dependencies {
+		if !expectedDeps[dep] {
+			t.Errorf("Unexpected dependency: %s", dep)
+		}
+	}
+
+	// Verify minimal agent has empty metadata fields
+	var minimalAgentFound *Agent
+	for _, agent := range result.Agents {
+		if agent.Name == "minimal-agent" {
+			minimalAgentFound = agent
+			break
+		}
+	}
+
+	if minimalAgentFound == nil {
+		t.Fatal("Expected to find minimal-agent")
+	}
+
+	if minimalAgentFound.Version != "" {
+		t.Error("Expected empty version for minimal agent")
+	}
+
+	if minimalAgentFound.Author != "" {
+		t.Error("Expected empty author for minimal agent")
+	}
+
+	if len(minimalAgentFound.Tags) > 0 {
+		t.Error("Expected no tags for minimal agent")
+	}
+
+	if len(minimalAgentFound.Dependencies) > 0 {
+		t.Error("Expected no dependencies for minimal agent")
+	}
+}
+
+// TestIntegrationTagFiltering tests filtering agents by tags
+func TestIntegrationTagFiltering(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create agents directory
+	agentsDir := filepath.Join(tmpDir, ".adk", "agents")
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatalf("Failed to create agents directory: %v", err)
+	}
+
+	// Create agents with different tags
+	agents := []struct {
+		name string
+		file string
+		tags string
+	}{
+		{"python-linter", "python_linter.md", "python, linting, code-quality"},
+		{"go-formatter", "go_formatter.md", "golang, formatting, code-quality"},
+		{"docs-generator", "docs_gen.md", "documentation, markdown"},
+	}
+
+	for _, a := range agents {
+		content := `---
+name: ` + a.name + `
+description: Test agent
+tags: [` + a.tags + `]
+---
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, a.file), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create agent: %v", err)
+		}
+	}
+
+	// Discover all agents
+	cfg := NewConfig()
+	cfg.ProjectPath = agentsDir
+
+	discoverer := NewDiscovererWithConfig(tmpDir, cfg)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		t.Fatalf("DiscoverAll() returned error: %v", err)
+	}
+
+	if result.Total != 3 {
+		t.Errorf("Expected 3 agents, got %d", result.Total)
+	}
+
+	// Count agents with "code-quality" tag
+	codeQualityCount := 0
+	for _, agent := range result.Agents {
+		for _, tag := range agent.Tags {
+			if tag == "code-quality" {
+				codeQualityCount++
+				break
+			}
+		}
+	}
+
+	if codeQualityCount != 2 {
+		t.Errorf("Expected 2 agents with code-quality tag, got %d", codeQualityCount)
+	}
+
+	// Count agents with "documentation" tag
+	docCount := 0
+	for _, agent := range result.Agents {
+		for _, tag := range agent.Tags {
+			if tag == "documentation" {
+				docCount++
+				break
+			}
+		}
+	}
+
+	if docCount != 1 {
+		t.Errorf("Expected 1 agent with documentation tag, got %d", docCount)
+	}
+}
+
+// TestIntegrationAuthorFiltering tests filtering agents by author
+func TestIntegrationAuthorFiltering(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create agents directory
+	agentsDir := filepath.Join(tmpDir, ".adk", "agents")
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatalf("Failed to create agents directory: %v", err)
+	}
+
+	// Create agents with different authors
+	agents := []struct {
+		name   string
+		file   string
+		author string
+	}{
+		{"alice-agent", "alice.md", "alice@example.com"},
+		{"bob-agent", "bob.md", "bob@example.com"},
+		{"alice-tool", "alice_tool.md", "alice@example.com"},
+	}
+
+	for _, a := range agents {
+		content := `---
+name: ` + a.name + `
+description: Test agent
+author: ` + a.author + `
+---
+`
+		if err := os.WriteFile(filepath.Join(agentsDir, a.file), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create agent: %v", err)
+		}
+	}
+
+	// Discover all agents
+	cfg := NewConfig()
+	cfg.ProjectPath = agentsDir
+
+	discoverer := NewDiscovererWithConfig(tmpDir, cfg)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		t.Fatalf("DiscoverAll() returned error: %v", err)
+	}
+
+	if result.Total != 3 {
+		t.Errorf("Expected 3 agents, got %d", result.Total)
+	}
+
+	// Count agents by author
+	aliceCount := 0
+	bobCount := 0
+
+	for _, agent := range result.Agents {
+		switch agent.Author {
+		case "alice@example.com":
+			aliceCount++
+		case "bob@example.com":
+			bobCount++
+		}
+	}
+
+	if aliceCount != 2 {
+		t.Errorf("Expected 2 agents from alice@example.com, got %d", aliceCount)
+	}
+
+	if bobCount != 1 {
+		t.Errorf("Expected 1 agent from bob@example.com, got %d", bobCount)
+	}
+}
+
+// TestIntegrationDependencyChains tests handling of agent dependencies
+func TestIntegrationDependencyChains(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create agents directory
+	agentsDir := filepath.Join(tmpDir, ".adk", "agents")
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatalf("Failed to create agents directory: %v", err)
+	}
+
+	// Create agents with dependency chains
+	// base-agent (no deps)
+	// -> mid-agent (depends on base-agent)
+	//    -> top-agent (depends on mid-agent)
+
+	baseAgent := `---
+name: base-agent
+description: Base agent with no dependencies
+---
+`
+	midAgent := `---
+name: mid-agent
+description: Middle agent
+dependencies: [base-agent]
+---
+`
+	topAgent := `---
+name: top-agent
+description: Top agent
+dependencies: [mid-agent, base-agent]
+---
+`
+
+	if err := os.WriteFile(filepath.Join(agentsDir, "base.md"), []byte(baseAgent), 0644); err != nil {
+		t.Fatalf("Failed to create base agent: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(agentsDir, "mid.md"), []byte(midAgent), 0644); err != nil {
+		t.Fatalf("Failed to create mid agent: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(agentsDir, "top.md"), []byte(topAgent), 0644); err != nil {
+		t.Fatalf("Failed to create top agent: %v", err)
+	}
+
+	// Discover all agents
+	cfg := NewConfig()
+	cfg.ProjectPath = agentsDir
+
+	discoverer := NewDiscovererWithConfig(tmpDir, cfg)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		t.Fatalf("DiscoverAll() returned error: %v", err)
+	}
+
+	if result.Total != 3 {
+		t.Errorf("Expected 3 agents, got %d", result.Total)
+	}
+
+	// Build dependency map
+	depMap := make(map[string][]string)
+	for _, agent := range result.Agents {
+		depMap[agent.Name] = agent.Dependencies
+	}
+
+	// Verify dependency chains
+	baseDeps, hasBase := depMap["base-agent"]
+	if !hasBase || len(baseDeps) != 0 {
+		t.Error("Expected base-agent to have no dependencies")
+	}
+
+	midDeps, hasMid := depMap["mid-agent"]
+	if !hasMid || len(midDeps) != 1 || midDeps[0] != "base-agent" {
+		t.Error("Expected mid-agent to depend on base-agent")
+	}
+
+	topDeps, hasTop := depMap["top-agent"]
+	if !hasTop || len(topDeps) != 2 {
+		t.Error("Expected top-agent to have 2 dependencies")
+	}
+}
