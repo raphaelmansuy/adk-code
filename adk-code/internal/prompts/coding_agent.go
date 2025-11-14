@@ -42,6 +42,11 @@ func GetProjectRoot(startPath string) (string, error) {
 
 // NewCodingAgent creates a new coding agent with all necessary tools.
 func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
+	// Validate required configuration
+	if cfg.Model == nil {
+		return nil, pkgerrors.Wrap(pkgerrors.CodeInvalidInput, "model is required", nil)
+	}
+
 	// Most tools auto-register via init() functions in their packages.
 	// V4A patch tool requires working directory parameter, so we register it explicitly.
 	if _, err := tools.NewApplyV4APatchTool(cfg.WorkingDirectory); err != nil {
