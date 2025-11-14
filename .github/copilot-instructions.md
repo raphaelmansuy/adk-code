@@ -48,6 +48,23 @@ make run                # Build and run (requires GOOGLE_API_KEY)
   - Use `--body-file <file>` for longer content in a file
 - When in doubt, use the GitHub web interface to add extended descriptions
 
+**Pipe Commands to Avoid Pagination Issues:**
+- Commands that produce lots of output (git log, gh pr list, etc.) may trigger pager and hang
+- **ALWAYS pipe to prevent interactive pager from blocking:**
+  - ❌ `gh pr list` (may hang waiting for user input)
+  - ✅ `gh pr list | cat` (disables pager, outputs all at once)
+  - ✅ `git log --oneline | head -20` (filter output)
+  - ✅ `git log --no-pager` (explicitly disable pager)
+- Use pipes with common utilities to control output:
+  - `| head -N` - Show first N lines
+  - `| tail -N` - Show last N lines
+  - `| grep "pattern"` - Filter by pattern
+  - `| wc -l` - Count lines
+  - `| cat` - Disable pager and output directly
+- For long-running commands, use `timeout`:
+  - `timeout 5 ./bin/adk-code` - Kill after 5 seconds
+  - `timeout 10 gh pr view <number>` - Prevent hanging on API calls
+
 <development_workflow>
 ## Development Workflow
 
@@ -90,11 +107,22 @@ When stuck on how to implement something, search the research folder for similar
   - Split output into multiple pages when needed
   - Provide navigation hints to users
 
-**Testing REPL Commands:**
-- Test with `echo "/<command>" | timeout 10 ./adk-code` to see full output
-- Use `grep` to filter specific sections: `... | grep "Ollama"`
-- Count output lines: `... | grep "model" | wc -l`
-- This helps verify dynamic content is working correctly
+**Testing REPL Commands with Proper Piping:**
+- Always pipe test commands to avoid pagination hangs
+- Test with proper timeout and piping:
+  - ✅ `echo "/providers" | timeout 10 ./adk-code 2>&1 | head -50` - Show first 50 lines
+  - ✅ `echo "/models" | timeout 10 ./adk-code 2>&1 | grep "gemini"` - Filter by provider
+  - ✅ `echo "/tools" | timeout 10 ./adk-code 2>&1 | tail -20` - Show last 20 lines
+  - ✅ `echo "/providers" | timeout 10 ./adk-code 2>&1 | wc -l` - Count total output lines
+- Key patterns:
+  - `timeout N` prevents hanging on long-running commands
+  - `2>&1` captures both stdout and stderr
+  - `| head/tail` controls output volume
+  - `| grep` filters for specific patterns
+  - `| wc -l` counts lines to verify expected output
+- Never use interactive commands without timeout/redirect:
+  - ❌ `./adk-code` alone (interactive mode)
+  - ✅ `echo "/command" | timeout 5 ./adk-code` (non-interactive)
 
 **Dynamic Content (like Ollama models):**
 - Always implement graceful fallback when external services unavailable
