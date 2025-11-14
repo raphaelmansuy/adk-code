@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestIntegrationFullDiscoveryWorkflow tests the complete discovery workflow
@@ -740,5 +741,334 @@ dependencies: [mid-agent, base-agent]
 	topDeps, hasTop := depMap["top-agent"]
 	if !hasTop || len(topDeps) != 2 {
 		t.Error("Expected top-agent to have 2 dependencies")
+	}
+}
+
+// TestE2ESimpleExecution tests executing a simple agent with no dependencies.
+func TestE2ESimpleExecution(t *testing.T) {
+	agent := &Agent{
+		Name:        "simple-agent",
+		Description: "Simple test agent",
+		Version:     "1.0.0",
+		Type:        "utility",
+	}
+
+	ctx := ExecutionContext{
+		Agent:         agent,
+		Params:        map[string]interface{}{},
+		Timeout:       10 * time.Second,
+		CaptureOutput: true,
+	}
+
+	// Verify context is valid
+	if ctx.Agent == nil {
+		t.Error("Expected agent in context")
+	}
+
+	if ctx.Params == nil {
+		ctx.Params = make(map[string]interface{})
+	}
+}
+
+// TestE2EDependencyChainResolution tests dependency resolution for a chain.
+func TestE2EDependencyChainResolution(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	// Create agent chain: api -> db -> config
+	config := &Agent{
+		Name:         "config",
+		Version:      "1.0.0",
+		Dependencies: []string{},
+	}
+
+	db := &Agent{
+		Name:         "db",
+		Version:      "2.0.0",
+		Dependencies: []string{"config"},
+	}
+
+	api := &Agent{
+		Name:         "api",
+		Version:      "1.5.0",
+		Dependencies: []string{"db"},
+	}
+
+	graph.AddAgent(config)
+	graph.AddAgent(db)
+	graph.AddAgent(api)
+
+	graph.AddEdge("db", "config")
+	graph.AddEdge("api", "db")
+
+	// Resolve dependencies
+	resolved, err := graph.ResolveDependencies("api")
+	if err != nil {
+		t.Fatalf("Failed to resolve: %v", err)
+	}
+
+	if len(resolved) != 3 {
+		t.Errorf("Expected 3 agents, got %d", len(resolved))
+	}
+
+	// Verify order: config, db, api
+	if resolved[0].Name != "config" {
+		t.Errorf("First should be config, got %q", resolved[0].Name)
+	}
+	if resolved[1].Name != "db" {
+		t.Errorf("Second should be db, got %q", resolved[1].Name)
+	}
+	if resolved[2].Name != "api" {
+		t.Errorf("Third should be api, got %q", resolved[2].Name)
+	}
+}
+
+// TestE2ECyclicDependencyDetection tests cycle detection.
+func TestE2ECyclicDependencyDetection(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	a := &Agent{Name: "a", Dependencies: []string{"b"}}
+	b := &Agent{Name: "b", Dependencies: []string{"c"}}
+	c := &Agent{Name: "c", Dependencies: []string{"a"}}
+
+	graph.AddAgent(a)
+	graph.AddAgent(b)
+	graph.AddAgent(c)
+
+	graph.AddEdge("a", "b")
+	graph.AddEdge("b", "c")
+	graph.AddEdge("c", "a")
+
+	// Should detect cycle
+	_, err := graph.ResolveDependencies("a")
+	if err == nil {
+		t.Error("Expected cycle detection error")
+	}
+}
+
+// TestE2EVersionMatching tests semantic version matching.
+func TestE2EVersionMatching(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     string
+		constraint  string
+		shouldMatch bool
+	}{
+		{"exact", "1.0.0", "==1.0.0", true},
+		{"greater", "2.0.0", ">1.0.0", true},
+		{"caret", "1.5.0", "^1.0.0", true},
+		{"tilde", "1.0.5", "~1.0.0", true},
+		{"range", "1.5.0", "1.0.0-2.0.0", true},
+		{"mismatch", "0.9.0", ">1.0.0", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ver, err := ParseVersion(tt.version)
+			if err != nil {
+				t.Fatalf("Parse version failed: %v", err)
+			}
+
+			con, err := ParseConstraint(tt.constraint)
+			if err != nil {
+				t.Fatalf("Parse constraint failed: %v", err)
+			}
+
+			matches := con.Matches(ver)
+			if matches != tt.shouldMatch {
+				t.Errorf("Expected %v, got %v", tt.shouldMatch, matches)
+			}
+		})
+	}
+}
+
+// TestE2EValidatorIntegration tests AgentMetadataValidator.
+func TestE2EValidatorIntegration(t *testing.T) {
+	validator := NewAgentMetadataValidator()
+
+	base := &Agent{
+		Name:         "base",
+		Description:  "Base agent",
+		Version:      "1.0.0",
+		Dependencies: []string{},
+	}
+
+	derived := &Agent{
+		Name:         "derived",
+		Description:  "Derived agent",
+		Version:      "1.0.0",
+		Dependencies: []string{"base"},
+	}
+
+	// Add agents with versions
+	validator.AddAgent(base, "^1.0.0")
+	validator.AddAgent(derived, "^1.0.0")
+
+	// Add dependency
+	validator.AddDependency("derived", "base")
+
+	// Validate base agent
+	report, err := validator.ValidateAgent("base")
+	if err != nil {
+		t.Errorf("Validation failed: %v", err)
+	}
+
+	if !report.Valid {
+		t.Errorf("Expected valid, got issues: %v", report.Issues)
+	}
+
+	// Validate derived agent
+	report2, err := validator.ValidateAgent("derived")
+	if err != nil {
+		t.Errorf("Validation failed: %v", err)
+	}
+
+	if !report2.Valid {
+		t.Errorf("Expected valid, got issues: %v", report2.Issues)
+	}
+}
+
+// TestE2EComplexGraphResolution tests complex multi-level dependencies.
+func TestE2EComplexGraphResolution(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	// Create complex graph
+	//        api
+	//       /   \
+	//      /     \
+	//   cache    db
+	//     |     / \
+	//     |    /   \
+	//   logging config
+
+	agents := map[string]*Agent{
+		"logging": {Name: "logging", Version: "1.0.0", Dependencies: []string{}},
+		"config":  {Name: "config", Version: "1.0.0", Dependencies: []string{}},
+		"cache":   {Name: "cache", Version: "1.0.0", Dependencies: []string{"logging"}},
+		"db":      {Name: "db", Version: "1.0.0", Dependencies: []string{"config"}},
+		"api":     {Name: "api", Version: "1.0.0", Dependencies: []string{"cache", "db"}},
+	}
+
+	for _, a := range agents {
+		graph.AddAgent(a)
+	}
+
+	// Add edges
+	edges := [][2]string{
+		{"cache", "logging"},
+		{"db", "config"},
+		{"api", "cache"},
+		{"api", "db"},
+	}
+
+	for _, e := range edges {
+		graph.AddEdge(e[0], e[1])
+	}
+
+	// Resolve
+	resolved, err := graph.ResolveDependencies("api")
+	if err != nil {
+		t.Fatalf("Resolution failed: %v", err)
+	}
+
+	if len(resolved) != 5 {
+		t.Errorf("Expected 5 agents, got %d", len(resolved))
+	}
+
+	// Verify ordering
+	positions := make(map[string]int)
+	for i, a := range resolved {
+		positions[a.Name] = i
+	}
+
+	// Check each agent comes after its dependencies
+	for _, a := range resolved {
+		for _, dep := range a.Dependencies {
+			if positions[dep] >= positions[a.Name] {
+				t.Errorf("Ordering violation: %q depends on %q", a.Name, dep)
+			}
+		}
+	}
+}
+
+// TestE2ETransitiveDependencies tests transitive dependency collection.
+func TestE2ETransitiveDependencies(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	// Chain: d -> c -> b -> a
+	a := &Agent{Name: "a"}
+	b := &Agent{Name: "b"}
+	c := &Agent{Name: "c"}
+	d := &Agent{Name: "d"}
+
+	graph.AddAgent(a)
+	graph.AddAgent(b)
+	graph.AddAgent(c)
+	graph.AddAgent(d)
+
+	graph.AddEdge("b", "a")
+	graph.AddEdge("c", "b")
+	graph.AddEdge("d", "c")
+
+	// Get transitive of d
+	trans, err := graph.GetTransitiveDeps("d")
+	if err != nil {
+		t.Fatalf("Failed: %v", err)
+	}
+
+	if len(trans) != 3 {
+		t.Errorf("Expected 3 transitive deps, got %d: %v", len(trans), trans)
+	}
+
+	expected := map[string]bool{"a": true, "b": true, "c": true}
+	for _, dep := range trans {
+		if !expected[dep] {
+			t.Errorf("Unexpected dep: %q", dep)
+		}
+	}
+}
+
+// TestE2EVersionParsing tests version parsing and string representation.
+func TestE2EVersionParsing(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"simple", "1.0.0", "1.0.0"},
+		{"prerelease", "1.0.0-alpha", "1.0.0-alpha"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v, err := ParseVersion(tt.input)
+			if err != nil {
+				t.Fatalf("Parse failed: %v", err)
+			}
+
+			if v.String() != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, v.String())
+			}
+		})
+	}
+}
+
+// TestE2EConstraintParsing tests constraint parsing.
+func TestE2EConstraintParsing(t *testing.T) {
+	constraints := []string{
+		"==1.0.0",
+		">1.0.0",
+		">=1.0.0",
+		"<2.0.0",
+		"<=2.0.0",
+		"^1.0.0",
+		"~1.0.0",
+		"1.0.0-2.0.0",
+	}
+
+	for _, c := range constraints {
+		_, err := ParseConstraint(c)
+		if err != nil {
+			t.Errorf("Failed to parse constraint %q: %v", c, err)
+		}
 	}
 }
