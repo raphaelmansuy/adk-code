@@ -64,8 +64,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Build release binary
+        working-directory: ./adk-code
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
