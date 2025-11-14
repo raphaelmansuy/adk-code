@@ -134,7 +134,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm || '0' }}
         run: |
-          VERSION=$(bash ../scripts/version.sh get)
+          VERSION=$(bash scripts/version.sh get)
           BINARY="adk-code-${{ matrix.goos }}-${{ matrix.goarch }}"
           [[ "${{ matrix.goos }}" == "windows" ]] && BINARY="${BINARY}.exe"
           
