@@ -108,8 +108,29 @@ func NewWriteFileTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "builtin_write_file",
-		Description: "Writes content to a file with atomic write support and size validation for safety. Creates the file if it doesn't exist, or overwrites it if it does. Automatically creates parent directories. Prevents accidental data loss by rejecting writes that reduce file size by >90% (override with allow_size_reduce=true).",
+		Name: "builtin_write_file",
+		Description: `Write content to a file with built-in safety checks.
+
+**Parameters:**
+- path (required): Path to file to create or overwrite
+- content (required): Complete content to write
+- create_dirs (optional): Create parent directories if missing (default: true)
+- atomic (optional): Use atomic write for safety (default: true)
+- allow_size_reduce (optional): Allow write if new size is <10% of old size (default: false)
+
+**Key Features:**
+- Creates file if it doesn't exist
+- Automatically creates parent directories
+- Atomic write prevents file corruption (writes to temp file, then renames)
+- Size validation: Rejects if new content is <10% of current file size (prevents accidental data loss)
+
+**Important:** Always provide COMPLETE file content. Never truncate or omit sections.
+
+**Example:** Create new file with defaults:
+  path="src/app.go", content="package main\n..."
+
+**Example:** Overwrite with explicit size reduction allowed:
+  path="config.txt", content="new content", allow_size_reduce=true`,
 	}, handler)
 
 	if err == nil {

@@ -110,8 +110,17 @@ func NewReadFileTool() (tool.Tool, error) {
 	}
 
 	t, err := functiontool.New(functiontool.Config{
-		Name:        "builtin_read_file",
-		Description: "Reads the content of a file from the filesystem with optional line range support. By default, returns up to 1000 lines from the file. Use offset to start at a specific line number (1-indexed, default: 1) and limit to control the maximum number of lines returned (omit to use default of 1000). Use this to examine code, configuration files, or any text files.",
+		Name: "builtin_read_file",
+		Description: `Reads the content of a file from the filesystem with optional line range support.
+
+**Parameters:**
+- path (required): Path to the file to read
+- offset (optional): Start line number (1-indexed, default: 1). Set offset=10 to start from line 10.
+- limit (optional): Maximum number of lines to read (default: 1000). Set limit=50 to read 50 lines.
+
+**Example:** Read lines 10-59 of a file: path="src/main.go", offset=10, limit=50
+
+Use this to examine code, configuration files, or any text files. For large files, use offset and limit to read specific sections efficiently.`,
 	}, handler)
 
 	if err == nil {

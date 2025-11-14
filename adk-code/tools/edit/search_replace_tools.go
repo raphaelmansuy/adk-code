@@ -314,46 +314,47 @@ func NewSearchReplaceTool() (tool.Tool, error) {
 
 	t, err := functiontool.New(functiontool.Config{
 		Name: "search_replace",
-		Description: `Request to replace sections of content in an existing file using SEARCH/REPLACE blocks. 
-This is the PREFERRED tool for making targeted changes to specific parts of a file. 
-Use this tool when you need to modify, add, or delete code in precise locations.
+		Description: `Replace sections of content in an existing file using SEARCH/REPLACE blocks.
 
-Format:
+**Parameters:**
+- path (required): Path to file to modify
+- diff (required): One or more SEARCH/REPLACE blocks (see format below)
+- preview (optional): Set preview=true to see what would change without applying
+
+**Block Format:**
 ` + "```" + `
 ------- SEARCH
-[exact content to find]
+[exact content to find - must match character-by-character]
 =======
 [new content to replace with]
 +++++++ REPLACE
 ` + "```" + `
 
-Critical Rules:
-1. SEARCH content must match EXACTLY (including whitespace, indentation)
-2. Each SEARCH/REPLACE block replaces ONLY the first match
-3. Use multiple blocks for multiple changes (list in file order)
-4. Keep blocks concise - just the changing lines + a few context lines
-5. To delete code: use empty REPLACE section
-6. To move code: use two blocks (one to delete, one to insert)
+**Critical Rules:**
+1. SEARCH section: Copy EXACT content from the file (including all whitespace and indentation)
+2. Each block replaces only the FIRST match found
+3. Multiple blocks: List them in file order, processed sequentially
+4. To DELETE code: Leave REPLACE section empty
+5. To ADD code: Use SEARCH for context, add new content in REPLACE
+6. Keep blocks concise: Include changing lines + 2-3 context lines above/below
 
-Example (adding error handling):
+**Example:** Add error checking to function
 ` + "```" + `
 ------- SEARCH
-func processData(data string) {
-    result := transform(data)
-    return result
+func calculate(a int, b int) int {
+    return a + b
 }
 =======
-func processData(data string) error {
-    if data == "" {
-        return errors.New("empty data")
+func calculate(a int, b int) int {
+    if a < 0 || b < 0 {
+        return 0
     }
-    result := transform(data)
-    return result
+    return a + b
 }
 +++++++ REPLACE
 ` + "```" + `
 
-The tool uses whitespace-tolerant matching as a fallback, so minor indentation differences are handled gracefully.`,
+**Fallback Behavior:** Tool uses whitespace-tolerant matching if exact match fails, but exact matches work better.`,
 	}, handler)
 
 	if err == nil {

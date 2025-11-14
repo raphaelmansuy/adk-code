@@ -70,6 +70,40 @@ func TestDisplayMessageInputOutput(t *testing.T) {
 		_ = input
 	})
 
+	// Test text field alias (for Ollama Granite4 compatibility)
+	t.Run("TextFieldAlias", func(t *testing.T) {
+		input := DisplayMessageInput{
+			Title:       "Message via Text Field",
+			Text:        "This message uses the 'text' field",
+			MessageType: "info",
+		}
+
+		_ = input
+	})
+
+	// Test text field fallback when content is empty
+	t.Run("TextFieldFallback", func(t *testing.T) {
+		input := DisplayMessageInput{
+			Title:   "Fallback Test",
+			Content: "", // Empty content
+			Text:    "Using text field as fallback",
+		}
+
+		_ = input
+	})
+
+	// Test that content takes precedence over text
+	t.Run("ContentPrecedenceOverText", func(t *testing.T) {
+		input := DisplayMessageInput{
+			Title:       "Precedence Test",
+			Content:     "This is from content field",
+			Text:        "This is from text field",
+			MessageType: "info",
+		}
+
+		_ = input
+	})
+
 	// Test different message types
 	messageTypes := []string{"info", "task", "update", "warning", "success", "plan"}
 	for _, msgType := range messageTypes {

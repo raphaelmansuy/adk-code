@@ -87,6 +87,45 @@ export OPENAI_API_KEY=sk-...
 ./adk-code --model gpt-4o
 ```
 
+### Ollama (Local or Remote)
+
+Ollama provides **free, open-source models** that run locally or on your own server.
+
+**Installation**: [ollama.com](https://ollama.com)
+
+**Local Setup:**
+
+```bash
+# 1. Install and start Ollama
+ollama serve
+
+# 2. Pull a model (in another terminal)
+ollama pull llama2          # or mistral, neural-chat, dolphin-mixtral, etc.
+
+# 3. Run adk-code (in another terminal)
+./adk-code --model llama2
+```
+
+**Remote Ollama Server:**
+
+```bash
+# Set the Ollama server host
+export OLLAMA_HOST=http://remote-server:11434
+
+# Run adk-code
+./adk-code --model llama2
+```
+
+**Available Models:**
+
+```bash
+ollama list                    # List installed models
+ollama pull mistral            # Pull Mistral (32K context)
+ollama pull dolphin-mixtral    # Pull Dolphin Mixtral (function calling)
+ollama pull neural-chat        # Pull Neural Chat (optimized)
+ollama pull llama2-uncensored  # Pull Uncensored Llama 2
+```
+
 ---
 
 ## CLI Flags Reference

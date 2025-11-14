@@ -1,7 +1,36 @@
 // Decision trees and best practices for ADK Code Agent
 package prompts
 
-const GuidanceSection = `## Communication & Transparency
+const GuidanceSection = `## Tool Parameter Reference
+
+### Important: Correct Parameter Names
+
+**builtin_read_file** Parameters:
+- path: File to read (required)
+- offset: Start line number (1-indexed, optional, default=1)
+- limit: Max lines to read (optional, default=1000)
+
+❌ WRONG: offset=0, limit is not offset/limit
+✅ CORRECT: offset=10, limit=50 reads lines 10-59
+
+**search_replace** Parameters:
+- path: File to modify (required)
+- diff: Text containing SEARCH/REPLACE blocks (required)
+- preview: Boolean to preview without applying (optional)
+
+❌ WRONG: Using SEARCH/REPLACE as JSON keys
+✅ CORRECT: Use diff parameter with text format (see block format in pitfalls)
+
+**execute_command** vs **execute_program**:
+- execute_command: For shell pipelines and built-in commands (ls, grep, echo, etc.)
+- execute_program: For executables with arguments (./script arg1 arg2)
+
+❌ WRONG: execute_command for program args
+✅ CORRECT: execute_program("./calculate", ["2", "+", "3"])
+
+---
+
+## Communication & Transparency
 
 ### When to Use Display Tools:
 

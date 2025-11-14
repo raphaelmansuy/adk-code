@@ -51,9 +51,10 @@ func LoadFromEnv() (Config, []string) {
 
 	// Model selection flags
 	model := flag.String("model", "", "Model to use with provider/model syntax. Examples:\n"+
-		"  --model gemini/2.5-flash     (explicit provider)\n"+
-		"  --model gemini/flash          (shorthand, means 2.5-flash)\n"+
-		"  --model vertexai/1.5-pro      (Vertex AI model)\n"+
+		"  --model gemini/2.5-flash       (explicit provider)\n"+
+		"  --model gemini/flash            (shorthand, means 2.5-flash)\n"+
+		"  --model ollama/gpt-oss-20b     (local Ollama model)\n"+
+		"  --model vertexai/1.5-pro       (Vertex AI model)\n"+
 		"Use '/providers' command to list all available models.")
 
 	// Backend selection flags

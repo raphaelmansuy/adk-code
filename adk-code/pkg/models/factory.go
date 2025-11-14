@@ -28,6 +28,12 @@ type OpenAIConfig struct {
 	ModelName string
 }
 
+// OllamaConfig holds configuration for Ollama backend
+type OllamaConfig struct {
+	Host      string // URL of the Ollama server (e.g., "http://127.0.0.1:11434")
+	ModelName string // Name of the model to use (e.g., "llama2", "neural-chat")
+}
+
 // CreateVertexAIModel creates a Gemini model configured to use Vertex AI backend
 // This leverages the Gemini SDK's built-in support for Vertex AI backend
 func CreateVertexAIModel(ctx context.Context, cfg VertexAIConfig) (adkmodel.LLM, error) {
@@ -79,4 +85,21 @@ func CreateGeminiModel(ctx context.Context, cfg GeminiConfig) (adkmodel.LLM, err
 // Uses the internal OpenAI adapter implementation
 func CreateOpenAIModel(ctx context.Context, cfg OpenAIConfig) (adkmodel.LLM, error) {
 	return createOpenAIModelInternal(ctx, cfg)
+}
+
+// CreateOllamaModel creates a model using the Ollama local/remote server
+// Ollama provides an open-source alternative for running models locally
+func CreateOllamaModel(ctx context.Context, cfg OllamaConfig) (adkmodel.LLM, error) {
+	if cfg.ModelName == "" {
+		return nil, fmt.Errorf("Ollama model name is required")
+	}
+
+	// If Host is not specified, Ollama will use the default from OLLAMA_HOST env var
+	// or the default local endpoint: http://127.0.0.1:11434
+	llm, err := createOllamaModelInternal(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Ollama model: %w", err)
+	}
+
+	return llm, nil
 }

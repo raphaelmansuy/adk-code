@@ -4,6 +4,7 @@ package tools
 
 import (
 	common "adk-code/tools/base"
+	"adk-code/tools/discovery"
 	"adk-code/tools/display"
 	"adk-code/tools/edit"
 	"adk-code/tools/exec"
@@ -51,7 +52,7 @@ func RegisterAllTools(reg *common.ToolRegistry) error {
 }
 
 // init automatically triggers tool registration at package initialization.
-// This ensures all tools from subpackages (file, edit, exec, display, search, workspace, v4a)
+// This ensures all tools from subpackages (file, edit, exec, display, search, workspace, v4a, discovery)
 // are registered when the tools package is imported.
 //
 // Each tool subpackage has its own init() function that calls tool constructors,
@@ -72,4 +73,6 @@ func init() {
 	_ = search.NewPreviewReplaceTool
 	_ = workspace.NewWorkspaceTools
 	_ = v4a.NewApplyV4APatchTool
+	_ = discovery.NewListModelsTool
+	_ = discovery.NewModelInfoTool
 }

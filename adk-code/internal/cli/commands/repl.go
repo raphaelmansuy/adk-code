@@ -2,6 +2,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -16,7 +17,7 @@ import (
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in repl.go to break the loop
-func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager *mcp.Manager) bool {
+func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager *mcp.Manager) bool {
 	switch input {
 	case "/prompt":
 		handlePromptCommand(renderer)
@@ -39,7 +40,7 @@ func HandleBuiltinCommand(input string, renderer *display.Renderer, sessionToken
 		return true
 
 	case "/providers":
-		handleProvidersCommand(renderer, modelRegistry)
+		handleProvidersCommand(ctx, renderer, modelRegistry)
 		return true
 
 	case "/tokens":
@@ -113,8 +114,8 @@ func handleCurrentModelCommand(renderer *display.Renderer, model models.Config) 
 }
 
 // handleProvidersCommand displays available providers and their models
-func handleProvidersCommand(renderer *display.Renderer, registry *models.Registry) {
-	lines := buildProvidersListLines(renderer, registry)
+func handleProvidersCommand(ctx context.Context, renderer *display.Renderer, registry *models.Registry) {
+	lines := buildProvidersListLines(ctx, renderer, registry)
 	paginator := display.NewPaginator(renderer)
 	paginator.DisplayPaged(lines)
 }

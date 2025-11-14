@@ -119,7 +119,7 @@ func (r *REPL) Run(ctx context.Context) {
 		if r.config.MCPComponents != nil {
 			mcpManager = r.config.MCPComponents.Manager
 		}
-		if cli.HandleBuiltinCommand(input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel, mcpManager) {
+		if cli.HandleBuiltinCommand(ctx, input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel, mcpManager) {
 			continue
 		}
 
