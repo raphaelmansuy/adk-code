@@ -149,7 +149,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: adk-code/adk-code-*
+          path: adk-code-*
           retention-days: 5
           if-no-files-found: error
 
