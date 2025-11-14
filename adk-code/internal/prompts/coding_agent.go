@@ -52,20 +52,20 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	registry := tools.GetRegistry()
 	registeredTools := registry.GetAllTools()
 
-	// Determine the project root based on go.mod file
+	// Determine the project root - use the working directory directly
+	// This allows adk-code to work as a global CLI tool in any directory
+	var err error
 	projectRoot := cfg.WorkingDirectory
 	if projectRoot == "" {
-		var err error
 		projectRoot, err = os.Getwd()
 		if err != nil {
 			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to get current working directory", err)
 		}
 	}
 
-	actualProjectRoot, err := GetProjectRoot(projectRoot)
-	if err != nil {
-		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to determine project root", err)
-	}
+	// Use the working directory directly as the project root
+	// No need to search for go.mod - adk-code works in any project type
+	actualProjectRoot := projectRoot
 
 	// Create workspace manager with smart initialization
 	// This will:
