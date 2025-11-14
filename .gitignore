@@ -55,6 +55,6 @@ Thumbs.db
 # Go mod/sum local overrides
 go.sum.local
 
-.pytest_cache/
+.pytest_cache/git
 
 dist/
