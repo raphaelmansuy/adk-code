@@ -139,56 +139,88 @@ Runs automatically when a version tag is pushed (e.g., `git tag v1.2.3`).
 
 ## How to Create a Release
 
-### Step 1: Verify all checks pass
+> **Note:** For a comprehensive step-by-step release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+> For detailed testing procedures, see [RELEASE_TESTING_CHECKLIST.md](RELEASE_TESTING_CHECKLIST.md).
 
-Push your changes to main and verify GitHub Actions completes successfully:
+The release process has four main phases:
 
-```bash
-git push origin feature-branch
-# Wait for CI to pass
-# Create PR, get approval, merge to main
-```
+### Phase 1: Pre-Release Preparation
 
-### Step 2: Create version tag
+1. Complete and merge all features for the release to `main`
+2. Run pre-release checks locally: `make ci-check`
+3. Verify GitHub Actions pipeline passes on `main` branch
+4. Update documentation (README, CHANGELOG)
+5. Update version file: `./scripts/version.sh set 1.2.0`
+
+See [RELEASE_PROCESS.md - Pre-Release Preparation](RELEASE_PROCESS.md#pre-release-preparation) for detailed steps.
+
+### Phase 2: Create Release Tag
+
+Once all checks pass, create and push the release tag:
 
 ```bash
 cd adk-code
 
-# Get current version
+# Verify version
 ./scripts/version.sh get
+# Should output: 1.2.0
 
-# Create tag (format: v1.2.3)
-git tag v1.2.3
-git push origin v1.2.3
+# Create annotated tag (format: vX.Y.Z)
+git tag -a v1.2.0 -m "Release v1.2.0
+
+New features:
+- Feature 1
+- Feature 2
+
+Bug fixes:
+- Fix 1"
+
+# Push tag to GitHub (triggers Release workflow)
+git push origin v1.2.0
 ```
 
-### Step 3: Monitor release workflow
+### Phase 3: Monitor Automated Release
 
-Go to your GitHub repository → Actions tab and watch the Release workflow complete.
+Go to GitHub Actions → Release workflow and watch completion:
 
-The workflow will:
-- Build all 6 binaries
-- Generate checksums
-- Create a GitHub Release with all assets
+The workflow automatically:
 
-### Step 4: Verify release
+1. **validate-tag** - Verifies tag format (v1.2.0 or v1.2.0-rc1)
+2. **build-release** - Builds all 6 platform binaries in parallel
+3. **create-release** - Creates GitHub Release with all assets and checksums
+4. **post-release** - Logs completion
 
-Visit: https://github.com/yourusername/adk-code/releases/latest
+Typical time: 3-5 minutes
 
-Download a binary for your platform and test:
+### Phase 4: Post-Release Verification
+
+After workflow completes:
+
+1. **Verify release on GitHub:**
 
 ```bash
-# Download from release page
-# Or use GitHub CLI:
-gh release download v1.2.3 -p '*linux-amd64'
-
-# Test the binary
-./adk-code-v1.2.3-linux-amd64 --version
+gh release view v1.2.0
+# Should show 12 assets (6 binaries + 6 checksums)
 ```
 
-### Step 5: Publish to package managers (future)
+2. **Download and test binaries:**
 
-Once the release workflow is updated, distributions will be published to:
+```bash
+gh release download v1.2.0 -p '*linux-amd64*'
+sha256sum -c adk-code-v1.2.0-linux-amd64.sha256
+./adk-code-v1.2.0-linux-amd64 --version
+```
+
+3. **Test alternative platforms** if possible (see [RELEASE_TESTING_CHECKLIST.md](RELEASE_TESTING_CHECKLIST.md))
+
+4. **Announce release** to community (GitHub Discussions, social media, etc.)
+
+See [RELEASE_PROCESS.md - Release Execution](RELEASE_PROCESS.md#release-execution) for comprehensive instructions.
+
+### Future: Publish to Package Managers
+
+Planned distributions (Phase 3):
+
 - Homebrew (macOS)
 - APT/YUM (Linux)
 - Scoop (Windows)

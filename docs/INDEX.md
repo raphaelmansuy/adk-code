@@ -186,8 +186,11 @@ Comprehensive technical reference document capturing all design decisions.
 | TOOL_DEVELOPMENT.md | 681 | 20 min | Create tools, patterns |
 | QUICK_REFERENCE.md | 360 | 5 min | Daily reference |
 | VISUAL_GUIDE.md | 564 | 15 min | Visual understanding |
+| CI_CD_GUIDE.md | 433 | 15 min | CI/CD pipelines, releases |
+| RELEASE_PROCESS.md | 558 | 20 min | Step-by-step release guide |
+| RELEASE_TESTING_CHECKLIST.md | 547 | 15 min | Release testing procedures |
 | draft.md | 520 | 25 min | Deep technical analysis |
-| **TOTAL** | **3,327** | **95 min** | **Complete coverage** |
+| **TOTAL** | **4,865** | **145 min** | **Complete coverage** |
 
 ---
 

@@ -31,10 +31,10 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
           
-          # Validate semver format (v1.2.3 or v1.2.3-rc1)
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+          # Validate semver format (v1.2.3 or v1.2.3-rc1 or v1.2.3-test.1)
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
             echo "❌ Invalid tag format: $TAG"
-            echo "Expected format: v1.2.3 or v1.2.3-rc1"
+            echo "Expected format: v1.2.3 or v1.2.3-rc1 or v1.2.3-test.1"
             exit 1
           fi
           
@@ -57,13 +57,17 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+          cache-dependency-path: ./adk-code/go.sum
       
       - name: Build release binary
+        working-directory: ./adk-code
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -85,19 +89,19 @@ jobs:
           ls -lh "${BINARY}"*
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: release-binaries
+          name: release-binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
-            adk-code-*
-            !*.sha256
+            adk-code/adk-code-*
+            !adk-code/*.sha256
           retention-days: 1
 
       - name: Upload checksums
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: release-checksums
-          path: adk-code-*.sha256
+          name: release-checksums-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: adk-code/adk-code-*.sha256
           retention-days: 1
 
   create-release:
@@ -114,7 +118,7 @@ jobs:
           fetch-depth: 0  # Full history for changelog
       
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       
@@ -122,12 +126,12 @@ jobs:
         run: |
           mkdir -p release
           
-          # Copy binaries and checksums
-          cp artifacts/release-binaries/* release/ 2>/dev/null || true
-          cp artifacts/release-checksums/* release/ 2>/dev/null || true
+          # Copy binaries and checksums from all artifact directories
+          find artifacts -type f -name "adk-code-*" ! -name "*.sha256" -exec cp {} release/ \;
+          find artifacts -type f -name "adk-code-*.sha256" -exec cp {} release/ \;
           
-          echo "✓ Prepared $(ls -1 release/ | wc -l) release assets"
-          ls -lh release/
+          echo "✓ Prepared $(ls -1 release/ 2>/dev/null | wc -l) release assets"
+          ls -lh release/ || echo "No assets found"
       
       - name: Generate release notes
         id: release_notes
