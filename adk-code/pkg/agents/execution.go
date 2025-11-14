@@ -84,6 +84,10 @@ type ExecutionRequirements struct {
 
 	// Features is a list of required features (e.g., file-io, network)
 	Features []string
+
+	// VersionConstraint is a semantic version constraint (e.g., "^1.0.0")
+	// Phase 2 Week 3: Added for version validation
+	VersionConstraint string
 }
 
 // Executor defines the interface for agent execution.
