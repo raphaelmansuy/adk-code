@@ -12,6 +12,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,9 +110,11 @@ func (r *DiscoveryResult) HasErrors() bool {
 }
 
 // Discoverer finds agent definition files in a project.
-// Phase 0 implementation scans .adk/agents/ directory only.
+// Phase 0: Scans .adk/agents/ directory only.
+// Phase 1: Supports multi-path discovery with configuration.
 type Discoverer struct {
 	projectRoot string
+	config      *Config
 }
 
 // NewDiscoverer creates a new agent discoverer for the given project root
@@ -121,32 +124,88 @@ func NewDiscoverer(projectRoot string) *Discoverer {
 	}
 }
 
+// NewDiscovererWithConfig creates a discoverer with explicit configuration
+func NewDiscovererWithConfig(projectRoot string, config *Config) *Discoverer {
+	return &Discoverer{
+		projectRoot: projectRoot,
+		config:      config,
+	}
+}
+
 // DiscoverAll finds all agent definitions in the project.
 // Phase 0: Only scans project-level .adk/agents/ directory.
+// Phase 1: Scans multiple paths according to configuration.
 // Returns a DiscoveryResult with discovered agents or errors.
 func (d *Discoverer) DiscoverAll() (*DiscoveryResult, error) {
-	startTime := time.Now()
+	// Load configuration if not already provided
+	if d.config == nil {
+		cfg, err := LoadConfig(d.projectRoot)
+		if err != nil {
+			// Fall back to default config with just project path
+			cfg = NewConfig()
+			cfg.ProjectPath = filepath.Join(d.projectRoot, ".adk", "agents")
+		}
+		d.config = cfg
+	}
 
+	startTime := time.Now()
 	result := &DiscoveryResult{
 		Agents: make([]*Agent, 0),
 		Errors: make([]error, 0),
 	}
 
-	// Phase 0: Only scan project-level .adk/agents/
-	agentsDir := filepath.Join(d.projectRoot, ".adk", "agents")
+	// Discover from all configured paths
+	paths := d.config.GetAllPaths()
+	discoveredNames := make(map[string]bool) // Track discovered agents to avoid duplicates
 
-	// Check if directory exists
-	if _, err := os.Stat(agentsDir); os.IsNotExist(err) {
-		// Not an error - just no agents yet
-		result.TimeTaken = time.Since(startTime)
-		return result, nil
+	for _, path := range paths {
+		// Resolve path relative to project root if not absolute
+		var fullPath string
+		if filepath.IsAbs(path) {
+			fullPath = path
+		} else {
+			fullPath = filepath.Join(d.projectRoot, path)
+		}
+
+		// Check if directory exists
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			if !d.config.SkipMissing {
+				result.Errors = append(result.Errors, fmt.Errorf("agent path does not exist: %s", fullPath))
+				result.ErrorCount++
+			}
+			continue
+		}
+
+		// Discover agents from this path
+		sourceAgents, pathErrors := d.discoverFromPath(fullPath)
+
+		// Add errors
+		result.Errors = append(result.Errors, pathErrors...)
+		result.ErrorCount += len(pathErrors)
+
+		// Add agents, avoiding duplicates based on name
+		for _, agent := range sourceAgents {
+			if !discoveredNames[agent.Name] {
+				agent.Source = d.config.GetSourceForPath(fullPath)
+				result.Agents = append(result.Agents, agent)
+				discoveredNames[agent.Name] = true
+				result.Total++
+			}
+		}
 	}
 
-	// Walk the agents directory
-	err := filepath.Walk(agentsDir, func(path string, info os.FileInfo, err error) error {
+	result.TimeTaken = time.Since(startTime)
+	return result, nil
+}
+
+// discoverFromPath scans a single directory for agent definition files
+func (d *Discoverer) discoverFromPath(path string) ([]*Agent, []error) {
+	var agents []*Agent
+	var errors []error
+
+	err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
-			result.Errors = append(result.Errors, err)
-			result.ErrorCount++
+			errors = append(errors, err)
 			return nil // Continue walking
 		}
 
@@ -156,40 +215,32 @@ func (d *Discoverer) DiscoverAll() (*DiscoveryResult, error) {
 		}
 
 		// Only process .md files
-		if filepath.Ext(path) != ".md" {
+		if filepath.Ext(filePath) != ".md" {
 			return nil
 		}
 
 		// Parse the agent file
-		agent, parseErr := ParseAgentFile(path)
+		agent, parseErr := ParseAgentFile(filePath)
 		if parseErr != nil {
-			result.Errors = append(result.Errors, parseErr)
-			result.ErrorCount++
+			errors = append(errors, fmt.Errorf("%s: %w", filePath, parseErr))
 			return nil // Continue walking
 		}
 
-		// Set source and type
-		agent.Source = SourceProject
-		agent.Type = TypeSubagent // Phase 0: assume all are subagents
-
-		result.Agents = append(result.Agents, agent)
-		result.Total++
-
+		agents = append(agents, agent)
 		return nil
 	})
 
 	if err != nil {
-		result.Errors = append(result.Errors, err)
-		result.ErrorCount++
+		errors = append(errors, err)
 	}
 
-	result.TimeTaken = time.Since(startTime)
-	return result, nil
+	return agents, errors
 }
 
-// DiscoverProjectAgents finds agents only in project-level directory
+// DiscoverProjectAgents finds agents only in project-level directory.
+// Phase 0 compatibility method - delegates to DiscoverAll()
 func (d *Discoverer) DiscoverProjectAgents() (*DiscoveryResult, error) {
-	return d.DiscoverAll() // Phase 0: only project agents anyway
+	return d.DiscoverAll()
 }
 
 // ParseAgentFile reads and parses an agent definition file.
@@ -229,6 +280,7 @@ func ParseAgentFile(path string) (*Agent, error) {
 	agent := &Agent{
 		Name:        frontmatter.Name,
 		Description: frontmatter.Description,
+		Type:        TypeSubagent, // Phase 0: default type for all agents
 		Content:     string(markdownContent),
 		RawYAML:     string(yamlContent),
 		Path:        path,
