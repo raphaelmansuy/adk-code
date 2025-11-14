@@ -85,24 +85,24 @@ func TestGetProjectRoot_NoGoModReturnsFallback(t *testing.T) {
 func TestGetProjectRoot_NonGoProjectUsage(t *testing.T) {
 	// Create a directory structure mimicking a non-Go project
 	tmpDir := t.TempDir()
-	
+
 	// Create some files that don't include go.mod
 	pythonFile := filepath.Join(tmpDir, "main.py")
 	if err := os.WriteFile(pythonFile, []byte("print('hello')"), 0644); err != nil {
 		t.Fatalf("failed to create python file: %v", err)
 	}
-	
+
 	packageJSON := filepath.Join(tmpDir, "package.json")
 	if err := os.WriteFile(packageJSON, []byte("{}"), 0644); err != nil {
 		t.Fatalf("failed to create package.json: %v", err)
 	}
-	
+
 	// GetProjectRoot should return tmpDir without error
 	root, err := GetProjectRoot(tmpDir)
 	if err != nil {
 		t.Fatalf("GetProjectRoot should work in non-Go projects, got error: %v", err)
 	}
-	
+
 	if root != tmpDir {
 		t.Fatalf("expected root %s for non-Go project, got %s", tmpDir, root)
 	}
