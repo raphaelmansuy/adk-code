@@ -25,6 +25,44 @@
 
 ### Installation
 
+#### Option A: Homebrew (macOS) — Recommended
+
+The easiest way to install on macOS:
+
+```bash
+# Add the tap (one-time)
+brew tap raphaelmansuy/adk-code
+
+# Install adk-code
+brew install adk-code
+
+# Verify installation
+adk-code --version
+```
+
+**Supported on:**
+
+- macOS 10.13+ (High Sierra and later)
+- Intel (x86_64) and Apple Silicon (M-series) Macs
+
+**Update to latest:**
+
+```bash
+brew upgrade adk-code
+```
+
+**Uninstall:**
+
+```bash
+brew uninstall adk-code
+```
+
+See [homebrew-adk-code](https://github.com/raphaelmansuy/homebrew-adk-code) for more details.
+
+#### Option B: Build from Source
+
+Clone and build manually:
+
 ```bash
 # Clone and build
 git clone https://github.com/raphaelmansuy/adk-code.git
