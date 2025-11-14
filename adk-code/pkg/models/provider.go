@@ -13,6 +13,7 @@ const (
 	ProviderGemini   Provider = "gemini"
 	ProviderVertexAI Provider = "vertexai"
 	ProviderOpenAI   Provider = "openai"
+	ProviderOllama   Provider = "ollama"
 )
 
 // ProviderMetadata describes a provider and its configuration
@@ -36,6 +37,7 @@ func AllProviders() []Provider {
 		ProviderGemini,
 		ProviderVertexAI,
 		ProviderOpenAI,
+		ProviderOllama,
 	}
 }
 
@@ -80,6 +82,16 @@ func GetProviderMetadata(provider Provider) ProviderMetadata {
 			Description: "OpenAI's GPT models via official Go SDK",
 			Requirements: []string{
 				"OPENAI_API_KEY",
+			},
+		}
+	case ProviderOllama:
+		return ProviderMetadata{
+			Name:        "ollama",
+			DisplayName: "Ollama",
+			Icon:        "🦙",
+			Description: "Run and use local or remote Ollama models",
+			Requirements: []string{
+				"OLLAMA_HOST (optional, defaults to http://127.0.0.1:11434)",
 			},
 		}
 	default:

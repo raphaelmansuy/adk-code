@@ -25,6 +25,7 @@ func NewRegistry() *Registry {
 	// Register all available models
 	RegisterGeminiAndVertexAIModels(registry)
 	RegisterOpenAIModels(registry)
+	RegisterOllamaModels(registry)
 
 	return registry
 }

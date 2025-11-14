@@ -17,6 +17,7 @@ const (
 	ProviderGemini   Provider = "gemini"
 	ProviderVertexAI Provider = "vertexai"
 	ProviderOpenAI   Provider = "openai"
+	ProviderOllama   Provider = "ollama"
 )
 
 // ProviderBackend is the interface that all LLM provider implementations must satisfy
@@ -52,6 +53,7 @@ func NewRegistry() *Registry {
 	r.Register(backends.NewGeminiProvider())
 	r.Register(backends.NewVertexAIProvider())
 	r.Register(backends.NewOpenAIProvider())
+	r.Register(backends.NewOllamaProvider())
 
 	return r
 }
