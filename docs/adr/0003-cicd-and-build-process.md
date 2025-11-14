@@ -500,6 +500,7 @@ ci-check: fmt vet lint test
 
 ## Related Documents
 
+- See `ADR 0004: Distribution Channels (Phase 3)` for package manager distribution
 - See `TOOL_DEVELOPMENT.md` for tool development and testing patterns
 - See `ARCHITECTURE.md` for system design and component interactions
 - See `QUICK_REFERENCE.md` for CLI usage reference
