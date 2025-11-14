@@ -69,6 +69,7 @@ jobs:
       - name: Build release binary
         working-directory: ./adk-code
         env:
+          CGO_ENABLED: 1
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm || '0' }}
