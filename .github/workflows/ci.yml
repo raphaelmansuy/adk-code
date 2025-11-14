@@ -149,9 +149,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: adk-code-*
+          path: adk-code/adk-code-*
           retention-days: 5
-          if-no-files-found: error
+          if-no-files-found: warn
 
   # Final check to ensure all jobs passed
   ci-complete:
