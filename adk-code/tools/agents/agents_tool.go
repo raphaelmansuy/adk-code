@@ -41,10 +41,22 @@ type ListAgentsOutput struct {
 
 // NewListAgentsTool creates a tool for listing discovered agents
 // Uses current working directory as project root for discovery
+// Automatically loads configuration from .adk/config.yaml if present
 func NewListAgentsTool() (tool.Tool, error) {
 	handler := func(ctx tool.Context, input ListAgentsInput) ListAgentsOutput {
 		// Use current working directory as project root
-		discoverer := agents.NewDiscoverer(".")
+		projectRoot := "."
+
+		// Load configuration (Phase 1 feature)
+		cfg, err := agents.LoadConfig(projectRoot)
+		if err != nil {
+			// Fall back to default config if loading fails
+			cfg = agents.NewConfig()
+			cfg.ProjectPath = ".adk/agents"
+		}
+
+		// Create discoverer with configuration
+		discoverer := agents.NewDiscovererWithConfig(projectRoot, cfg)
 		result, err := discoverer.DiscoverAll()
 
 		output := ListAgentsOutput{
