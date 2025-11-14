@@ -8,12 +8,14 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/google/uuid v1.6.0
 	github.com/modelcontextprotocol/go-sdk v1.1.0
+	github.com/ncruces/go-sqlite3 v0.30.1
 	github.com/ncruces/go-sqlite3/gormlite v0.30.1
 	github.com/ollama/ollama v0.12.11
 	github.com/openai/openai-go/v3 v3.8.1
 	golang.org/x/term v0.36.0
 	google.golang.org/adk v0.1.0
 	google.golang.org/genai v1.20.0
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.31.1
 )
 
@@ -48,7 +50,6 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/ncruces/go-sqlite3 v0.30.1 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/tetratelabs/wazero v1.10.0 // indirect
