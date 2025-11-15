@@ -4,12 +4,15 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	agentprompts "adk-code/internal/prompts"
 	"adk-code/internal/tracking"
+	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
 	"adk-code/tools"
 )
@@ -47,6 +50,10 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		handleTokensCommand(sessionTokens)
 		return true
 
+	case "/agents":
+		handleAgentsCommand(renderer)
+		return true
+
 	default:
 		// Check if it's a /set-model command
 		if strings.HasPrefix(input, "/set-model ") {
@@ -57,6 +64,12 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		// Check if it's an /mcp command
 		if strings.HasPrefix(input, "/mcp") {
 			handleMCPCommand(input, renderer, mcpManager)
+			return true
+		}
+		// Check if it's a /run-agent command
+		if strings.HasPrefix(input, "/run-agent ") {
+			agentRequest := strings.TrimPrefix(input, "/run-agent ")
+			handleRunAgentCommand(renderer, agentRequest)
 			return true
 		}
 		return false
@@ -241,6 +254,195 @@ func handleMCPTools(renderer *display.Renderer, mcpManager *mcp.Manager) {
 	fmt.Println()
 	fmt.Println(renderer.Dim("  Note: Tool details are only available during agent execution."))
 	fmt.Println(renderer.Dim("  The agent will have access to all MCP tools when processing requests."))
+	fmt.Println()
+}
+
+// handleAgentsCommand displays available agents
+func handleAgentsCommand(renderer *display.Renderer) {
+	// Get the project root from environment or current directory
+	projectRoot := os.Getenv("ADK_PROJECT_ROOT")
+	if projectRoot == "" {
+		var err error
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			fmt.Println(renderer.Red("Error: Could not determine project root"))
+			return
+		}
+	}
+
+	// Create a context with timeout to prevent hanging on network mounts or symlink loops
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Channel to receive discovery result
+	type discoveryResult struct {
+		result *agents.DiscoveryResult
+		err    error
+	}
+	resultChan := make(chan discoveryResult, 1)
+
+	// Run discovery in a goroutine to allow timeout
+	go func() {
+		discoverer := agents.NewDiscoverer(projectRoot)
+		result, err := discoverer.DiscoverAll()
+		resultChan <- discoveryResult{
+			result: result,
+			err:    err,
+		}
+	}()
+
+	// Wait for discovery or timeout
+	var result *agents.DiscoveryResult
+	select {
+	case res := <-resultChan:
+		if res.err != nil {
+			fmt.Println(renderer.Red(fmt.Sprintf("Error discovering agents: %v", res.err)))
+			return
+		}
+		result = res.result
+	case <-ctx.Done():
+		fmt.Println(renderer.Yellow("⚠ Agent discovery timed out (5s). This may indicate slow file system access."))
+		fmt.Println(renderer.Yellow("Tip: Check if ~/.adk/agents/ is on a network mount or has symlink issues."))
+		return
+	}
+
+	lines := buildAgentsListLines(renderer, result)
+	paginator := display.NewPaginator(renderer)
+	paginator.DisplayPaged(lines)
+}
+
+// handleRunAgentCommand attempts to run a specific agent (preview feature)
+func handleRunAgentCommand(renderer *display.Renderer, agentRequest string) {
+	// Parse agent name from request (format: "agent-name" or "agent-name request")
+	parts := strings.SplitN(agentRequest, " ", 2)
+	agentName := strings.TrimSpace(parts[0])
+
+	if agentName == "" {
+		fmt.Println(renderer.Yellow("⚠ Please specify an agent name: /run-agent agent-name [request]"))
+		return
+	}
+
+	// Get the project root from environment or current directory
+	projectRoot := os.Getenv("ADK_PROJECT_ROOT")
+	if projectRoot == "" {
+		var err error
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			fmt.Println(renderer.Red("Error: Could not determine project root"))
+			return
+		}
+	}
+
+	// Create a context with timeout to prevent hanging on network mounts or symlink loops
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Channel to receive discovery result
+	type discoveryResult struct {
+		agents []*agents.Agent
+		err    error
+	}
+	resultChan := make(chan discoveryResult, 1)
+
+	// Run discovery in a goroutine to allow timeout
+	go func() {
+		discoverer := agents.NewDiscoverer(projectRoot)
+		result, err := discoverer.DiscoverAll()
+		resultChan <- discoveryResult{
+			agents: result.Agents,
+			err:    err,
+		}
+	}()
+
+	// Wait for discovery or timeout
+	var discoveredAgents []*agents.Agent
+	select {
+	case res := <-resultChan:
+		if res.err != nil {
+			fmt.Println(renderer.Red(fmt.Sprintf("Error discovering agents: %v", res.err)))
+			return
+		}
+		discoveredAgents = res.agents
+	case <-ctx.Done():
+		fmt.Println(renderer.Yellow("⚠ Agent discovery timed out (5s). This may indicate slow file system access."))
+		fmt.Println(renderer.Yellow("Tip: Check if ~/.adk/agents/ is on a network mount or has symlink issues."))
+		return
+	}
+
+	// Find the requested agent
+	var foundAgent *agents.Agent
+	for _, agent := range discoveredAgents {
+		if agent.Name == agentName {
+			foundAgent = agent
+			break
+		}
+	}
+
+	if foundAgent == nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("✗ Agent not found: %s", agentName)))
+		fmt.Println()
+		fmt.Println(renderer.Yellow("Available agents:"))
+		for _, agent := range discoveredAgents {
+			fmt.Println(renderer.Cyan("  • ") + renderer.Bold(agent.Name))
+		}
+		return
+	}
+
+	// Display agent info
+	fmt.Println()
+	fmt.Println(renderer.Green("✓ ") + renderer.Bold(foundAgent.Name))
+	fmt.Println(renderer.Dim("  Description: ") + foundAgent.Description)
+	if foundAgent.Version != "" {
+		fmt.Println(renderer.Dim("  Version: ") + foundAgent.Version)
+	}
+	if foundAgent.Author != "" {
+		fmt.Println(renderer.Dim("  Author: ") + foundAgent.Author)
+	}
+	if len(foundAgent.Tags) > 0 {
+		fmt.Println(renderer.Dim("  Tags: ") + strings.Join(foundAgent.Tags, ", "))
+	}
+	fmt.Println()
+
+	// Explain how agents actually work
+	fmt.Println(renderer.Bold("💡 How to use this agent:"))
+	fmt.Println()
+	fmt.Println("Agents are automatically available as tools. The main agent will")
+	fmt.Println("delegate to specialist agents when appropriate.")
+	fmt.Println()
+
+	if len(parts) > 1 {
+		request := strings.TrimSpace(parts[1])
+		fmt.Println(renderer.Cyan("Example Request: ") + renderer.Dim(request))
+		fmt.Println()
+		fmt.Println(renderer.Green("To execute this agent, simply ask the main agent:"))
+		fmt.Println(renderer.Dim("  ❯ ") + request)
+		fmt.Println()
+		fmt.Println("The main agent will automatically delegate to " + renderer.Bold(foundAgent.Name) + " if appropriate.")
+	} else {
+		fmt.Println(renderer.Green("Examples of tasks that will delegate to this agent:"))
+		fmt.Println()
+		// Show contextual examples based on agent type
+		switch foundAgent.Name {
+		case "code-reviewer":
+			fmt.Println(renderer.Dim("  ❯ Review the code in main.go for security issues"))
+			fmt.Println(renderer.Dim("  ❯ Check if there are any bugs in the payment handler"))
+		case "debugger":
+			fmt.Println(renderer.Dim("  ❯ Why is the API returning 500 errors?"))
+			fmt.Println(renderer.Dim("  ❯ Debug the authentication flow"))
+		case "test-engineer":
+			fmt.Println(renderer.Dim("  ❯ Write tests for the user service"))
+			fmt.Println(renderer.Dim("  ❯ Improve test coverage in handlers/"))
+		case "documentation-writer":
+			fmt.Println(renderer.Dim("  ❯ Write a README for this project"))
+			fmt.Println(renderer.Dim("  ❯ Document the API endpoints"))
+		case "architect":
+			fmt.Println(renderer.Dim("  ❯ Design a data model for user profiles"))
+			fmt.Println(renderer.Dim("  ❯ Plan the architecture for a notification system"))
+		default:
+			fmt.Println(renderer.Dim("  ❯ Ask the main agent to perform tasks related to:"))
+			fmt.Println(renderer.Dim("    " + foundAgent.Description))
+		}
+	}
 	fmt.Println()
 }
 

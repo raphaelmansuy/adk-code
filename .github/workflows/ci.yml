@@ -64,13 +64,22 @@ jobs:
           cache: true
           cache-dependency-path: ./adk-code/go.sum
       
-      - uses: golangci/golangci-lint-action@v3
+      - uses: actions/setup-node@v4
         with:
-          version: latest
+          node-version: '24'
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          # Use a golangci-lint v2 binary that supports 'version: "2"' in .golangci.yml
+          # Specify a stable v2 release (set to latest v2 patch as needed)
+          version: v2.6.2
           working-directory: ./adk-code
           args: --timeout=5m
-          skip-pkg-cache: false
-          skip-build-cache: false
+
+      - name: Health - Show golangci-lint version
+        working-directory: ./adk-code
+        # Keep this step non-blocking if the installation is not in PATH
+        run: golangci-lint --version || true
 
   test:
     runs-on: ubuntu-latest

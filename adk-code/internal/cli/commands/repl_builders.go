@@ -8,6 +8,7 @@ import (
 
 	"adk-code/internal/display"
 	"adk-code/internal/llm/backends"
+	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
 )
 
@@ -32,6 +33,8 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/providers")+" - Show available providers and their models")
 	lines = append(lines, "   • "+renderer.Bold("/current-model")+" - Show details about the current model")
 	lines = append(lines, "   • "+renderer.Bold("/set-model <provider/model>")+" - Validate and plan to switch models")
+	lines = append(lines, "   • "+renderer.Bold("/agents")+" - List available ADK Code agents")
+	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
@@ -363,4 +366,83 @@ func cleanupPromptOutput(prompt string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// buildAgentsListLines builds the agents list as an array of lines for pagination
+func buildAgentsListLines(renderer *display.Renderer, result *agents.DiscoveryResult) []string {
+	var lines []string
+
+	lines = append(lines, "")
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, renderer.Cyan("                    Available Agents"))
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, "")
+
+	if result.IsEmpty() {
+		lines = append(lines, renderer.Yellow("⚠ No agents found in .adk/agents/"))
+		lines = append(lines, "")
+		lines = append(lines, "To create an agent, create a .adk/agents/my-agent.md file with:")
+		lines = append(lines, "")
+		lines = append(lines, renderer.Dim("---"))
+		lines = append(lines, renderer.Dim("name: my-agent"))
+		lines = append(lines, renderer.Dim("description: What this agent does"))
+		lines = append(lines, renderer.Dim("---"))
+		lines = append(lines, renderer.Dim("# My Agent"))
+		lines = append(lines, renderer.Dim("[agent content here]"))
+		lines = append(lines, "")
+		return lines
+	}
+
+	lines = append(lines, renderer.Bold("ADK Code Agents:"))
+	lines = append(lines, "")
+
+	for _, agent := range result.Agents {
+		// Main agent entry
+		lines = append(lines, "  • "+renderer.Bold(agent.Name))
+
+		// Description is indented and styled
+		lines = append(lines, "    "+agent.Description)
+
+		// Show optional metadata
+		var metadata []string
+		if agent.Version != "" {
+			metadata = append(metadata, "v"+agent.Version)
+		}
+		if agent.Author != "" {
+			metadata = append(metadata, "by "+agent.Author)
+		}
+		if len(agent.Tags) > 0 {
+			metadata = append(metadata, "Tags: "+strings.Join(agent.Tags, ", "))
+		}
+
+		if len(metadata) > 0 {
+			lines = append(lines, renderer.Dim("    ("+strings.Join(metadata, " • ")+")"))
+		}
+
+		lines = append(lines, "")
+	}
+
+	lines = append(lines, renderer.Dim(fmt.Sprintf("Total: %d agent(s) discovered", result.Total)))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Bold("💡 How Agents Work:"))
+	lines = append(lines, "")
+	lines = append(lines, "Agents are automatically available as specialist tools. Simply ask")
+	lines = append(lines, "the main agent to perform tasks, and it will delegate to the appropriate")
+	lines = append(lines, "specialist agent when needed.")
+	lines = append(lines, "")
+	lines = append(lines, renderer.Bold("Examples:"))
+	lines = append(lines, renderer.Dim("  ❯ Review the security in auth.go"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to code-reviewer"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("  ❯ Write tests for the API handlers"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to test-engineer"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("  ❯ Why is the database connection failing?"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to debugger"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Bold("Commands:"))
+	lines = append(lines, "  • "+renderer.Cyan("/run-agent <name>")+" - View agent details and examples")
+	lines = append(lines, "")
+
+	return lines
 }
