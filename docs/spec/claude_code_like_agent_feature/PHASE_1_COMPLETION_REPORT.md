@@ -60,11 +60,11 @@ Phase 1 of the Claude Code-like agent feature is **complete and production-ready
 
 All 5 default agents configured with appropriate toolsets:
 
-1. **code-reviewer** - `Read, Grep, Glob, Bash`
-2. **debugger** - `Read, Grep, Glob, Bash, CodeSearch`
-3. **test-engineer** - `Read, Grep, Glob, Bash`
-4. **architect** - `Read, Grep, Glob`
-5. **documentation-writer** - `Read, Grep`
+1. **code-reviewer** - `read_file, grep_search, search_files, execute_command`
+2. **debugger** - `read_file, grep_search, search_files, execute_command, code_search`
+3. **test-engineer** - `read_file, grep_search, search_files, execute_command`
+4. **architect** - `read_file, grep_search, search_files`
+5. **documentation-writer** - `read_file, grep_search`
 
 ### 1.5 Integration & Testing ✅ COMPLETE
 **Files**: 
