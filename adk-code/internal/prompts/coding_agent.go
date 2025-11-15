@@ -10,6 +10,7 @@ import (
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/agenttool"
 	"google.golang.org/genai"
 
 	pkgerrors "adk-code/pkg/errors"
@@ -39,6 +40,42 @@ type Config struct {
 // Deprecated: Use workspace.GetProjectRoot instead.
 func GetProjectRoot(startPath string) (string, error) {
 	return workspace.GetProjectRoot(startPath)
+}
+
+// createGoogleSearchSubAgent creates a built-in sub-agent that wraps the GoogleSearch tool.
+// This solves the Gemini API limitation where native tools (GoogleSearch, GoogleMaps, CodeExecution)
+// cannot be mixed with FunctionDeclaration tools in the standard generateContent API.
+// By wrapping GoogleSearch in a sub-agent, it becomes a FunctionDeclaration tool that can be used alongside other tools.
+func createGoogleSearchSubAgent(ctx context.Context, model model.LLM) (tool.Tool, error) {
+	// Get the google_search tool from the registry
+	registry := tools.GetRegistry()
+	var googleSearchTool tool.Tool
+	for _, t := range registry.GetAllTools() {
+		if t.Name() == "google_search" {
+			googleSearchTool = t
+			break
+		}
+	}
+	if googleSearchTool == nil {
+		return nil, fmt.Errorf("google_search tool not found in registry")
+	}
+
+	// Create a sub-agent with only the GoogleSearch tool
+	searchAgent, err := llmagent.New(llmagent.Config{
+		Name:        "google_search",
+		Model:       model,
+		Description: "A specialized agent for performing web searches using Google Search. Use this tool when you need to find information from the web.",
+		Instruction: "You are a web search specialist. When asked to search for information, use the google_search tool to find relevant results. Provide clear, concise answers based on the search results.",
+		Tools:       []tool.Tool{googleSearchTool},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create google_search sub-agent: %w", err)
+	}
+
+	// Wrap the sub-agent as a tool using ADK's agent-as-tool pattern
+	wrappedTool := agenttool.New(searchAgent, &agenttool.Config{})
+
+	return wrappedTool, nil
 }
 
 // NewCodingAgent creates a new coding agent with all necessary tools.
@@ -79,6 +116,28 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	// Get all registered tools from the registry (includes subagent tools)
 	registry := tools.GetRegistry()
 	registeredTools := registry.GetAllTools()
+
+	// Filter out google_search tool from main tools because it's a native Gemini tool
+	// that cannot be mixed with FunctionDeclaration tools in the standard API.
+	// Instead, we'll wrap it in a built-in sub-agent below.
+	filtered := make([]tool.Tool, 0, len(registeredTools))
+	for _, t := range registeredTools {
+		if t.Name() != "google_search" {
+			filtered = append(filtered, t)
+		}
+	}
+	registeredTools = filtered
+
+	// Create and add the built-in GoogleSearch sub-agent
+	// This wraps the native GoogleSearch tool in a sub-agent, allowing it to coexist
+	// with FunctionDeclaration tools in the main agent
+	googleSearchSubAgent, subAgentErr := createGoogleSearchSubAgent(ctx, cfg.Model)
+	if subAgentErr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to create google_search sub-agent: %v\n", subAgentErr)
+	} else if googleSearchSubAgent != nil {
+		registeredTools = append(registeredTools, googleSearchSubAgent)
+		fmt.Fprintf(os.Stderr, "✓ Created built-in google_search sub-agent\n")
+	}
 
 	// Use the working directory directly as the project root
 	// No need to search for go.mod - adk-code works in any project type

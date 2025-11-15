@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"adk-code/internal/display/components"
+	"adk-code/internal/grounding"
 	rdr "adk-code/internal/display/renderer"
 	"adk-code/internal/display/streaming"
 	"adk-code/internal/display/tools"
@@ -172,6 +173,15 @@ func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
 			// Show basic result indicator (compact version)
 			resultOutput := renderer.RenderToolResult(part.FunctionResponse.Name, result)
 			fmt.Print(resultOutput)
+
+			// Display grounding information if available (for google_search and other grounded tools)
+			if event.GroundingMetadata != nil && (part.FunctionResponse.Name == "google_search" || strings.Contains(part.FunctionResponse.Name, "search")) {
+				groundingInfo := grounding.ExtractGroundingInfo(event.GroundingMetadata)
+				groundingOutput := grounding.FormatGroundingInfo(groundingInfo)
+				if groundingOutput != "" {
+					fmt.Print("  " + groundingOutput + "\n")
+				}
+			}
 
 			// Restart spinner for next operation (agent might still be working)
 			// Update message and restart
