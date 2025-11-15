@@ -110,9 +110,11 @@ fmt.Printf("Estimated remaining turns: %d\n", remaining)
 
 When approaching context limits (70% by default), conversations can be compacted by:
 1. Collecting user messages
-2. Generating a summary
+2. Generating a summary **using an ADK agent with the inherited model**
 3. Retaining most recent messages (up to 20K tokens)
 4. Building compacted history: [initial context] + [recent messages] + [summary]
+
+**Important**: The compaction agent uses the same LLM as the main agent, ensuring consistent behavior and model capabilities.
 
 #### Usage Example
 
@@ -120,13 +122,15 @@ When approaching context limits (70% by default), conversations can be compacted
 import (
     "context"
     "adk-code/internal/context"
+    "google.golang.org/adk/model"
 )
 
+// The Model is inherited from the main agent
 req := context.CompactionRequest{
     Items:             conversationItems,
     UserMessages:      userMessages,
     TargetTokenBudget: 5000,
-    ModelName:         "gemini-2.5-flash",
+    Model:             llmFromMainAgent, // Inherited from main agent
 }
 
 result := context.CompactConversation(context.Background(), req)
@@ -212,6 +216,7 @@ import (
     "adk-code/internal/context"
     "adk-code/internal/instructions"
     "adk-code/pkg/models"
+    "google.golang.org/adk/model"
 )
 
 type EnhancedSession struct {
@@ -222,10 +227,11 @@ type EnhancedSession struct {
     // ... other fields
 }
 
-func NewEnhancedSession(sessionID string, modelConfig models.Config, workdir string) *EnhancedSession {
+func NewEnhancedSession(sessionID string, modelConfig models.Config, llm model.LLM, workdir string) *EnhancedSession {
     return &EnhancedSession{
         ID:             sessionID,
-        ContextManager: context.NewContextManager(modelConfig),
+        // Pass the LLM to enable compaction with the same model
+        ContextManager: context.NewContextManagerWithModel(modelConfig, llm),
         TokenTracker:   context.NewTokenTracker(sessionID, modelConfig.Name, modelConfig.ContextWindow),
         Instructions:   instructions.NewInstructionLoader(workdir).Load(),
     }

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"adk-code/pkg/models"
+	"google.golang.org/adk/model"
 )
 
 // ContextManager maintains conversation history and enforces context limits
@@ -12,6 +13,7 @@ type ContextManager struct {
 	items  []ResponseItem // Ordered conversation history
 	tokens TokenBudget    // Token tracking
 	config ContextConfig  // Model-specific limits
+	llm    model.LLM      // LLM instance for compaction (optional)
 }
 
 // NewContextManager creates a context manager for a specific model
@@ -30,7 +32,29 @@ func NewContextManager(modelConfig models.Config) *ContextManager {
 			CompactThreshold: 0.70,
 		},
 		config: contextConfigFromModel(modelConfig),
+		llm:    nil, // Set via SetModel if needed for compaction
 	}
+}
+
+// NewContextManagerWithModel creates a context manager with an LLM for compaction
+func NewContextManagerWithModel(modelConfig models.Config, llm model.LLM) *ContextManager {
+	cm := NewContextManager(modelConfig)
+	cm.llm = llm
+	return cm
+}
+
+// SetModel sets the LLM to use for compaction
+func (cm *ContextManager) SetModel(llm model.LLM) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.llm = llm
+}
+
+// GetModel returns the LLM used for compaction
+func (cm *ContextManager) GetModel() model.LLM {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return cm.llm
 }
 
 // contextConfigFromModel creates a ContextConfig from a model Config

@@ -3,6 +3,14 @@ package context
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"google.golang.org/adk/agent"
+	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model"
+	"google.golang.org/adk/runner"
+	"google.golang.org/adk/tool"
+	"google.golang.org/genai"
 )
 
 const (
@@ -23,7 +31,7 @@ type CompactionRequest struct {
 	Items             []ResponseItem
 	UserMessages      []string
 	TargetTokenBudget int
-	ModelName         string
+	Model             model.LLM // The model from the main agent
 }
 
 // CompactionResult is the output of compaction
@@ -38,6 +46,7 @@ type CompactionResult struct {
 }
 
 // CompactConversation reduces conversation size while preserving intent
+// Uses an ADK agent with the model inherited from the main agent
 func CompactConversation(
 	ctx context.Context,
 	req CompactionRequest,
@@ -57,21 +66,100 @@ func CompactConversation(
 	)
 	result.RetainedMessages = selected
 
-	// Step 3: Generate summary (would call LLM in real implementation)
-	// For now, placeholder - actual implementation calls the model
-	summary := generateSummaryFromMessages(req.UserMessages)
+	// Step 3: Generate summary using ADK agent with inherited model
+	summary, err := generateSummaryWithAgent(ctx, req.Model, req.UserMessages)
+	if err != nil {
+		result.Error = fmt.Sprintf("failed to generate summary: %v", err)
+		return result
+	}
 	result.Summary = summary
 
-	// Step 4: Build compacted history
-	// [Initial context] + [selected user messages] + [summary]
-	compactedTokens := estimateHistoryTokens(req.Items) // Would recount after compaction
+	// Step 4: Calculate compacted tokens
+	// After compaction: only retained messages + summary
+	compactedTokens := 0
+	for _, msg := range selected {
+		compactedTokens += estimateTokens(msg)
+	}
+	compactedTokens += estimateTokens(summary)
+
 	result.CompactedTokens = compactedTokens
-	if compactedTokens > 0 {
+	if result.OriginalTokens > 0 {
 		result.CompactionRatio = float64(result.OriginalTokens) / float64(compactedTokens)
 	}
 	result.Success = true
 
 	return result
+}
+
+// generateSummaryWithAgent uses an ADK agent to generate a conversation summary
+// The agent is created with the same model as the main agent
+func generateSummaryWithAgent(ctx context.Context, llm model.LLM, messages []string) (string, error) {
+	if llm == nil {
+		// Fallback to simple summary if no model provided (for testing)
+		return generateSummaryFromMessages(messages), nil
+	}
+
+	// Create a specialized compaction agent using the inherited model
+	compactionAgent, err := llmagent.New(llmagent.Config{
+		Name:        "conversation_compactor",
+		Model:       llm,
+		Description: "A specialized agent for compacting and summarizing conversations",
+		Instruction: "You are a conversation summarization expert. When given a list of user messages, provide a brief 2-3 sentence summary that captures what the user is trying to accomplish and the key context. Be concise and focus on the main goals and important details.",
+		Tools:       []tool.Tool{}, // No tools needed for summarization
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create compaction agent: %w", err)
+	}
+
+	// Format the messages for summarization
+	messagesText := strings.Join(messages, "\n\n")
+	prompt := fmt.Sprintf(CompactionPromptTemplate, messagesText)
+
+	// Use the agent with a runner to generate the summary
+	// Create a simple runner for the compaction agent (without session service for simplicity)
+	agentRunner, err := runner.New(runner.Config{
+		AppName: "compaction",
+		Agent:   compactionAgent,
+		// No SessionService needed for one-off summarization
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create runner: %w", err)
+	}
+
+	// Create the prompt as a genai.Content
+	userMsg := &genai.Content{
+		Role: genai.RoleUser,
+		Parts: []*genai.Part{
+			{Text: prompt},
+		},
+	}
+
+	// Run the compaction agent
+	var summary strings.Builder
+	for evt, runErr := range agentRunner.Run(ctx, "system", "compaction", userMsg, agent.RunConfig{
+		StreamingMode: agent.StreamingModeNone,
+	}) {
+		if runErr != nil {
+			return "", fmt.Errorf("compaction agent error: %w", runErr)
+		}
+
+		// Collect text from events
+		if evt != nil && evt.Content != nil {
+			for _, part := range evt.Content.Parts {
+				if part != nil && part.Text != "" {
+					summary.WriteString(part.Text)
+				}
+			}
+		}
+	}
+
+	result := strings.TrimSpace(summary.String())
+	if result == "" {
+		// Fallback if agent produced no output
+		return generateSummaryFromMessages(messages), nil
+	}
+
+	return result, nil
 }
 
 // selectUserMessagesUpToBudget selects messages respecting byte budget

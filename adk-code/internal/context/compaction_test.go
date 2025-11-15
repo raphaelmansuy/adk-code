@@ -22,13 +22,13 @@ func TestCompactConversation_Success(t *testing.T) {
 		Items:             items,
 		UserMessages:      userMessages,
 		TargetTokenBudget: 5000,
-		ModelName:         "gemini-2.5-flash",
+		Model:             nil, // nil model will use fallback
 	}
 
 	result := CompactConversation(context.Background(), req)
 
 	if !result.Success {
-		t.Errorf("Expected compaction to succeed")
+		t.Errorf("Expected compaction to succeed, got error: %s", result.Error)
 	}
 
 	if result.OriginalTokens != 60 {
