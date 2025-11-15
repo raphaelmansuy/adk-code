@@ -115,7 +115,7 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 // Supports both built-in tools and MCP tools
 func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool {
 	// Parse the tools field from YAML
-	// Expected format: "tools: Read, Grep, Glob, Bash" or "tools: *" for all tools
+	// Expected format: "tools: read_file, grep_search, execute_command" (exact tool names) or "tools: *" for all tools
 	toolsSpec := m.extractToolsFromYAML(agentDef.RawYAML)
 	if toolsSpec == "" {
 		// No tools specified - agent is analysis-only
