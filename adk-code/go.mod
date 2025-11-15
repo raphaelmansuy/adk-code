@@ -12,6 +12,7 @@ require (
 	github.com/ncruces/go-sqlite3/gormlite v0.30.1
 	github.com/ollama/ollama v0.12.11
 	github.com/openai/openai-go/v3 v3.8.1
+	golang.org/x/net v0.46.0
 	golang.org/x/term v0.36.0
 	google.golang.org/adk v0.1.0
 	google.golang.org/genai v1.20.0
@@ -68,7 +69,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.30.0 // indirect

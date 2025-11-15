@@ -14,7 +14,7 @@
 ### Key Features
 
 - **🤖 Multi-Model Support**: Seamlessly switch between Gemini, OpenAI, and Vertex AI
-- **🛠️ 21 Built-in Tools**: File operations, code editing, execution, web search, and more
+- **🛠️ 22 Built-in Tools**: File operations, code editing, execution, web search, web fetching, and more
 - **🔌 MCP Integration**: Unlimited extensibility via Model Context Protocol
 - **💾 Session Persistence**: Maintain context across conversations with automatic history
 - **⚡ Streaming Responses**: Real-time output as the model thinks and executes
