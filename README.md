@@ -14,7 +14,7 @@
 ### Key Features
 
 - **🤖 Multi-Model Support**: Seamlessly switch between Gemini, OpenAI, and Vertex AI
-- **🛠️ 30+ Built-in Tools**: File operations, code editing, execution, searching, and more
+- **🛠️ 21 Built-in Tools**: File operations, code editing, execution, web search, and more
 - **🔌 MCP Integration**: Unlimited extensibility via Model Context Protocol
 - **💾 Session Persistence**: Maintain context across conversations with automatic history
 - **⚡ Streaming Responses**: Real-time output as the model thinks and executes
@@ -133,7 +133,7 @@ That's it! You're ready to ask questions about your code.
     ┌────────┴────────┬──────────┐
     ▼                 ▼          ▼
 ┌────────────┐  ┌─────────┐  ┌──────────┐
-│ 30+ Tools  │  │LLM APIs │  │ Display  │
+│ 21 Tools   │  │LLM APIs │  │ Display  │
 ├────────────┤  ├─────────┤  ├──────────┤
 │ File Ops   │  │ Gemini  │  │ Rich UI  │
 │ Execution  │  │ OpenAI  │  │ Colors   │

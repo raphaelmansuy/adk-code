@@ -787,6 +787,48 @@ See **ARCHITECTURE.md § 5: MCP Support** for complete details:
 
 ---
 
+## 9. Using ADK Built-in Tools
+
+### Google Search Tool Example
+
+The Google ADK provides built-in tools like `geminitool.GoogleSearch` that you can integrate directly:
+
+```go
+package websearch
+
+import (
+    "google.golang.org/adk/tool"
+    "google.golang.org/adk/tool/geminitool"
+    
+    common "adk-code/tools/base"
+)
+
+func NewGoogleSearchTool() (tool.Tool, error) {
+    // Use ADK's native Google Search tool
+    searchTool := geminitool.GoogleSearch{}
+    
+    // Register with metadata
+    common.Register(common.ToolMetadata{
+        Tool:      searchTool,
+        Category:  common.CategorySearchDiscovery,
+        Priority:  0,
+        UsageHint: "Search the web for current information. Requires Gemini 2.0+ models.",
+    })
+    
+    return searchTool, nil
+}
+```
+
+**Key Points**:
+- No custom handler needed - ADK provides the implementation
+- Only works with Gemini 2.0+ models
+- Automatically handles search API calls and result formatting
+- Minimal code - just wrap and register
+
+See **ADR 0005** (`docs/adr/0005-google-search-tool-integration.md`) for complete details on the Google Search integration.
+
+---
+
 ## Summary
 
 1. **Define Input/Output types** with JSON + jsonschema tags
@@ -796,5 +838,7 @@ See **ARCHITECTURE.md § 5: MCP Support** for complete details:
 5. **Export** in `tools/tools.go`
 6. **Test** thoroughly, run `make check`
 7. **Done!** Tool is now available to the agent
+
+**Alternative**: Use ADK built-in tools (like `geminitool.GoogleSearch`) when available to minimize code.
 
 **That's it.** Follow this pattern and you can create tools in minutes.

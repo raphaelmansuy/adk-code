@@ -11,6 +11,7 @@ import (
 	"adk-code/tools/file"
 	"adk-code/tools/search"
 	"adk-code/tools/v4a"
+	"adk-code/tools/websearch"
 	"adk-code/tools/workspace"
 )
 
@@ -44,6 +45,7 @@ func RegisterAllTools(reg *common.ToolRegistry) error {
 	// - Display: display_message, update_task_list (in tools/display/)
 	// - Workspace: workspace_tools (in tools/workspace/)
 	// - V4A Format: apply_v4a_patch (in tools/v4a/)
+	// - Web Search: google_search (in tools/websearch/)
 	//
 	// This function serves as documentation and a future refactoring point
 	// if explicit registration becomes necessary.
@@ -52,7 +54,7 @@ func RegisterAllTools(reg *common.ToolRegistry) error {
 }
 
 // init automatically triggers tool registration at package initialization.
-// This ensures all tools from subpackages (file, edit, exec, display, search, workspace, v4a, discovery)
+// This ensures all tools from subpackages (file, edit, exec, display, search, workspace, v4a, discovery, websearch)
 // are registered when the tools package is imported.
 //
 // Each tool subpackage has its own init() function that calls tool constructors,
@@ -75,4 +77,5 @@ func init() {
 	_ = v4a.NewApplyV4APatchTool
 	_ = discovery.NewListModelsTool
 	_ = discovery.NewModelInfoTool
+	_ = websearch.NewGoogleSearchTool
 }
