@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fetch Web Tool** - HTTP web content fetching capability (ADR 0007)
+  - Direct URL content fetching with multiple format support (text, JSON, HTML, raw)
+  - Configurable timeout (default 30s, max 5min) and size limits (default 1MB, max 50MB)
+  - Custom HTTP headers support for authentication and API access
+  - Redirect handling with configurable behavior
+  - Security controls: URL validation, response size limits, timeout enforcement
+  - Model-agnostic design - works with all LLM providers (Gemini, OpenAI, Ollama, etc.)
+  - Comprehensive unit tests with 22 test cases covering all functionality
+  - Registered in Search & Discovery category with priority 1 (complementary to Google Search)
+  - New `web` package in `tools/` for web content operations
 - Google Search tool integration via ADK's `geminitool.GoogleSearch`
   - Enables web search capabilities for the agent
   - Works with Gemini 2.0+ models
@@ -16,8 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `websearch` package in `tools/` for web search functionality
 - Comprehensive unit tests for Google Search tool
 - Documentation in TOOL_DEVELOPMENT.md for using ADK built-in tools
-
-## [Unreleased]
 
 ## [0.2.1] - 2025-11-14
 
