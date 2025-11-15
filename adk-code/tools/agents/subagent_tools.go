@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
@@ -78,6 +79,9 @@ func (m *SubAgentManager) LoadSubAgentTools(ctx context.Context) ([]tool.Tool, e
 
 // createSubAgent creates an llmagent from an agent definition
 func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, error) {
+	// Parse allowed tools from agent definition
+	allowedTools := m.parseAllowedTools(agentDef)
+
 	// Create the subagent using ADK's llmagent
 	// The subagent gets its own isolated context and uses the agent's content as instruction
 	subAgent, err := llmagent.New(llmagent.Config{
@@ -85,8 +89,7 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 		Description: agentDef.Description,
 		Model:       m.modelLLM,
 		Instruction: agentDef.Content, // The markdown content is the system instruction
-		Tools:       []tool.Tool{},     // Phase 1: Subagents have no tools (analysis only)
-		// Future: Parse allowed tools from agent definition and provide restricted toolset
+		Tools:       allowedTools,      // Restricted toolset based on agent definition
 	})
 
 	if err != nil {
@@ -94,6 +97,102 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 	}
 
 	return subAgent, nil
+}
+
+// parseAllowedTools extracts and resolves the allowed tools for a subagent
+// Reads the 'tools' field from agent YAML frontmatter
+func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool {
+	// Parse the tools field from YAML
+	// Expected format: "tools: Read, Grep, Glob, Bash"
+	toolsSpec := m.extractToolsFromYAML(agentDef.RawYAML)
+	if toolsSpec == "" {
+		// No tools specified - agent is analysis-only
+		return []tool.Tool{}
+	}
+
+	// Get tool registry
+	registry := common.GetRegistry()
+	
+	// Parse comma-separated tool names
+	toolNames := splitAndTrim(toolsSpec)
+	
+	// Map friendly names to actual tool names in registry
+	toolNameMap := map[string]string{
+		"read":       "read_file",
+		"write":      "write_file",
+		"grep":       "grep_search",
+		"glob":       "search_files",
+		"bash":       "execute_command",
+		"codesearch": "grep_search",
+		"list":       "list_directory",
+		"patch":      "apply_patch",
+		"edit":       "edit_lines",
+		"replace":    "search_replace",
+	}
+	
+	// Get all tools from registry and find matches
+	allTools := registry.GetAllTools()
+	
+	// Resolve tools from registry by matching names
+	var allowedTools []tool.Tool
+	for _, friendlyName := range toolNames {
+		// Normalize to lowercase
+		normalizedName := strings.ToLower(strings.TrimSpace(friendlyName))
+		
+		// Map to actual tool name
+		actualName := toolNameMap[normalizedName]
+		if actualName == "" {
+			actualName = normalizedName
+		}
+		
+		// Find tool in registry by name
+		found := false
+		for _, t := range allTools {
+			if t.Name() == actualName {
+				allowedTools = append(allowedTools, t)
+				found = true
+				break
+			}
+		}
+		
+		if !found {
+			// Tool not found - log warning but continue
+			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' (mapped to '%s') not found for agent '%s'\n", 
+				friendlyName, actualName, agentDef.Name)
+		}
+	}
+	
+	return allowedTools
+}
+
+// extractToolsFromYAML parses the 'tools' field from YAML frontmatter
+func (m *SubAgentManager) extractToolsFromYAML(yamlContent string) string {
+	// Simple YAML parsing for 'tools:' field
+	lines := strings.Split(yamlContent, "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "tools:") {
+			// Extract value after 'tools:'
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				return strings.TrimSpace(parts[1])
+			}
+		}
+	}
+	return ""
+}
+
+// splitAndTrim splits a comma-separated string and trims whitespace
+func splitAndTrim(s string) []string {
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // InitSubAgentTools is a convenience function to load and return subagent tools
