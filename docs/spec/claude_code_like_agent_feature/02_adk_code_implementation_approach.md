@@ -443,14 +443,26 @@ Tools execute commands but don't have approval flows or diff previews.
 
 ## 5. Storage & Persistence Model
 
-### Session Files
+### Session Storage
 
+**Current Implementation:**
 ```
-~/.adk/sessions/
-  ├── 2025-11-15-14-30-00-main.jsonl
-  ├── agent-a1b2c3d4.jsonl (subagent from above session)
-  └── agent-e5f6g7h8.jsonl
+~/.adk/
+  └── sessions.db (SQLite database)
 ```
+
+adk-code uses SQLite for session persistence (implemented in `internal/session/persistence/sqlite.go`).
+This provides:
+- Efficient querying and indexing
+- ACID transactions for reliability
+- Built-in support for complex queries
+- No need for file format parsing
+
+The SQLite database stores:
+- Full conversation transcripts
+- Tool calls and results
+- Session metadata (model, tokens, duration)
+- Resumable state for long-running tasks
 
 ### Subagent Definitions
 
@@ -458,8 +470,10 @@ Tools execute commands but don't have approval flows or diff previews.
 Project:
 .adk/agents/
   ├── code-reviewer.md
-  ├── test-runner.md
-  └── custom-analyzer.md
+  ├── test-engineer.md
+  ├── debugger.md
+  ├── architect.md
+  └── documentation-writer.md
 
 User:
 ~/.adk/agents/
@@ -565,7 +579,7 @@ User:
 2. File-based storage (YAML parsing)
 3. `/agents` REPL command
 4. Agent router (basic delegation)
-5. 4 default subagents
+5. 5 default subagents
 6. Tests & documentation
 
 ### Phase 2: MCP Integration (Weeks 4-6)

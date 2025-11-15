@@ -244,7 +244,7 @@ Claude Desktop (or another agent) can now use adk-code's tools as if they were n
 - [ ] Create `internal/agents/` package with manager, types, parser
 - [ ] Implement `/agents` REPL command
 - [ ] Build agent router
-- [ ] Create 4 default subagents (code-reviewer, debugger, analyzer, test-runner)
+- [ ] Create 5 default subagents (code-reviewer, debugger, test-engineer, architect, documentation-writer)
 - [ ] Add tests and documentation
 
 **Deliverable**: Subagent MVP - users can see subagents, invocation works

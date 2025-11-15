@@ -124,7 +124,7 @@ User: "Improve this code"
 
 **Context Boundaries**:
 - Main agent: Full codebase context
-- Subagents: Focused context (e.g., only test files for test-runner)
+- Subagents: Focused context (e.g., only test files for test-engineer)
 - Result sharing: Subagent findings fed back to main
 
 ### 2.5 MCP (Model Context Protocol) Support
@@ -218,7 +218,7 @@ User: "Improve this code"
 ```
 > Use the code-reviewer subagent to check my changes
 > Ask the debugger to investigate this error
-> Have the test-runner verify the fix
+> Have the test-engineer verify the fix
 ```
 
 ### 4.2 Non-Interactive Mode (`adk-code -p "query"`)
@@ -259,19 +259,21 @@ adk-code -p "Run tests and fix any failures" --dangerously-skip-permissions
 
 ### 5.1 Session Storage
 
-**Structure**:
+**Current Implementation**:
 ```
-~/.adk/sessions/
-  ├── YYYY-MM-DD-HH-MM-SS-query.jsonl (main session)
-  ├── agent-abc123.jsonl (subagent session)
-  └── agent-def456.jsonl (subagent session)
+~/.adk/
+  └── sessions.db (SQLite database)
 ```
 
-**Session Data**:
+adk-code uses SQLite for session persistence via `internal/session/persistence/sqlite.go`.
+This provides efficient storage, querying, and ACID transactions.
+
+**Session Data Stored**:
 - Full conversation transcript
 - Tool calls and results
 - Metadata (model, tokens, duration)
 - Resumable state (for long-running tasks)
+- Session relationships (main agent ↔ subagents)
 
 ### 5.2 Resume Capability
 
@@ -329,7 +331,7 @@ Duration: 45 seconds
 ### Functional Requirements
 
 - [ ] Subagent framework fully implemented and operational
-- [ ] At least 4 default subagents (reviewer, debugger, analyzer, test-runner)
+- [ ] At least 5 default subagents (code-reviewer, debugger, test-engineer, architect, documentation-writer)
 - [ ] MCP server interface working (adk-code mcp serve)
 - [ ] All core tools executable (Read, Edit, Bash, Grep, Glob)
 - [ ] Approval checkpoint system for destructive operations
@@ -390,7 +392,7 @@ Duration: 45 seconds
 ### Phase 1 MVP Complete
 - [ ] Subagent framework (file-based storage)
 - [ ] `/agents` REPL command
-- [ ] 4 default subagents
+- [ ] 5 default subagents
 - [ ] Auto-delegation logic
 - [ ] Documentation
 
