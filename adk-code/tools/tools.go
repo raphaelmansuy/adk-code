@@ -28,6 +28,7 @@ import (
 	"adk-code/tools/file"
 	"adk-code/tools/search"
 	"adk-code/tools/v4a"
+	"adk-code/tools/web"
 	"adk-code/tools/websearch"
 	"adk-code/tools/workspace"
 )
@@ -104,6 +105,10 @@ type (
 	ListAgentsInput  = agents.ListAgentsInput
 	ListAgentsOutput = agents.ListAgentsOutput
 	AgentEntry       = agents.AgentEntry
+
+	// Web tool types
+	FetchWebInput  = web.FetchWebInput
+	FetchWebOutput = web.FetchWebOutput
 )
 
 // Re-export category constants for tool classification
@@ -160,6 +165,9 @@ var (
 
 	// Web search tools
 	NewGoogleSearchTool = websearch.NewGoogleSearchTool
+
+	// Web tools
+	NewFetchWebTool = web.NewFetchWebTool
 )
 
 // Re-export registry functions for tool access and registration
