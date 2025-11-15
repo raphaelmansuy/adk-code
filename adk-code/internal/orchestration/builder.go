@@ -60,7 +60,7 @@ func (o *Orchestrator) WithAgent() *Orchestrator {
 		return o
 	}
 
-	o.agentComponent, o.mcpComponents, o.err = InitializeAgentComponent(o.ctx, o.cfg, o.modelComponents.LLM)
+	o.agentComponent, o.mcpComponents, o.err = InitializeAgentComponent(o.ctx, o.cfg, o.modelComponents.LLM, o.modelComponents.Selected)
 	return o
 }
 

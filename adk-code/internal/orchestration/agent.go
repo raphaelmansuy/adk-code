@@ -11,11 +11,12 @@ import (
 	"adk-code/internal/config"
 	"adk-code/internal/mcp"
 	agentprompts "adk-code/internal/prompts"
+	"adk-code/pkg/models"
 )
 
 // InitializeAgentComponent creates the coding agent with MCP support
 // Returns the agent and MCP components
-func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM) (agent.Agent, *MCPComponents, error) {
+func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model.LLM, modelConfig models.Config) (agent.Agent, *MCPComponents, error) {
 	// Initialize MCP toolsets
 	var mcpToolsets []tool.Toolset
 	mcpComponents := &MCPComponents{
@@ -35,6 +36,7 @@ func InitializeAgentComponent(ctx context.Context, cfg *config.Config, llm model
 
 	ag, err := agentprompts.NewCodingAgent(ctx, agentprompts.Config{
 		Model:            llm,
+		ModelConfig:      modelConfig,
 		WorkingDirectory: cfg.WorkingDirectory,
 		EnableThinking:   cfg.EnableThinking,
 		ThinkingBudget:   cfg.ThinkingBudget,

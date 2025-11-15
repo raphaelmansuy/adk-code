@@ -14,6 +14,7 @@ import (
 	"google.golang.org/genai"
 
 	pkgerrors "adk-code/pkg/errors"
+	"adk-code/pkg/models"
 	"adk-code/pkg/workspace"
 	"adk-code/tools"
 )
@@ -22,6 +23,8 @@ import (
 type Config struct {
 	// Model is the LLM to use for the agent.
 	Model model.LLM
+	// ModelConfig contains model-specific configuration (context window, etc.)
+	ModelConfig models.Config
 	// WorkingDirectory is the directory where the agent operates (default: current directory).
 	WorkingDirectory string
 	// EnableMultiWorkspace enables multi-workspace support (feature flag)
@@ -105,7 +108,8 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 	// Load subagent tools using ADK's agent-as-tool pattern
 	// This discovers agent definitions and converts them to tools
 	// Pass MCP toolsets so subagents can access MCP tools if specified
-	subagentTools, subagentErr := tools.LoadSubAgentToolsWithMCP(ctx, projectRoot, cfg.Model, cfg.MCPToolsets)
+	// Each sub-agent gets its own dedicated ContextManager for independent context management
+	subagentTools, subagentErr := tools.LoadSubAgentToolsWithMCP(ctx, projectRoot, cfg.Model, cfg.ModelConfig, cfg.MCPToolsets)
 	if subagentErr != nil {
 		// Don't fail if subagents can't be loaded, just log a warning
 		fmt.Fprintf(os.Stderr, "Warning: Failed to load subagent tools: %v\n", subagentErr)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
@@ -13,7 +14,9 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/agenttool"
 
+	adkcontext "adk-code/internal/context"
 	"adk-code/pkg/agents"
+	"adk-code/pkg/models"
 	common "adk-code/tools/base"
 )
 
@@ -21,32 +24,39 @@ import (
 // This uses Google ADK's native agent-as-tool pattern via agenttool.New()
 //
 // Context Management for Sub-Agents:
-// Sub-agents inherit the model (modelLLM) from the main agent, which means:
-// - They share the same context management capabilities
-// - Token usage from sub-agents contributes to the overall context budget
-// - Compaction (when needed) uses the same inherited model
-// - All agents (main + sub) operate within the same context window limits
+// Each sub-agent gets its own dedicated ContextManager for independent context tracking:
+// - Sub-agents inherit the model (modelLLM) from the main agent
+// - Each sub-agent has a separate context budget and compaction management
+// - Compaction for sub-agents uses a dedicated ContextManager
+// - This allows sub-agents to operate independently without affecting main agent context
 type SubAgentManager struct {
 	projectRoot string
 	modelLLM    model.LLM
-	mcpToolsets []tool.Toolset // MCP toolsets to make available to subagents
+	modelConfig models.Config                         // Model configuration for creating context managers
+	mcpToolsets []tool.Toolset                        // MCP toolsets to make available to subagents
+	contextMgrs map[string]*adkcontext.ContextManager // Dedicated context managers per sub-agent
+	mu          sync.RWMutex                          // Protects contextMgrs map
 }
 
 // NewSubAgentManager creates a new subagent manager
-func NewSubAgentManager(projectRoot string, modelLLM model.LLM) *SubAgentManager {
+func NewSubAgentManager(projectRoot string, modelLLM model.LLM, modelConfig models.Config) *SubAgentManager {
 	return &SubAgentManager{
 		projectRoot: projectRoot,
 		modelLLM:    modelLLM,
+		modelConfig: modelConfig,
 		mcpToolsets: []tool.Toolset{},
+		contextMgrs: make(map[string]*adkcontext.ContextManager),
 	}
 }
 
 // NewSubAgentManagerWithMCP creates a subagent manager with MCP toolsets
-func NewSubAgentManagerWithMCP(projectRoot string, modelLLM model.LLM, mcpToolsets []tool.Toolset) *SubAgentManager {
+func NewSubAgentManagerWithMCP(projectRoot string, modelLLM model.LLM, modelConfig models.Config, mcpToolsets []tool.Toolset) *SubAgentManager {
 	return &SubAgentManager{
 		projectRoot: projectRoot,
 		modelLLM:    modelLLM,
+		modelConfig: modelConfig,
 		mcpToolsets: mcpToolsets,
+		contextMgrs: make(map[string]*adkcontext.ContextManager),
 	}
 }
 
@@ -95,20 +105,27 @@ func (m *SubAgentManager) LoadSubAgentTools(ctx context.Context) ([]tool.Tool, e
 	return subagentTools, nil
 }
 
-// createSubAgent creates an llmagent from an agent definition
-// Note: Sub-agents inherit the model from the main agent, which means they also
-// inherit context management capabilities through the shared model instance.
-// The compaction agent (used for context summarization) will use this same model.
+// createSubAgent creates an llmagent from an agent definition with dedicated context management
+// Each sub-agent gets its own ContextManager for independent compaction and token tracking.
 func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, error) {
 	// Parse allowed tools from agent definition
 	allowedTools := m.parseAllowedTools(agentDef)
+
+	// Create a dedicated ContextManager for this sub-agent
+	// This allows the sub-agent to have independent context management and compaction
+	contextManager := adkcontext.NewContextManagerWithModel(m.modelConfig, m.modelLLM)
+
+	// Store the context manager for this sub-agent
+	m.mu.Lock()
+	m.contextMgrs[agentDef.Name] = contextManager
+	m.mu.Unlock()
 
 	// Create the subagent using ADK's llmagent
 	// The subagent gets its own isolated context and uses the agent's content as instruction
 	// It inherits the model (m.modelLLM) from the main agent, ensuring:
 	// 1. Consistent behavior across main agent and sub-agents
-	// 2. Shared model capabilities (including context management)
-	// 3. Unified token accounting
+	// 2. Independent context management via dedicated ContextManager
+	// 3. Separate compaction for each sub-agent
 	subAgent, err := llmagent.New(llmagent.Config{
 		Name:        agentDef.Name,
 		Description: agentDef.Description,
@@ -122,6 +139,13 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 	}
 
 	return subAgent, nil
+}
+
+// GetContextManager returns the ContextManager for a specific sub-agent
+func (m *SubAgentManager) GetContextManager(agentName string) *adkcontext.ContextManager {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.contextMgrs[agentName]
 }
 
 // parseAllowedTools extracts and resolves the allowed tools for a subagent
@@ -256,13 +280,13 @@ func splitAndTrim(s string) []string {
 
 // InitSubAgentTools is a convenience function to load and return subagent tools
 // This should be called during application initialization
-func InitSubAgentTools(ctx context.Context, projectRoot string, modelLLM model.LLM) ([]tool.Tool, error) {
-	return InitSubAgentToolsWithMCP(ctx, projectRoot, modelLLM, nil)
+func InitSubAgentTools(ctx context.Context, projectRoot string, modelLLM model.LLM, modelConfig models.Config) ([]tool.Tool, error) {
+	return InitSubAgentToolsWithMCP(ctx, projectRoot, modelLLM, modelConfig, nil)
 }
 
 // InitSubAgentToolsWithMCP is a convenience function that includes MCP toolsets
 // This should be called during application initialization when MCP is enabled
-func InitSubAgentToolsWithMCP(ctx context.Context, projectRoot string, modelLLM model.LLM, mcpToolsets []tool.Toolset) ([]tool.Tool, error) {
+func InitSubAgentToolsWithMCP(ctx context.Context, projectRoot string, modelLLM model.LLM, modelConfig models.Config, mcpToolsets []tool.Toolset) ([]tool.Tool, error) {
 	if projectRoot == "" {
 		var err error
 		projectRoot, err = os.Getwd()
@@ -271,6 +295,6 @@ func InitSubAgentToolsWithMCP(ctx context.Context, projectRoot string, modelLLM 
 		}
 	}
 
-	manager := NewSubAgentManagerWithMCP(projectRoot, modelLLM, mcpToolsets)
+	manager := NewSubAgentManagerWithMCP(projectRoot, modelLLM, modelConfig, mcpToolsets)
 	return manager.LoadSubAgentTools(ctx)
 }

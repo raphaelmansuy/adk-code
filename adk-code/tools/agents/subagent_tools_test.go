@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"google.golang.org/adk/model"
+
+	"adk-code/pkg/models"
 )
 
 // mockLLM is a minimal mock for testing
@@ -24,7 +26,8 @@ func (m *mockLLM) GenerateContent(ctx context.Context, request *model.LLMRequest
 }
 
 func TestNewSubAgentManager(t *testing.T) {
-	manager := NewSubAgentManager("/tmp", &mockLLM{})
+	modelConfig := models.Config{Name: "test-model", ContextWindow: 100000}
+	manager := NewSubAgentManager("/tmp", &mockLLM{}, modelConfig)
 	if manager == nil {
 		t.Fatal("NewSubAgentManager returned nil")
 	}
@@ -35,7 +38,8 @@ func TestNewSubAgentManager(t *testing.T) {
 
 func TestLoadSubAgentTools_NoAgents(t *testing.T) {
 	tmpDir := t.TempDir()
-	manager := NewSubAgentManager(tmpDir, &mockLLM{})
+	modelConfig := models.Config{Name: "test-model", ContextWindow: 100000}
+	manager := NewSubAgentManager(tmpDir, &mockLLM{}, modelConfig)
 
 	ctx := context.Background()
 	tools, err := manager.LoadSubAgentTools(ctx)
@@ -69,7 +73,8 @@ You are a test agent.`
 		t.Fatalf("Failed to write agent file: %v", err)
 	}
 
-	manager := NewSubAgentManager(tmpDir, &mockLLM{})
+	modelConfig := models.Config{Name: "test-model", ContextWindow: 100000}
+	manager := NewSubAgentManager(tmpDir, &mockLLM{}, modelConfig)
 
 	ctx := context.Background()
 	tools, err := manager.LoadSubAgentTools(ctx)
@@ -87,7 +92,8 @@ func TestInitSubAgentTools(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	ctx := context.Background()
-	tools, err := InitSubAgentTools(ctx, tmpDir, &mockLLM{})
+	modelConfig := models.Config{Name: "test-model", ContextWindow: 100000}
+	tools, err := InitSubAgentTools(ctx, tmpDir, &mockLLM{}, modelConfig)
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
