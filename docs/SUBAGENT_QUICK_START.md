@@ -217,7 +217,6 @@ Check:
 - No subagent chaining yet
 
 ### Future Enhancements (Phase 2+)
-- Tool restrictions per agent
 - Subagent chaining support
 - Interactive creation via `/agents create`
 - Resumable subagent sessions
