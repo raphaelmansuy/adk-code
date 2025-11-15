@@ -3,6 +3,7 @@ package agent_prompts
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	agentiface "google.golang.org/adk/agent"
@@ -53,10 +54,6 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 		return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to create apply_v4a_patch tool", err)
 	}
 
-	// Get all registered tools from the registry
-	registry := tools.GetRegistry()
-	registeredTools := registry.GetAllTools()
-
 	// Determine the project root - use the working directory directly
 	// This allows adk-code to work as a global CLI tool in any directory
 	var err error
@@ -67,6 +64,20 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 			return nil, pkgerrors.Wrap(pkgerrors.CodeInternal, "failed to get current working directory", err)
 		}
 	}
+
+	// Load subagent tools using ADK's agent-as-tool pattern
+	// This discovers agent definitions and converts them to tools
+	subagentTools, subagentErr := tools.LoadSubAgentTools(ctx, projectRoot, cfg.Model)
+	if subagentErr != nil {
+		// Don't fail if subagents can't be loaded, just log a warning
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load subagent tools: %v\n", subagentErr)
+	} else if len(subagentTools) > 0 {
+		fmt.Fprintf(os.Stderr, "✓ Loaded %d subagent(s) as tools\n", len(subagentTools))
+	}
+
+	// Get all registered tools from the registry (includes subagent tools)
+	registry := tools.GetRegistry()
+	registeredTools := registry.GetAllTools()
 
 	// Use the working directory directly as the project root
 	// No need to search for go.mod - adk-code works in any project type
