@@ -143,6 +143,23 @@ That's it! You're ready to ask questions about your code.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
+## 🔀 Dynamic Sub-Agent Architecture
+
+adk-code supports a dynamic sub-agent system that enables intent-driven delegation and modular, reusable agent definitions. This architecture is designed to make complex tasks more manageable by letting dedicated sub-agents handle specialized responsibilities while the main agent orchestrates work.
+
+- Discovery: `pkg/agents` discovers agent definitions from `.adk/agents/` (YAML frontmatter + Markdown). Agents are validated for name, description, and metadata (version, author, tags).
+- Agent Router (planned): We define the router in the spec (`internal/agents/router.go`) as a small decision layer that will run intent scoring and select the right handler. Note: the router is a planned Phase 1 component.
+
+  Current behavior: adk-code already supports actionable subagents using ADK's agent-as-tool pattern — see `tools/agents/subagent_tools.go` and `internal/prompts/coding_agent.go`. `SubAgentManager` discovers `.adk/agents/*.md`, creates `llmagent` instances, and registers them as tools; the LLM naturally selects an agent/tool at runtime. This provides pragmatic delegation today while the router design remains part of Phase 1.
+- Sub-Agents: Sub-agents are self-contained agent definition files with metadata and behavior (skills/commands). They can be added, versioned, and discovered at runtime.
+- Delegation Flow (current): User request → LLM (main agent) selects a tool/subagent → If a sub-agent tool is invoked, it runs in its own context and executes allowed tools or MCP services → Return result → Main agent synthesizes final answer.
+-
+- Delegation Flow (future router): User request → Agent Router (intent scoring, heuristic) → Select sub-agent → Sub-agent executes tools or MCP services → Return result → Main agent synthesizes final answer.
+- Tools & MCP: Sub-agents call local tools or external MCP servers for actions (filesystem edits, Git, build, cloud APIs). This separation keeps tool execution deterministic and traceable.
+- Audit & Replay: All agent actions (intent scores, chosen sub-agent, tool calls, and MCP interactions) are logged to the session history. This enables replays, debugging, and reproducibility.
+
+Benefits: concise intent routing, modular agent definitions, scalable delegation to domain-specific sub-agents, and transparent tool/MCP integration.
+
 ## 📚 Documentation
 
 - **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — Daily commands & flags (2 min)

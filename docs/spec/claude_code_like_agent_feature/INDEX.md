@@ -120,7 +120,7 @@ Nov 18 - Dec 6                 Dec 9 - Dec 27                 Dec 30 - Jan 31
 └────────────┬────────────────────┘
              │
       ┌──────▼────────────┐
-      │ Agent Router      │  ← Decides: main or subagent?
+    │ Agent Router      │  ← Planned: Phase 2 (explicit intent scoring). Current runtime delegates via ADK agent-as-tool pattern (`tools/agents/subagent_tools.go`) so subagents are available as tools and the LLM can select them at runtime.
       └────────┬──────────┘
              ┌─┴──────┬──────────┬─────────┐
              │        │          │         │

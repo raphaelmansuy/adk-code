@@ -93,7 +93,7 @@ Based on official Claude Code documentation and features, our Phase 1 implementa
 - Tool restrictions per agent ✅
 - 5 default agents: code-reviewer, debugger, test-engineer, architect, documentation-writer ✅
 - User-level (`~/.adk/agents/`) and project-level (`.adk/agents/`) ✅
-- Auto-delegation via ADK's `agenttool.New()` ✅
+- Auto-delegation via ADK's `agenttool.New()` ✅ (pragmatic "agent-as-tool" delegation; no centralized router yet — planned for Phase 2 for explicit intent scoring and audit)
 
 **Missing**:
 - Interactive REPL creation (file-based only) - Phase 2
@@ -216,7 +216,7 @@ Based on official Claude Code documentation and features, our Phase 1 implementa
 | YAML frontmatter | ✅ Yes | ✅ Yes | 100% | ✅ Complete |
 | Separate contexts | ✅ Yes | ✅ ADK managed | 100% | ✅ Complete |
 | Tool restrictions | ✅ Per-agent | ✅ Per-agent | 100% | ✅ Complete |
-| Auto-delegation | ✅ LLM decides | ✅ LLM decides | 100% | ✅ Complete |
+| Auto-delegation | ✅ LLM decides | ✅ ADK tool selection (agent-as-tool) | 100% | ✅ Complete (no central router; ADK pattern is used) |
 | Default agents | ✅ 4 built-in | ✅ 5 built-in | 100% | ✅ Complete |
 | Agent chaining | ✅ Yes | ❌ Phase 2 | 0% | 🔴 Planned |
 | Interactive creation | ✅ Yes | ❌ Phase 2 | 0% | 🔶 File-based |

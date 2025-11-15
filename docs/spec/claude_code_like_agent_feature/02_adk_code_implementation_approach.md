@@ -52,8 +52,8 @@ adk-code already has **70% of the infrastructure needed** to implement Claude Co
 ### 1.2 What's Missing ✗
 
 **Subagent Framework**:
-- Partial support present: `pkg/agents` already implements file discovery, YAML frontmatter parsing, a generator template (`AgentGenerator`) and linting/validation. See `adk-code/pkg/agents` for discovery and `adk-code/tools/agents` for create/edit/list tooling.
-- Remaining work: `internal/agents` manager, Agent Router decision logic, full `/agents` REPL integration and explicit auto-delegation logic.
+- Partial support present: `pkg/agents` already implements file discovery, YAML frontmatter parsing, a generator template (`AgentGenerator`) and linting/validation. `tools/agents` implements `SubAgentManager` and converts agents into ADK tools (`tools/agents/subagent_tools.go`) so subagents can be invoked by the main agent today. See `adk-code/pkg/agents` for discovery and `adk-code/tools/agents` for create/edit/list tooling.
+- Remaining work: `internal/agents` package (manager & router), Agent Router decision logic (explicit intent-scoring layer), full `/agents` REPL integration and explicit auto-delegation logic that centralizes delegation decisions instead of relying on LLM tool selection.
 
 **MCP Support**:
 - Partial support present: `internal/mcp/manager.go` can connect to external MCP servers (stdio, SSE, and streamable transports) and `internal/cli` provides `/mcp` commands to list/configure servers and tools.

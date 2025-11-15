@@ -89,6 +89,7 @@ You are a senior code reviewer ensuring high standards...
 Notes from current implementation:
 - Discovery, generator, and linting are provided in `pkg/agents` and the tools `agents-create` and `agents-edit` exist under `adk-code/tools/agents`.
 - Full REPL `/agents` integration and agent router are planned but not yet complete.
+- Runtime subagent delegation currently uses ADK's agent-as-tool pattern: subagents are wrapped as tools via `agenttool.New()` (see `tools/agents/subagent_tools.go`). This allows the LLM to select a subagent tool at runtime; an explicit central Agent Router (intent scoring and pre-routing checks) is planned for Phase 2 if additional auditability or fine-grained routing is required.
 
 **Subagent Behavior**:
 - Separate context window (prevents main conversation pollution)
