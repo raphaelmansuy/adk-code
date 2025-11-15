@@ -124,7 +124,7 @@ User: "Improve this code"
 
 **Context Boundaries**:
 - Main agent: Full codebase context
-- Subagents: Focused context (e.g., only test files for test-runner)
+- Subagents: Focused context (e.g., only test files for test-engineer)
 - Result sharing: Subagent findings fed back to main
 
 ### 2.5 MCP (Model Context Protocol) Support
@@ -218,7 +218,7 @@ User: "Improve this code"
 ```
 > Use the code-reviewer subagent to check my changes
 > Ask the debugger to investigate this error
-> Have the test-runner verify the fix
+> Have the test-engineer verify the fix
 ```
 
 ### 4.2 Non-Interactive Mode (`adk-code -p "query"`)

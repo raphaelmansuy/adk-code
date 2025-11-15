@@ -54,7 +54,7 @@ A **multi-agent system** where:
 
 - Interactive create/edit/delete flows integrated into the REPL.
 - Agent router that delegates requests automatically based on intent scoring.
-- Default subagents (reviewer, debugger, test-runner, analyzer) shipped out-of-the-box.
+- Default subagents (code-reviewer, debugger, test-engineer, architect, documentation-writer) shipped out-of-the-box.
 
 ### MCP Integration
 

@@ -470,8 +470,10 @@ The SQLite database stores:
 Project:
 .adk/agents/
   ├── code-reviewer.md
-  ├── test-runner.md
-  └── custom-analyzer.md
+  ├── test-engineer.md
+  ├── debugger.md
+  ├── architect.md
+  └── documentation-writer.md
 
 User:
 ~/.adk/agents/
