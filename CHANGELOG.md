@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Google Search tool integration via ADK's `geminitool.GoogleSearch`
+  - Enables web search capabilities for the agent
+  - Works with Gemini 2.0+ models
+  - Auto-registered in Search & Discovery category with highest priority
+  - See ADR 0005 for implementation details
+- New `websearch` package in `tools/` for web search functionality
+- Comprehensive unit tests for Google Search tool
+- Documentation in TOOL_DEVELOPMENT.md for using ADK built-in tools
+
+## [Unreleased]
+
 ## [0.2.1] - 2025-11-14
 
 ### Fixed
