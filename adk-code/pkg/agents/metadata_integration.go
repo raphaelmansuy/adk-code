@@ -282,10 +282,6 @@ func ResolveAgentDependencies(discoverer *Discoverer, agentName string) ([]*Agen
 	return resolved, nil
 }
 
-
-
-
-
 // Package-level constants and helpers
 
 var (
