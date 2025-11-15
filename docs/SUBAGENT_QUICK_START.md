@@ -102,6 +102,7 @@ Provide detailed instructions for how the agent should operate.
 ---
 name: agent-name
 description: What this agent does
+tools: Read, Grep, Bash  # Optional: Restrict to specific tools
 ---
 
 # Agent Title
@@ -109,6 +110,22 @@ description: What this agent does
 Your detailed system prompt here.
 The main agent will use this as the system instruction.
 ```
+
+### Tool Specification
+
+The `tools:` field supports:
+- **Specific tools**: `tools: Read, Grep, Bash`
+- **All tools**: `tools: *` (gives access to all built-in + MCP tools)
+- **No tools**: Omit field (analysis-only agent)
+- **MCP tools**: Use exact tool name from MCP server
+
+**Friendly name mapping:**
+- `Read` → `read_file`
+- `Write` → `write_file`
+- `Bash` → `execute_command`
+- `Grep` → `grep_search`
+- `Glob` → `search_files`
+- Or use exact tool names
 
 ## How Delegation Works
 

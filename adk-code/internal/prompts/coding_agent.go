@@ -67,12 +67,13 @@ func NewCodingAgent(ctx context.Context, cfg Config) (agentiface.Agent, error) {
 
 	// Load subagent tools using ADK's agent-as-tool pattern
 	// This discovers agent definitions and converts them to tools
-	subagentTools, subagentErr := tools.LoadSubAgentTools(ctx, projectRoot, cfg.Model)
+	// Pass MCP toolsets so subagents can access MCP tools if specified
+	subagentTools, subagentErr := tools.LoadSubAgentToolsWithMCP(ctx, projectRoot, cfg.Model, cfg.MCPToolsets)
 	if subagentErr != nil {
 		// Don't fail if subagents can't be loaded, just log a warning
 		fmt.Fprintf(os.Stderr, "Warning: Failed to load subagent tools: %v\n", subagentErr)
 	} else if len(subagentTools) > 0 {
-		fmt.Fprintf(os.Stderr, "✓ Loaded %d subagent(s) as tools\n", len(subagentTools))
+		fmt.Fprintf(os.Stderr, "✓ Loaded %d subagent(s) as tools (with MCP support)\n", len(subagentTools))
 	}
 
 	// Get all registered tools from the registry (includes subagent tools)

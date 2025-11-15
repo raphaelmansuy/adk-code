@@ -20,8 +20,9 @@ import (
 // SubAgentManager creates and manages subagent tools
 // This uses Google ADK's native agent-as-tool pattern via agenttool.New()
 type SubAgentManager struct {
-	projectRoot string
-	modelLLM    model.LLM
+	projectRoot  string
+	modelLLM     model.LLM
+	mcpToolsets  []tool.Toolset // MCP toolsets to make available to subagents
 }
 
 // NewSubAgentManager creates a new subagent manager
@@ -29,6 +30,16 @@ func NewSubAgentManager(projectRoot string, modelLLM model.LLM) *SubAgentManager
 	return &SubAgentManager{
 		projectRoot: projectRoot,
 		modelLLM:    modelLLM,
+		mcpToolsets: []tool.Toolset{},
+	}
+}
+
+// NewSubAgentManagerWithMCP creates a subagent manager with MCP toolsets
+func NewSubAgentManagerWithMCP(projectRoot string, modelLLM model.LLM, mcpToolsets []tool.Toolset) *SubAgentManager {
+	return &SubAgentManager{
+		projectRoot: projectRoot,
+		modelLLM:    modelLLM,
+		mcpToolsets: mcpToolsets,
 	}
 }
 
@@ -101,17 +112,20 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 
 // parseAllowedTools extracts and resolves the allowed tools for a subagent
 // Reads the 'tools' field from agent YAML frontmatter
+// Supports both built-in tools and MCP tools
 func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool {
 	// Parse the tools field from YAML
-	// Expected format: "tools: Read, Grep, Glob, Bash"
+	// Expected format: "tools: Read, Grep, Glob, Bash" or "tools: *" for all tools
 	toolsSpec := m.extractToolsFromYAML(agentDef.RawYAML)
 	if toolsSpec == "" {
 		// No tools specified - agent is analysis-only
 		return []tool.Tool{}
 	}
 
-	// Get tool registry
-	registry := common.GetRegistry()
+	// Special case: "*" means all available tools (built-in + MCP)
+	if strings.TrimSpace(toolsSpec) == "*" {
+		return m.getAllAvailableTools()
+	}
 	
 	// Parse comma-separated tool names
 	toolNames := splitAndTrim(toolsSpec)
@@ -130,10 +144,7 @@ func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool 
 		"replace":    "search_replace",
 	}
 	
-	// Get all tools from registry and find matches
-	allTools := registry.GetAllTools()
-	
-	// Resolve tools from registry by matching names
+	// Resolve tools from both built-in registry and MCP toolsets
 	var allowedTools []tool.Tool
 	for _, friendlyName := range toolNames {
 		// Normalize to lowercase
@@ -145,17 +156,10 @@ func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool 
 			actualName = normalizedName
 		}
 		
-		// Find tool in registry by name
-		found := false
-		for _, t := range allTools {
-			if t.Name() == actualName {
-				allowedTools = append(allowedTools, t)
-				found = true
-				break
-			}
-		}
-		
-		if !found {
+		// Try to find in built-in tools first
+		if t := m.findToolByName(actualName); t != nil {
+			allowedTools = append(allowedTools, t)
+		} else {
 			// Tool not found - log warning but continue
 			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' (mapped to '%s') not found for agent '%s'\n", 
 				friendlyName, actualName, agentDef.Name)
@@ -163,6 +167,58 @@ func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool 
 	}
 	
 	return allowedTools
+}
+
+// getAllAvailableTools returns all built-in and MCP tools
+func (m *SubAgentManager) getAllAvailableTools() []tool.Tool {
+	// Get built-in tools
+	registry := common.GetRegistry()
+	allTools := registry.GetAllTools()
+	
+	// Add MCP tools from toolsets
+	// Note: MCP toolsets require context, but we pass nil for tool enumeration
+	for _, toolset := range m.mcpToolsets {
+		mcpTools, err := toolset.Tools(nil)
+		if err != nil {
+			// Log error but continue with other toolsets
+			fmt.Fprintf(os.Stderr, "Warning: Failed to get tools from MCP toolset: %v\n", err)
+			continue
+		}
+		allTools = append(allTools, mcpTools...)
+	}
+	
+	return allTools
+}
+
+// findToolByName searches for a tool in both built-in and MCP toolsets
+func (m *SubAgentManager) findToolByName(name string) tool.Tool {
+	// Search in built-in tools
+	registry := common.GetRegistry()
+	builtinTools := registry.GetAllTools()
+	
+	for _, t := range builtinTools {
+		if t.Name() == name {
+			return t
+		}
+	}
+	
+	// Search in MCP toolsets
+	// Note: MCP toolsets require context, but we pass nil for tool enumeration
+	for _, toolset := range m.mcpToolsets {
+		mcpTools, err := toolset.Tools(nil)
+		if err != nil {
+			// Log error but continue with other toolsets
+			fmt.Fprintf(os.Stderr, "Warning: Failed to get tools from MCP toolset: %v\n", err)
+			continue
+		}
+		for _, t := range mcpTools {
+			if t.Name() == name {
+				return t
+			}
+		}
+	}
+	
+	return nil
 }
 
 // extractToolsFromYAML parses the 'tools' field from YAML frontmatter
@@ -198,6 +254,12 @@ func splitAndTrim(s string) []string {
 // InitSubAgentTools is a convenience function to load and return subagent tools
 // This should be called during application initialization
 func InitSubAgentTools(ctx context.Context, projectRoot string, modelLLM model.LLM) ([]tool.Tool, error) {
+	return InitSubAgentToolsWithMCP(ctx, projectRoot, modelLLM, nil)
+}
+
+// InitSubAgentToolsWithMCP is a convenience function that includes MCP toolsets
+// This should be called during application initialization when MCP is enabled
+func InitSubAgentToolsWithMCP(ctx context.Context, projectRoot string, modelLLM model.LLM, mcpToolsets []tool.Toolset) ([]tool.Tool, error) {
 	if projectRoot == "" {
 		var err error
 		projectRoot, err = os.Getwd()
@@ -206,6 +268,6 @@ func InitSubAgentTools(ctx context.Context, projectRoot string, modelLLM model.L
 		}
 	}
 
-	manager := NewSubAgentManager(projectRoot, modelLLM)
+	manager := NewSubAgentManagerWithMCP(projectRoot, modelLLM, mcpToolsets)
 	return manager.LoadSubAgentTools(ctx)
 }
