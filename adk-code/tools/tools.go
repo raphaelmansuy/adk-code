@@ -15,6 +15,7 @@
 //   - workspace: Workspace management and analysis
 //   - v4a: V4A patch format tools
 //   - agents: Agent definition discovery and management tools
+//   - websearch: Web search tools (Google Search)
 package tools
 
 import (
@@ -27,6 +28,7 @@ import (
 	"adk-code/tools/file"
 	"adk-code/tools/search"
 	"adk-code/tools/v4a"
+	"adk-code/tools/websearch"
 	"adk-code/tools/workspace"
 )
 
@@ -155,6 +157,9 @@ var (
 	NewListAgentsTool        = agents.NewListAgentsTool
 	LoadSubAgentTools        = agents.InitSubAgentTools
 	LoadSubAgentToolsWithMCP = agents.InitSubAgentToolsWithMCP
+
+	// Web search tools
+	NewGoogleSearchTool = websearch.NewGoogleSearchTool
 )
 
 // Re-export registry functions for tool access and registration
