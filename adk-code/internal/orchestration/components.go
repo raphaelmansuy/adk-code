@@ -4,6 +4,7 @@ import (
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/runner"
 
+	"adk-code/internal/context"
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	"adk-code/internal/session"
@@ -28,9 +29,10 @@ type ModelComponents struct {
 
 // SessionComponents groups all session-related fields
 type SessionComponents struct {
-	Manager *session.SessionManager
-	Runner  *runner.Runner
-	Tokens  *tracking.SessionTokens
+	Manager        *session.SessionManager
+	Runner         *runner.Runner
+	Tokens         *tracking.SessionTokens
+	ContextManager *context.ContextManager
 }
 
 // MCPComponents groups MCP-related fields

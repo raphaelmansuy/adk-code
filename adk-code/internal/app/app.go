@@ -114,6 +114,7 @@ func (a *Application) initializeREPL() error {
 		ModelRegistry:    a.model.Registry,
 		SelectedModel:    a.model.Selected,
 		MCPComponents:    a.mcp,
+		ContextManager:   a.session.ContextManager,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create REPL: %w", err)

@@ -70,9 +70,13 @@ func (o *Orchestrator) WithSession() *Orchestrator {
 		return o
 	}
 
-	// Session requires agent and display components
+	// Session requires agent, model, and display components
 	if o.agentComponent == nil {
 		o.err = fmt.Errorf("session requires agent component; call WithAgent() first")
+		return o
+	}
+	if o.modelComponents == nil {
+		o.err = fmt.Errorf("session requires model component; call WithModel() first")
 		return o
 	}
 	if o.displayComponents == nil {
@@ -80,7 +84,14 @@ func (o *Orchestrator) WithSession() *Orchestrator {
 		return o
 	}
 
-	o.sessionComponents, o.err = InitializeSessionComponents(o.ctx, o.cfg, o.agentComponent, o.displayComponents.BannerRenderer)
+	o.sessionComponents, o.err = InitializeSessionComponents(
+		o.ctx,
+		o.cfg,
+		o.agentComponent,
+		o.modelComponents.LLM,
+		o.modelComponents.Selected,
+		o.displayComponents.BannerRenderer,
+	)
 	return o
 }
 

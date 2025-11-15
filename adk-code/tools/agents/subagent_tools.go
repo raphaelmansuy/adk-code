@@ -19,6 +19,13 @@ import (
 
 // SubAgentManager creates and manages subagent tools
 // This uses Google ADK's native agent-as-tool pattern via agenttool.New()
+//
+// Context Management for Sub-Agents:
+// Sub-agents inherit the model (modelLLM) from the main agent, which means:
+// - They share the same context management capabilities
+// - Token usage from sub-agents contributes to the overall context budget
+// - Compaction (when needed) uses the same inherited model
+// - All agents (main + sub) operate within the same context window limits
 type SubAgentManager struct {
 	projectRoot string
 	modelLLM    model.LLM
@@ -89,16 +96,23 @@ func (m *SubAgentManager) LoadSubAgentTools(ctx context.Context) ([]tool.Tool, e
 }
 
 // createSubAgent creates an llmagent from an agent definition
+// Note: Sub-agents inherit the model from the main agent, which means they also
+// inherit context management capabilities through the shared model instance.
+// The compaction agent (used for context summarization) will use this same model.
 func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, error) {
 	// Parse allowed tools from agent definition
 	allowedTools := m.parseAllowedTools(agentDef)
 
 	// Create the subagent using ADK's llmagent
 	// The subagent gets its own isolated context and uses the agent's content as instruction
+	// It inherits the model (m.modelLLM) from the main agent, ensuring:
+	// 1. Consistent behavior across main agent and sub-agents
+	// 2. Shared model capabilities (including context management)
+	// 3. Unified token accounting
 	subAgent, err := llmagent.New(llmagent.Config{
 		Name:        agentDef.Name,
 		Description: agentDef.Description,
-		Model:       m.modelLLM,
+		Model:       m.modelLLM,       // Inherits model from main agent
 		Instruction: agentDef.Content, // The markdown content is the system instruction
 		Tools:       allowedTools,     // Restricted toolset based on agent definition
 	})

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/chzyer/readline"
 	"google.golang.org/adk/agent"
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/genai"
 
 	"adk-code/internal/cli"
+	adkcontext "adk-code/internal/context"
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	"adk-code/internal/orchestration"
@@ -34,6 +36,7 @@ type Config struct {
 	ModelRegistry    *models.Registry
 	SelectedModel    models.Config
 	MCPComponents    *orchestration.MCPComponents
+	ContextManager   *adkcontext.ContextManager
 }
 
 // REPL manages the read-eval-print loop
@@ -242,10 +245,50 @@ agentLoop:
 		}
 	}
 
+	// Track context and display token usage if context manager is available
+	if r.config.ContextManager != nil && !hasError {
+		r.trackAndDisplayContext(input)
+	}
+
 	// Update prompt based on last operation status
 	if r.lastOpStatus {
 		r.readline.SetPrompt(r.config.Renderer.Green("✓ ") + r.config.Renderer.Cyan(r.config.Renderer.Bold("❯")+" "))
 	} else {
 		r.readline.SetPrompt(r.config.Renderer.Cyan(r.config.Renderer.Bold("❯") + " "))
 	}
+}
+
+// trackAndDisplayContext tracks the conversation turn and displays token usage
+func (r *REPL) trackAndDisplayContext(userInput string) {
+	// Add user message to context
+	userItem := adkcontext.ResponseItem{
+		ID:        fmt.Sprintf("user-%d", time.Now().UnixNano()),
+		Type:      adkcontext.ItemMessage,
+		Role:      "user",
+		Content:   userInput,
+		Timestamp: time.Now(),
+	}
+
+	err := r.config.ContextManager.AddItem(userItem)
+	if err == adkcontext.ErrCompactionNeeded {
+		// Display compaction warning
+		fmt.Println()
+		fmt.Printf("%s %s\n",
+			r.config.Renderer.Yellow("⚠️"),
+			r.config.Renderer.Yellow("Context approaching limit - compaction recommended"),
+		)
+	}
+
+	// Display token usage
+	info := r.config.ContextManager.TokenInfo()
+	fmt.Println()
+	fmt.Printf("%s %s\n",
+		r.config.Renderer.Dim("📊 Context:"),
+		r.config.Renderer.Dim(fmt.Sprintf("%d/%d tokens (%.1f%%) • Compaction at %.0f%%",
+			info.UsedTokens,
+			info.AvailableTokens+info.UsedTokens,
+			info.PercentageUsed*100,
+			info.CompactThreshold*100,
+		)),
+	)
 }
