@@ -20,9 +20,9 @@ import (
 // SubAgentManager creates and manages subagent tools
 // This uses Google ADK's native agent-as-tool pattern via agenttool.New()
 type SubAgentManager struct {
-	projectRoot  string
-	modelLLM     model.LLM
-	mcpToolsets  []tool.Toolset // MCP toolsets to make available to subagents
+	projectRoot string
+	modelLLM    model.LLM
+	mcpToolsets []tool.Toolset // MCP toolsets to make available to subagents
 }
 
 // NewSubAgentManager creates a new subagent manager
@@ -100,7 +100,7 @@ func (m *SubAgentManager) createSubAgent(agentDef *agents.Agent) (agent.Agent, e
 		Description: agentDef.Description,
 		Model:       m.modelLLM,
 		Instruction: agentDef.Content, // The markdown content is the system instruction
-		Tools:       allowedTools,      // Restricted toolset based on agent definition
+		Tools:       allowedTools,     // Restricted toolset based on agent definition
 	})
 
 	if err != nil {
@@ -126,27 +126,27 @@ func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool 
 	if strings.TrimSpace(toolsSpec) == "*" {
 		return m.getAllAvailableTools()
 	}
-	
+
 	// Parse comma-separated tool names
 	toolNames := splitAndTrim(toolsSpec)
-	
+
 	// Resolve tools from both built-in registry and MCP toolsets
 	// Use exact tool names - no mapping to avoid confusion
 	var allowedTools []tool.Tool
 	for _, toolName := range toolNames {
 		// Normalize to lowercase and trim whitespace
 		normalizedName := strings.ToLower(strings.TrimSpace(toolName))
-		
+
 		// Find tool by exact name
 		if t := m.findToolByName(normalizedName); t != nil {
 			allowedTools = append(allowedTools, t)
 		} else {
 			// Tool not found - log warning with suggestion to use `/tools` command
-			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' not found for agent '%s' (use '/tools' to see available tools)\n", 
+			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' not found for agent '%s' (use '/tools' to see available tools)\n",
 				toolName, agentDef.Name)
 		}
 	}
-	
+
 	return allowedTools
 }
 
@@ -155,7 +155,7 @@ func (m *SubAgentManager) getAllAvailableTools() []tool.Tool {
 	// Get built-in tools
 	registry := common.GetRegistry()
 	allTools := registry.GetAllTools()
-	
+
 	// Add MCP tools from toolsets
 	// Note: MCP toolsets require context, but we pass nil for tool enumeration
 	for _, toolset := range m.mcpToolsets {
@@ -167,7 +167,7 @@ func (m *SubAgentManager) getAllAvailableTools() []tool.Tool {
 		}
 		allTools = append(allTools, mcpTools...)
 	}
-	
+
 	return allTools
 }
 
@@ -176,13 +176,13 @@ func (m *SubAgentManager) findToolByName(name string) tool.Tool {
 	// Search in built-in tools
 	registry := common.GetRegistry()
 	builtinTools := registry.GetAllTools()
-	
+
 	for _, t := range builtinTools {
 		if t.Name() == name {
 			return t
 		}
 	}
-	
+
 	// Search in MCP toolsets
 	// Note: MCP toolsets require context, but we pass nil for tool enumeration
 	for _, toolset := range m.mcpToolsets {
@@ -198,7 +198,7 @@ func (m *SubAgentManager) findToolByName(name string) tool.Tool {
 			}
 		}
 	}
-	
+
 	return nil
 }
 

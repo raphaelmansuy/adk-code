@@ -36,10 +36,10 @@ func TestNewSubAgentManager(t *testing.T) {
 func TestLoadSubAgentTools_NoAgents(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewSubAgentManager(tmpDir, &mockLLM{})
-	
+
 	ctx := context.Background()
 	tools, err := manager.LoadSubAgentTools(ctx)
-	
+
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -63,17 +63,17 @@ description: A test agent for unit testing
 ---
 
 You are a test agent.`
-	
+
 	agentPath := filepath.Join(agentsDir, "test-agent.md")
 	if err := os.WriteFile(agentPath, []byte(agentContent), 0644); err != nil {
 		t.Fatalf("Failed to write agent file: %v", err)
 	}
 
 	manager := NewSubAgentManager(tmpDir, &mockLLM{})
-	
+
 	ctx := context.Background()
 	tools, err := manager.LoadSubAgentTools(ctx)
-	
+
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -85,10 +85,10 @@ You are a test agent.`
 func TestInitSubAgentTools(t *testing.T) {
 	// This is mainly a smoke test to ensure the convenience function works
 	tmpDir := t.TempDir()
-	
+
 	ctx := context.Background()
 	tools, err := InitSubAgentTools(ctx, tmpDir, &mockLLM{})
-	
+
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

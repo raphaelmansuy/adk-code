@@ -152,8 +152,8 @@ var (
 	NewModelInfoTool  = discovery.NewModelInfoTool
 
 	// Agent tools
-	NewListAgentsTool       = agents.NewListAgentsTool
-	LoadSubAgentTools       = agents.InitSubAgentTools
+	NewListAgentsTool        = agents.NewListAgentsTool
+	LoadSubAgentTools        = agents.InitSubAgentTools
 	LoadSubAgentToolsWithMCP = agents.InitSubAgentToolsWithMCP
 )
 
