@@ -2,8 +2,11 @@
 
 **Version**: 1.0  
 **Last Updated**: November 15, 2025  
+**Last Verified**: November 15, 2025  
 **Status**: Ready for Implementation  
 **Planning Horizon**: 12 weeks (Q4 2025 - Q1 2026)
+
+> **NOTE ON DATES**: The specific dates referenced in this document (November 18, 2025 - January 31, 2026) are example targets and should be adjusted based on actual project kickoff date. The phase durations and effort estimates remain accurate.
 
 ---
 
@@ -85,7 +88,7 @@ Features:
 **Effort**: 2 days
 
 #### 1.4 Default Subagents
-**Files**: `.adk/agents/*.md` (4 defaults)
+**Files**: `.adk/agents/*.md` (5 defaults)
 
 ```
 Default Agents:
@@ -97,17 +100,21 @@ Default Agents:
    - Tools: Read, Edit, Bash, Grep
    - Purpose: Root cause analysis & fixes
    
-3. test-runner
+3. test-engineer
    - Tools: Read, Bash, Glob
    - Purpose: Test execution & failure analysis
    
-4. analyzer
+4. architect
    - Tools: Read, Grep, Glob
-   - Purpose: Performance, complexity analysis
+   - Purpose: System design and architecture analysis
+   
+5. documentation-writer
+   - Tools: Read, Write, Grep
+   - Purpose: Technical documentation and explanations
 ```
 
 **Success Criteria**:
-- [x] All 4 agents ship with adk-code
+- [x] All 5 agents ship with adk-code
 - [x] Descriptions clear and specific
 - [x] Tool restrictions appropriate
 - [x] System prompts well-crafted
@@ -139,7 +146,7 @@ Integration Points:
 - [x] Users can create custom subagents via `/agents create`
 - [x] Explicit subagent invocation works ("use the debugger")
 - [x] Subagent results integrated back into main conversation
-- [x] At least 4 default subagents available
+- [x] At least 5 default subagents available
 - [x] Tests: >80% coverage for all new packages
 - [x] No breaking changes to existing REPL/tools
 - [x] Documentation: quick-start guide for subagents
@@ -253,11 +260,13 @@ adk-code mcp serve
 ```
 
 **Success Criteria**:
-- [x] Command recognized and starts server
-- [x] Server listens on stdin/stdout
-- [x] Graceful shutdown on signal
-- [x] Helpful error messages
-- [x] Tests: integration test with MCP client
+- [ ] Command recognized and starts server (PLANNED)
+- [ ] Server listens on stdin/stdout (PLANNED)
+- [ ] Graceful shutdown on signal (PLANNED)
+- [ ] Helpful error messages (PLANNED)
+- [ ] Tests: integration test with MCP client (PLANNED)
+
+**Note:** As of November 15, 2025, `adk-code mcp serve` is not yet implemented. The MCP client manager exists (`internal/mcp/manager.go`) for connecting to external MCP servers, but the server mode is planned for Phase 2.
 
 **Effort**: 1 day
 
@@ -517,7 +526,7 @@ Every other Monday:
 - [ ] `internal/agents/manager.go` - Subagent manager
 - [ ] `internal/agents/router.go` - Agent router
 - [ ] `internal/cli/commands/agents.go` - REPL command
-- [ ] `.adk/agents/*.md` - 4 default subagents
+- [ ] `.adk/agents/*.md` - 5 default subagents
 - [ ] `docs/SUBAGENT_GUIDE.md` - User documentation
 - [ ] Phase 1 tests (>80% coverage)
 

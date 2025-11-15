@@ -90,7 +90,7 @@ A **multi-agent system** where:
 
 | Phase | Duration | What | Status |
 |-------|----------|------|--------|
-| **1: Subagent MVP** | 3 weeks (Nov 18 - Dec 6) | File-based subagents, routing, 4 defaults | Ready to start |
+| **1: Subagent MVP** | 3 weeks (Nov 18 - Dec 6) | File-based subagents, routing, 5 defaults | Ready to start |
 | **2: MCP Integration** | 3 weeks (Dec 9 - Dec 27) | MCP server/client, external tool integration | After Phase 1 |
 | **3: Production** | 6 weeks (Dec 30 - Jan 31) | Performance, security, advanced features, release | After Phase 2 |
 
@@ -102,7 +102,7 @@ A **multi-agent system** where:
 - SubAgent Manager (file loading, parsing, validation)
 - Agent Router (intent matching, delegation)
 - `/agents` REPL command (management UI)
-- 4 default subagents (code-reviewer, debugger, test-runner, analyzer)
+- 5 default subagents (code-reviewer, debugger, test-engineer, architect, documentation-writer)
 - Full integration and test suite
 
 ---

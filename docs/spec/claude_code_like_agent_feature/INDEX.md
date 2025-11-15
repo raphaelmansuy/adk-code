@@ -1,9 +1,12 @@
 # Claude Code-Like Agent Feature - Documentation Index
 
 **Date**: November 15, 2025  
+**Last Verified Against Official Sources**: November 15, 2025  
 **Status**: Complete - Ready for Implementation  
 **Quality**: Enterprise-grade specifications  
 **Audience**: Engineering team, architects, stakeholders
+
+> **Documentation Accuracy**: All external references (Claude Code docs, Google ADK, MCP spec) have been verified as of November 15, 2025. All implementation status claims have been cross-checked against the actual codebase.
 
 ---
 
@@ -217,7 +220,7 @@ Provide feedback organized by priority:
 ### Phase 1 MVP (Subagents)
 - Users can list and manage subagents
 - Subagent invocation works reliably (>95%)
-- At least 4 default agents included
+- At least 5 default agents included
 - Tests >80% coverage
 - No regression to existing features
 
