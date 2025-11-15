@@ -16,6 +16,7 @@ adk-code now supports **subagents** - specialized AI agents that handle specific
 
 ### 1. code-reviewer
 **Purpose:** Code quality, security, and best practices review  
+**Tools:** `read_file, grep_search, search_files, execute_command`  
 **Use when:** After writing or modifying code
 
 ```bash
@@ -26,6 +27,7 @@ adk-code now supports **subagents** - specialized AI agents that handle specific
 
 ### 2. debugger
 **Purpose:** Finding and fixing bugs  
+**Tools:** `read_file, grep_search, search_files, execute_command`  
 **Use when:** Code isn't working as expected
 
 ```bash
@@ -34,6 +36,7 @@ adk-code now supports **subagents** - specialized AI agents that handle specific
 
 ### 3. test-engineer
 **Purpose:** Writing and running tests  
+**Tools:** `read_file, grep_search, search_files, execute_command`  
 **Use when:** Need test coverage or test failures
 
 ```bash
@@ -42,6 +45,7 @@ adk-code now supports **subagents** - specialized AI agents that handle specific
 
 ### 4. architect
 **Purpose:** System design and architecture analysis  
+**Tools:** `read_file, grep_search, search_files, execute_command`  
 **Use when:** Planning or analyzing system structure
 
 ```bash
@@ -50,6 +54,7 @@ adk-code now supports **subagents** - specialized AI agents that handle specific
 
 ### 5. documentation-writer
 **Purpose:** Technical documentation and explanations  
+**Tools:** `read_file, grep_search, search_files, write_file`  
 **Use when:** Need documentation or code explanations
 
 ```bash
@@ -66,6 +71,7 @@ Create a file in `.adk/agents/my-agent.md`:
 ---
 name: my-agent
 description: Brief description of what this agent does
+tools: read_file, grep_search, execute_command
 tags: [tag1, tag2]
 version: 1.0.0
 author: your-email@example.com
@@ -102,7 +108,7 @@ Provide detailed instructions for how the agent should operate.
 ---
 name: agent-name
 description: What this agent does
-tools: Read, Grep, Bash  # Optional: Restrict to specific tools
+tools: read_file, grep_search, execute_command  # Optional: Restrict to specific tools
 ---
 
 # Agent Title
@@ -114,18 +120,23 @@ The main agent will use this as the system instruction.
 ### Tool Specification
 
 The `tools:` field supports:
-- **Specific tools**: `tools: Read, Grep, Bash`
+- **Specific tools**: `tools: read_file, grep_search, execute_command`
 - **All tools**: `tools: *` (gives access to all built-in + MCP tools)
 - **No tools**: Omit field (analysis-only agent)
-- **MCP tools**: Use exact tool name from MCP server
+- **MCP tools**: Use exact tool name from MCP server (e.g., `github_create_pr`)
 
-**Friendly name mapping:**
-- `Read` → `read_file`
-- `Write` → `write_file`
-- `Bash` → `execute_command`
-- `Grep` → `grep_search`
-- `Glob` → `search_files`
-- Or use exact tool names
+**Common tool names** (use `/tools` command to see all):
+- `read_file` - Read file contents
+- `write_file` - Create or overwrite files
+- `execute_command` - Run bash commands
+- `grep_search` - Search for patterns in files
+- `search_files` - Find files by glob pattern
+- `list_directory` - List directory contents
+- `apply_patch` - Apply unified diff patches
+- `edit_lines` - Edit by line number
+- `search_replace` - Make targeted changes
+
+**Note**: Use exact tool names as shown in `/tools` output. No aliases or friendly names.
 
 ## How Delegation Works
 

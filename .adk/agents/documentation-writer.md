@@ -1,7 +1,7 @@
 ---
 name: documentation-writer
 description: Technical writer creating clear, comprehensive documentation. Use when writing READMEs, API docs, guides, or improving documentation quality.
-tools: Read, Grep, Glob, Write
+tools: read_file, grep_search, search_files, write_file
 model: sonnet
 ---
 

@@ -130,39 +130,20 @@ func (m *SubAgentManager) parseAllowedTools(agentDef *agents.Agent) []tool.Tool 
 	// Parse comma-separated tool names
 	toolNames := splitAndTrim(toolsSpec)
 	
-	// Map friendly names to actual tool names in registry
-	toolNameMap := map[string]string{
-		"read":       "read_file",
-		"write":      "write_file",
-		"grep":       "grep_search",
-		"glob":       "search_files",
-		"bash":       "execute_command",
-		"codesearch": "grep_search",
-		"list":       "list_directory",
-		"patch":      "apply_patch",
-		"edit":       "edit_lines",
-		"replace":    "search_replace",
-	}
-	
 	// Resolve tools from both built-in registry and MCP toolsets
+	// Use exact tool names - no mapping to avoid confusion
 	var allowedTools []tool.Tool
-	for _, friendlyName := range toolNames {
-		// Normalize to lowercase
-		normalizedName := strings.ToLower(strings.TrimSpace(friendlyName))
+	for _, toolName := range toolNames {
+		// Normalize to lowercase and trim whitespace
+		normalizedName := strings.ToLower(strings.TrimSpace(toolName))
 		
-		// Map to actual tool name
-		actualName := toolNameMap[normalizedName]
-		if actualName == "" {
-			actualName = normalizedName
-		}
-		
-		// Try to find in built-in tools first
-		if t := m.findToolByName(actualName); t != nil {
+		// Find tool by exact name
+		if t := m.findToolByName(normalizedName); t != nil {
 			allowedTools = append(allowedTools, t)
 		} else {
-			// Tool not found - log warning but continue
-			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' (mapped to '%s') not found for agent '%s'\n", 
-				friendlyName, actualName, agentDef.Name)
+			// Tool not found - log warning with suggestion to use `/tools` command
+			fmt.Fprintf(os.Stderr, "Warning: Tool '%s' not found for agent '%s' (use '/tools' to see available tools)\n", 
+				toolName, agentDef.Name)
 		}
 	}
 	
