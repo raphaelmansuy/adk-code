@@ -17,6 +17,7 @@
 - **🛠️ 21 Built-in Tools**: File operations, code editing, execution, web search, and more
 - **🔌 MCP Integration**: Unlimited extensibility via Model Context Protocol
 - **💾 Session Persistence**: Maintain context across conversations with automatic history
+- **🧠 Smart Context Management**: Automatic token tracking, output truncation, and conversation compaction for 50+ turn workflows
 - **⚡ Streaming Responses**: Real-time output as the model thinks and executes
 - **🎨 Beautiful Terminal UI**: Rich formatting, colors, and interactive displays
 - **📦 Zero External Dependencies**: No Langchain, Claude Code, or Cline baggage
@@ -291,13 +292,47 @@ Use Model Context Protocol servers instead of building tools:
 }
 ```
 
+## 🧠 Context Management
+
+`adk-code` includes intelligent context window management to support long-running conversations (50+ turns):
+
+- **Automatic Token Tracking**: Real-time visibility into token usage after each turn
+- **Smart Output Truncation**: Head+tail strategy preserves critical information (first/last 128 lines)
+- **Conversation Compaction**: LLM-powered summarization at 70% threshold (configurable)
+- **Sub-Agent Support**: Context shared across main agent and all sub-agents
+- **No Silent Data Loss**: Clear markers show when content is truncated
+
+```bash
+# Token usage displayed after each turn
+User: Create a file test.py
+📊 Context: 1,250/1,000,000 tokens (0.1%) • Compaction at 70%
+
+# Warning when approaching limit
+User: Run all tests
+⚠️  Context approaching limit - compaction recommended
+📊 Context: 710,000/1,000,000 tokens (71.0%) • Compaction at 70%
+```
+
+**Configure the threshold** programmatically:
+
+```go
+// Use custom compaction threshold (e.g., 80%)
+cm := context.NewContextManagerWithOptions(modelConfig, llm, 0.80)
+
+// Or update dynamically
+cm.SetCompactThreshold(0.60) // Compact at 60%
+```
+
+See [CONTEXT_MANAGEMENT.md](docs/CONTEXT_MANAGEMENT.md) and [CONTEXT_INTEGRATION.md](docs/CONTEXT_INTEGRATION.md) for details.
+
 ## 📊 Performance
 
 | Metric | Value |
 |--------|-------|
 | **Binary Size** | ~15MB (release) |
 | **Startup Time** | <500ms |
-| **Context Window** | Up to 1M tokens (Gemini 2.5 Flash) |
+| **Context Window** | Up to 2M tokens (Gemini 1.5 Pro) |
+| **Max Conversation** | 50+ turns with auto-compaction |
 | **Tool Execution** | <1s typical |
 | **Memory Usage** | ~50MB baseline |
 

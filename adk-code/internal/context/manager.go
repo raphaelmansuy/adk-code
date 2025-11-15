@@ -18,10 +18,25 @@ type ContextManager struct {
 
 // NewContextManager creates a context manager for a specific model
 func NewContextManager(modelConfig models.Config) *ContextManager {
+	return NewContextManagerWithOptions(modelConfig, nil, 0.70)
+}
+
+// NewContextManagerWithModel creates a context manager with an LLM for compaction
+func NewContextManagerWithModel(modelConfig models.Config, llm model.LLM) *ContextManager {
+	return NewContextManagerWithOptions(modelConfig, llm, 0.70)
+}
+
+// NewContextManagerWithOptions creates a context manager with custom threshold
+func NewContextManagerWithOptions(modelConfig models.Config, llm model.LLM, compactThreshold float64) *ContextManager {
 	contextWindow := modelConfig.ContextWindow
 	if contextWindow == 0 {
 		// Default to 1M tokens if not specified (Gemini 2.5 Flash default)
 		contextWindow = 1_000_000
+	}
+
+	// Validate threshold
+	if compactThreshold <= 0 || compactThreshold >= 1.0 {
+		compactThreshold = 0.70 // Default to 70% if invalid
 	}
 
 	return &ContextManager{
@@ -29,18 +44,11 @@ func NewContextManager(modelConfig models.Config) *ContextManager {
 		tokens: TokenBudget{
 			ContextWindow:    contextWindow,
 			Reserved:         contextWindow / 10, // 10% reserved
-			CompactThreshold: 0.70,
+			CompactThreshold: compactThreshold,
 		},
-		config: contextConfigFromModel(modelConfig),
-		llm:    nil, // Set via SetModel if needed for compaction
+		config: contextConfigFromModelWithThreshold(modelConfig, compactThreshold),
+		llm:    llm,
 	}
-}
-
-// NewContextManagerWithModel creates a context manager with an LLM for compaction
-func NewContextManagerWithModel(modelConfig models.Config, llm model.LLM) *ContextManager {
-	cm := NewContextManager(modelConfig)
-	cm.llm = llm
-	return cm
 }
 
 // SetModel sets the LLM to use for compaction
@@ -57,8 +65,32 @@ func (cm *ContextManager) GetModel() model.LLM {
 	return cm.llm
 }
 
-// contextConfigFromModel creates a ContextConfig from a model Config
+// SetCompactThreshold updates the compaction threshold (must be between 0 and 1)
+func (cm *ContextManager) SetCompactThreshold(threshold float64) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	// Validate threshold
+	if threshold > 0 && threshold < 1.0 {
+		cm.tokens.CompactThreshold = threshold
+		cm.config.CompactThreshold = threshold
+	}
+}
+
+// GetCompactThreshold returns the current compaction threshold
+func (cm *ContextManager) GetCompactThreshold() float64 {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return cm.tokens.CompactThreshold
+}
+
+// contextConfigFromModel creates a ContextConfig from a model Config with default threshold
 func contextConfigFromModel(modelConfig models.Config) ContextConfig {
+	return contextConfigFromModelWithThreshold(modelConfig, 0.70)
+}
+
+// contextConfigFromModelWithThreshold creates a ContextConfig with custom threshold
+func contextConfigFromModelWithThreshold(modelConfig models.Config, compactThreshold float64) ContextConfig {
 	contextWindow := modelConfig.ContextWindow
 	if contextWindow == 0 {
 		contextWindow = 1_000_000
@@ -71,7 +103,7 @@ func contextConfigFromModel(modelConfig models.Config) ContextConfig {
 		OutputTruncateLines: 256,
 		TruncateHeadLines:   128,
 		TruncateTailLines:   128,
-		CompactThreshold:    0.70, // 70%
+		CompactThreshold:    compactThreshold,
 	}
 }
 

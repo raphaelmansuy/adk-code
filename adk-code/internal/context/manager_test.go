@@ -184,3 +184,47 @@ func TestContextManager_Clear(t *testing.T) {
 		t.Errorf("Expected 0 used tokens after clear, got %d", info.UsedTokens)
 	}
 }
+
+func TestContextManager_CustomThreshold(t *testing.T) {
+	modelConfig := models.Config{
+		Name:          "gemini-2.5-flash",
+		ContextWindow: 1_000_000,
+	}
+
+	// Test with custom threshold of 80%
+	cm := NewContextManagerWithOptions(modelConfig, nil, 0.80)
+
+	threshold := cm.GetCompactThreshold()
+	if threshold != 0.80 {
+		t.Errorf("Expected threshold of 0.80, got %f", threshold)
+	}
+
+	// Test SetCompactThreshold
+	cm.SetCompactThreshold(0.60)
+	threshold = cm.GetCompactThreshold()
+	if threshold != 0.60 {
+		t.Errorf("Expected threshold of 0.60 after update, got %f", threshold)
+	}
+}
+
+func TestContextManager_InvalidThreshold(t *testing.T) {
+	modelConfig := models.Config{
+		Name:          "gemini-2.5-flash",
+		ContextWindow: 1_000_000,
+	}
+
+	// Test with invalid threshold (>1.0) - should default to 0.70
+	cm := NewContextManagerWithOptions(modelConfig, nil, 1.5)
+
+	threshold := cm.GetCompactThreshold()
+	if threshold != 0.70 {
+		t.Errorf("Expected default threshold of 0.70 for invalid input, got %f", threshold)
+	}
+
+	// Test SetCompactThreshold with invalid value - should not update
+	cm.SetCompactThreshold(1.2)
+	threshold = cm.GetCompactThreshold()
+	if threshold != 0.70 {
+		t.Errorf("Expected threshold to remain 0.70 after invalid update, got %f", threshold)
+	}
+}
