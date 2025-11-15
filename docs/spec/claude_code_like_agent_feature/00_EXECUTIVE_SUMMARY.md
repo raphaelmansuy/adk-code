@@ -1,7 +1,7 @@
 # Claude Code-Like Agent Feature - Executive Summary
 
 **Date**: November 15, 2025  
-**Status**: Specification Complete - Ready for Development  
+**Status**: Specification Complete – Implementation in Progress (Phase 0 foundations landed)  
 **Prepared For**: Engineering Leadership, Product, Stakeholders
 
 ---
@@ -9,6 +9,16 @@
 ## Overview
 
 We have completed a comprehensive specification for implementing Claude Code-like agent capabilities in adk-code. This brings specialized AI agents, advanced delegation, and external tool integration to our coding assistant.
+
+### Current Implementation Snapshot (Nov 15, 2025)
+- ✅ Agent discovery, YAML parsing, and metadata aggregation are implemented in `adk-code/pkg/agents`.
+- ✅ The REPL exposes `/agents` (list) and `/run-agent` (preview) commands, backed by the discovery pipeline.
+- ✅ CLI helper tools exist for generate/edit/lint workflows under `adk-code/tools/agents/*`.
+- ✅ MCP client manager (`internal/mcp/manager.go`) loads remote servers defined via `--mcp-config` and surfaces status in `/mcp` commands.
+- ✅ Session persistence uses an SQLite-backed store (`internal/session/persistence/sqlite.go`) through the ADK session service.
+- ⏳ Subagent delegation, router orchestration, approval checkpoints, and an MCP server mode (`adk-code mcp serve`) remain to be implemented.
+
+The remainder of this document reflects the end-state vision along with clear call-outs of what already exists versus what is planned.
 
 ---
 
@@ -33,24 +43,44 @@ A **multi-agent system** where:
 
 ### Subagent Framework
 
-- **File-based storage**: `.adk/agents/` (project) and `~/.adk/agents/` (user)
-- **Format**: YAML frontmatter + Markdown (human-readable, version-controllable)
-- **Management**: New `/agents` REPL command for list, create, edit, delete
-- **Routing**: Smart delegation based on request intent + explicit invocation
+**Current (Phase 0 foundations):**
+
+- `.adk/agents/` (project) and `~/.adk/agents/` (user) definitions parsed via `pkg/agents`.
+- YAML frontmatter + Markdown format enforced with validation and metadata support.
+- `/agents` REPL command lists discovered agents; `/run-agent` provides a preview experience.
+- CLI helper tools (`agents-create`, `agents-edit`, `agents-lint`, `agents-export`) exist under `tools/agents` for scripted workflows.
+
+**Planned (Phase 1):**
+
+- Interactive create/edit/delete flows integrated into the REPL.
+- Agent router that delegates requests automatically based on intent scoring.
+- Default subagents (reviewer, debugger, test-runner, analyzer) shipped out-of-the-box.
 
 ### MCP Integration
 
-- **Server**: `adk-code mcp serve` - expose tools to external agents
-- **Client**: Connect to external MCP servers (GitHub, Jira, Slack, etc.)
-- **Resources**: Expose files, project info, git state as queryable resources
-- **Tools**: All 30+ adk-code tools available via MCP
+**Current:**
+
+- `internal/mcp/manager.go` loads remote MCP servers (stdio, HTTP, SSE, streamable) defined via the `--mcp-config` flag.
+- `/mcp list`, `/mcp status`, and `/mcp tools` expose server health and toolset counts inside the REPL.
+
+**Planned:**
+
+- `adk-code mcp serve` mode to expose adk-code tools as an MCP server.
+- Rich resource exposure (workspace, git state, project metadata) for downstream clients.
+- Permission-aware tool projection with streaming outputs.
 
 ### Tool Semantics
 
-- **Takes Action**: Edits files, executes commands, creates commits
-- **Approval Checkpoints**: Show diffs before edits, require approval for destructive ops
-- **Rollback**: Undo capability for failed operations
-- **Transparent**: Full output, clear command logging
+**Available today:**
+
+- Action-oriented tools covering file I/O (`builtin_read_file`, `builtin_write_file`), patching (`builtin_apply_patch`, `edit_lines`), search (`builtin_grep_search`), and execution (`builtin_execute_command`, `execute_program`).
+- Structured session event timelines and token reporting from the ADK runner.
+
+**On the roadmap:**
+
+- Approval checkpoints with diff previews prior to edits or deletions.
+- Rollback/undo flows for tool failures and git safety rails.
+- Enriched transparency (command confirmation prompts, summarized logs, audit trails).
 
 ---
 
@@ -68,6 +98,7 @@ A **multi-agent system** where:
 **Release Target**: January 31, 2026
 
 ### Phase 1 Deliverables
+
 - SubAgent Manager (file loading, parsing, validation)
 - Agent Router (intent matching, delegation)
 - `/agents` REPL command (management UI)
@@ -79,17 +110,20 @@ A **multi-agent system** where:
 ## Why This Approach
 
 ### Leverages Existing Infrastructure ✓
+
 - adk-code already has 70% of what we need (ADK framework, tools, Display system)
 - We're building on top, not replacing
 - No breaking changes to existing features
 
 ### Solves Real Problems
+
 - **Token waste**: Single agent can't specialize → separate contexts solve this
 - **Complex workflows**: No mechanism to compose agents → subagent chaining solves this
 - **Tool integration**: Hard to add new tools → MCP standard solves this
 - **Transparency**: Unclear what agents decide → audit trails solve this
 
 ### Follows Best Practices
+
 - **File-based subagents**: Like Claude Code, version-controllable
 - **MCP standard**: Industry standard, not proprietary
 - **Modular design**: Clear separation of concerns, extensible
@@ -100,18 +134,21 @@ A **multi-agent system** where:
 ## Success Metrics
 
 ### Phase 1
+
 - ✓ Users can create custom subagents in <10 minutes
 - ✓ Subagent invocation >95% success rate
 - ✓ No regression to existing features
 - ✓ Test coverage >80%
 
 ### Phase 2
+
 - ✓ MCP server stable (99.9% uptime)
 - ✓ External tools integrated and working
 - ✓ Can expose adk-code tools to other agents
 - ✓ Test coverage >80%
 
 ### Phase 3 (Release)
+
 - ✓ All advanced features working
 - ✓ Security audit passed
 - ✓ Performance targets met
@@ -174,7 +211,7 @@ Plus **INDEX.md** for navigation and quick reference.
 
 ## Timeline at a Glance
 
-```
+```text
 Week 1-3:   Subagent Framework MVP        Dec 6 demo
 Week 4-6:   MCP Integration               Dec 27 integration test
 Week 7-12:  Production Hardening          Jan 31 v1.0 release
@@ -189,24 +226,28 @@ Nov 18                                    Jan 31
 ## Next Steps
 
 ### This Week
+
 - [ ] Engineering leadership reviews specs
 - [ ] Stakeholder alignment meeting (30 min)
 - [ ] Decide: Go/No-Go for Phase 1
 - [ ] Assign Phase 1 lead engineer
 
 ### Next Week  
+
 - [ ] Phase 1 kickoff
 - [ ] Engineer starts with `internal/agents/manager.go`
 - [ ] Weekly sync established
 - [ ] First PR expected
 
 ### Weeks 2-3
+
 - [ ] Core subagent framework complete
 - [ ] REPL command working
 - [ ] Default agents defined
 - [ ] Phase 1 testing begins
 
 ### December 6
+
 - [ ] Phase 1 complete
 - [ ] Demo to team
 - [ ] Phase 2 kickoff decision
@@ -242,6 +283,7 @@ A: Phase gates after each phase allow reassessment. Design is modular (each phas
 The specification is complete, feasible, low-risk, and high-value. It leverages existing infrastructure, follows industry standards (MCP), and delivers capabilities users expect from a modern coding agent.
 
 **Key Success Factors**:
+
 1. Assign experienced Go engineer (lead role)
 2. Weekly architecture reviews
 3. Clear phase gates before moving forward
@@ -252,6 +294,7 @@ The specification is complete, feasible, low-risk, and high-value. It leverages 
 ## Contact & Questions
 
 For questions on this specification:
+
 - **Architecture**: See `03_adr_subagent_and_mcp_architecture.md`
 - **Implementation**: See `02_adk_code_implementation_approach.md`
 - **Timeline**: See `04_implementation_roadmap.md`
