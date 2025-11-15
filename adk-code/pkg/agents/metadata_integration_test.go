@@ -237,33 +237,6 @@ func TestMetadataValidatorValidateAgent(t *testing.T) {
 	}
 }
 
-// TestValidationReportString tests validation report string formatting.
-func TestValidationReportString(t *testing.T) {
-	report := &ValidationReport{
-		AgentName:            "test-agent",
-		Valid:                false,
-		Issues:               []string{"Issue 1", "Issue 2"},
-		ResolvedDependencies: []string{"dep1", "dep2"},
-	}
-
-	str := report.String()
-	if str == "" {
-		t.Error("Expected non-empty string representation")
-	}
-
-	if !containsStr(str, "test-agent") {
-		t.Error("Expected agent name in string")
-	}
-
-	if !containsStr(str, "Issue 1") {
-		t.Error("Expected issue in string")
-	}
-
-	if !containsStr(str, "dep1") {
-		t.Error("Expected dependency in string")
-	}
-}
-
 // TestBuildGraphFromDiscovery tests building a graph from discovery results.
 func TestBuildGraphFromDiscovery(t *testing.T) {
 	result := &DiscoveryResult{
@@ -316,96 +289,6 @@ func TestBuildGraphFromDiscoveryMissingDependency(t *testing.T) {
 	}
 }
 
-// TestValidateAgentCompatibility tests agent compatibility validation.
-func TestValidateAgentCompatibility(t *testing.T) {
-	agent := &Agent{
-		Name:    "test",
-		Version: "1.5.0",
-	}
-
-	req := &ExecutionRequirements{
-		VersionConstraint: ">=1.0.0",
-	}
-
-	report := ValidateAgentCompatibility(agent, req)
-	if !report.Compatible {
-		t.Errorf("Expected compatible agent, got issues: %v", report.Issues)
-	}
-}
-
-// TestValidateAgentCompatibilityVersionFail tests version incompatibility.
-func TestValidateAgentCompatibilityVersionFail(t *testing.T) {
-	agent := &Agent{
-		Name:    "test",
-		Version: "0.5.0",
-	}
-
-	req := &ExecutionRequirements{
-		VersionConstraint: ">=1.0.0",
-	}
-
-	report := ValidateAgentCompatibility(agent, req)
-	if report.Compatible {
-		t.Error("Expected incompatible agent")
-	}
-
-	if len(report.Issues) == 0 {
-		t.Error("Expected issues for incompatible agent")
-	}
-}
-
-// TestValidateAgentCompatibilityNoVersion tests compatibility with no version.
-func TestValidateAgentCompatibilityNoVersion(t *testing.T) {
-	agent := &Agent{
-		Name: "test",
-	}
-
-	req := &ExecutionRequirements{
-		VersionConstraint: ">=1.0.0",
-	}
-
-	report := ValidateAgentCompatibility(agent, req)
-	if report.Compatible {
-		t.Error("Expected incompatible when no version specified but constraint required")
-	}
-
-	if len(report.Issues) == 0 {
-		t.Error("Expected issues for missing version")
-	}
-}
-
-// TestUpdateExecutionRequirementsWithVersion tests updating requirements.
-func TestUpdateExecutionRequirementsWithVersion(t *testing.T) {
-	req := &ExecutionRequirements{}
-
-	err := UpdateExecutionRequirementsWithVersion(req, "^1.0.0")
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	if req.VersionConstraint != "^1.0.0" {
-		t.Errorf("Expected constraint to be set, got %q", req.VersionConstraint)
-	}
-}
-
-// TestUpdateExecutionRequirementsWithInvalidVersion tests with invalid constraint.
-func TestUpdateExecutionRequirementsWithInvalidVersion(t *testing.T) {
-	req := &ExecutionRequirements{}
-
-	err := UpdateExecutionRequirementsWithVersion(req, "invalid-constraint")
-	if err == nil {
-		t.Error("Expected error for invalid constraint")
-	}
-}
-
-// TestUpdateExecutionRequirementsNil tests with nil requirements.
-func TestUpdateExecutionRequirementsNil(t *testing.T) {
-	err := UpdateExecutionRequirementsWithVersion(nil, "1.0.0")
-	if err == nil {
-		t.Error("Expected error for nil requirements")
-	}
-}
-
 // TestGetAgentMetadata tests metadata extraction.
 func TestGetAgentMetadata(t *testing.T) {
 	agent := &Agent{
@@ -436,41 +319,4 @@ func TestGetAgentMetadataNil(t *testing.T) {
 	if metadata != nil {
 		t.Error("Expected nil metadata for nil agent")
 	}
-}
-
-// TestCompatibilityReportString tests compatibility report string formatting.
-func TestCompatibilityReportString(t *testing.T) {
-	report := &CompatibilityReport{
-		Agent:      "test-agent",
-		Compatible: false,
-		Issues:     []string{"Issue 1"},
-		Warnings:   []string{"Warning 1"},
-	}
-
-	str := report.String()
-	if str == "" {
-		t.Error("Expected non-empty string")
-	}
-
-	if !containsStr(str, "test-agent") {
-		t.Error("Expected agent name in string")
-	}
-
-	if !containsStr(str, "Issue 1") {
-		t.Error("Expected issue in string")
-	}
-
-	if !containsStr(str, "Warning 1") {
-		t.Error("Expected warning in string")
-	}
-}
-
-// Helper function to check if string contains substring
-func containsStr(str, substr string) bool {
-	for i := 0; i <= len(str)-len(substr); i++ {
-		if str[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

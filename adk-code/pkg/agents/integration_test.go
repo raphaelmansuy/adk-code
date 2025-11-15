@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 // TestIntegrationFullDiscoveryWorkflow tests the complete discovery workflow
@@ -741,32 +740,6 @@ dependencies: [mid-agent, base-agent]
 	topDeps, hasTop := depMap["top-agent"]
 	if !hasTop || len(topDeps) != 2 {
 		t.Error("Expected top-agent to have 2 dependencies")
-	}
-}
-
-// TestE2ESimpleExecution tests executing a simple agent with no dependencies.
-func TestE2ESimpleExecution(t *testing.T) {
-	agent := &Agent{
-		Name:        "simple-agent",
-		Description: "Simple test agent",
-		Version:     "1.0.0",
-		Type:        "utility",
-	}
-
-	ctx := ExecutionContext{
-		Agent:         agent,
-		Params:        map[string]interface{}{},
-		Timeout:       10 * time.Second,
-		CaptureOutput: true,
-	}
-
-	// Verify context is valid
-	if ctx.Agent == nil {
-		t.Error("Expected agent in context")
-	}
-
-	if ctx.Params == nil {
-		ctx.Params = make(map[string]interface{})
 	}
 }
 

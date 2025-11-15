@@ -2,7 +2,6 @@ package agents
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -283,139 +282,9 @@ func ResolveAgentDependencies(discoverer *Discoverer, agentName string) ([]*Agen
 	return resolved, nil
 }
 
-// ValidateAgentCompatibility checks if an agent meets execution requirements.
-// Returns a compatibility report with any issues found.
-func ValidateAgentCompatibility(agent *Agent, requirements *ExecutionRequirements) *CompatibilityReport {
-	report := &CompatibilityReport{
-		Agent:      agent.Name,
-		Compatible: true,
-		Issues:     []string{},
-		Warnings:   []string{},
-	}
 
-	if agent == nil || requirements == nil {
-		report.Compatible = false
-		report.Issues = append(report.Issues, "agent or requirements is nil")
-		return report
-	}
 
-	// Check if agent has version information
-	if agent.Version == "" && requirements.VersionConstraint != "" {
-		report.Compatible = false
-		report.Issues = append(report.Issues, "agent has no version but version constraint is required")
-		return report
-	}
 
-	// Validate version constraint if specified
-	if requirements.VersionConstraint != "" && agent.Version != "" {
-		constraint, err := ParseConstraint(requirements.VersionConstraint)
-		if err != nil {
-			report.Compatible = false
-			report.Issues = append(report.Issues, fmt.Sprintf("invalid version constraint: %v", err))
-			return report
-		}
-
-		version, err := ParseVersion(agent.Version)
-		if err != nil {
-			report.Compatible = false
-			report.Issues = append(report.Issues, fmt.Sprintf("invalid agent version: %v", err))
-			return report
-		}
-
-		if !constraint.Matches(version) {
-			report.Compatible = false
-			report.Issues = append(report.Issues, fmt.Sprintf("agent version %q does not satisfy constraint %q",
-				version.String(), constraint.String()))
-		}
-	}
-
-	// Check required environment variables
-	for _, envVar := range requirements.RequiredEnv {
-		if os.Getenv(envVar) == "" {
-			report.Compatible = false
-			report.Issues = append(report.Issues, fmt.Sprintf("required environment variable %q not set", envVar))
-		}
-	}
-
-	// Check supported OS (if specified)
-	if len(requirements.SupportedOS) > 0 {
-		currentOS := os.Getenv("GOOS")
-		if currentOS == "" {
-			currentOS = "linux" // Default assumption
-		}
-
-		found := false
-		for _, os := range requirements.SupportedOS {
-			if os == currentOS {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			report.Compatible = false
-			report.Issues = append(report.Issues, fmt.Sprintf("agent not compatible with OS %q", currentOS))
-		}
-	}
-
-	return report
-}
-
-// CompatibilityReport contains results of compatibility validation.
-type CompatibilityReport struct {
-	// Agent is the agent name
-	Agent string
-
-	// Compatible indicates if the agent meets requirements
-	Compatible bool
-
-	// Issues contains compatibility issues (must be resolved)
-	Issues []string
-
-	// Warnings contains warnings (agent may still work)
-	Warnings []string
-}
-
-// String returns a string representation of the compatibility report.
-func (r *CompatibilityReport) String() string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Agent: %s\n", r.Agent))
-	sb.WriteString(fmt.Sprintf("Compatible: %v\n", r.Compatible))
-
-	if len(r.Issues) > 0 {
-		sb.WriteString("Issues:\n")
-		for _, issue := range r.Issues {
-			sb.WriteString(fmt.Sprintf("  - %s\n", issue))
-		}
-	}
-
-	if len(r.Warnings) > 0 {
-		sb.WriteString("Warnings:\n")
-		for _, warning := range r.Warnings {
-			sb.WriteString(fmt.Sprintf("  - %s\n", warning))
-		}
-	}
-
-	return sb.String()
-}
-
-// UpdateExecutionRequirementsWithVersion adds version constraint to requirements.
-func UpdateExecutionRequirementsWithVersion(req *ExecutionRequirements, constraint string) error {
-	if req == nil {
-		return fmt.Errorf("requirements is nil")
-	}
-
-	// Validate the constraint format
-	if constraint != "" {
-		if _, err := ParseConstraint(constraint); err != nil {
-			return fmt.Errorf("invalid version constraint %q: %v", constraint, err)
-		}
-	}
-
-	// Store as string for now, can be parsed when needed
-	req.VersionConstraint = constraint
-	return nil
-}
 
 // Package-level constants and helpers
 
