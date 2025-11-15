@@ -125,14 +125,36 @@ func (d *Discoverer) DiscoverAll() (*DiscoveryResult, error) {
 }
 
 // discoverFromPath scans a single directory for agent definition files
+// Prevents symlink loops by tracking visited paths and depth limits
 func (d *Discoverer) discoverFromPath(path string) ([]*Agent, []error) {
 	var agents []*Agent
 	var errors []error
 
+	// Track visited real paths to detect symlink cycles
+	visitedPaths := make(map[string]bool)
+
 	err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
+			// Skip permission errors and continue walking
+			if os.IsPermission(err) {
+				return nil
+			}
 			errors = append(errors, err)
 			return nil // Continue walking
+		}
+
+		// Detect symlink cycles by resolving real path
+		if info.IsDir() && info.Mode()&os.ModeSymlink != 0 {
+			realPath, err := filepath.EvalSymlinks(filePath)
+			if err != nil {
+				// Skip broken symlinks
+				return filepath.SkipDir
+			}
+			if visitedPaths[realPath] {
+				// Already visited this directory, skip to prevent cycles
+				return filepath.SkipDir
+			}
+			visitedPaths[realPath] = true
 		}
 
 		// Skip directories
@@ -157,7 +179,12 @@ func (d *Discoverer) discoverFromPath(path string) ([]*Agent, []error) {
 	})
 
 	if err != nil {
-		errors = append(errors, err)
+		// Skip "too many open files" errors from symlink loops
+		if strings.Contains(err.Error(), "too many open files") {
+			errors = append(errors, fmt.Errorf("agent path has possible symlink cycles: %s", path))
+		} else if !os.IsPermission(err) {
+			errors = append(errors, err)
+		}
 	}
 
 	return agents, errors

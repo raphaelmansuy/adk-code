@@ -33,7 +33,7 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/providers")+" - Show available providers and their models")
 	lines = append(lines, "   • "+renderer.Bold("/current-model")+" - Show details about the current model")
 	lines = append(lines, "   • "+renderer.Bold("/set-model <provider/model>")+" - Validate and plan to switch models")
-	lines = append(lines, "   • "+renderer.Bold("/agents")+" - List available Claude Code agents")
+	lines = append(lines, "   • "+renderer.Bold("/agents")+" - List available ADK Code agents")
 	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
@@ -393,26 +393,30 @@ func buildAgentsListLines(renderer *display.Renderer, result *agents.DiscoveryRe
 		return lines
 	}
 
-	lines = append(lines, renderer.Bold("Claude Code Agents:"))
+	lines = append(lines, renderer.Bold("ADK Code Agents:"))
 	lines = append(lines, "")
 
 	for _, agent := range result.Agents {
-		icon := "•"
-		lines = append(lines, renderer.Cyan("  "+icon)+" "+renderer.Bold(agent.Name))
-		lines = append(lines, renderer.Dim("    "+agent.Description))
+		// Main agent entry
+		lines = append(lines, "  • "+renderer.Bold(agent.Name))
+
+		// Description is indented and styled
+		lines = append(lines, "    "+agent.Description)
 
 		// Show optional metadata
+		var metadata []string
 		if agent.Version != "" {
-			lines = append(lines, renderer.Dim("    Version: "+agent.Version))
+			metadata = append(metadata, "v"+agent.Version)
 		}
 		if agent.Author != "" {
-			lines = append(lines, renderer.Dim("    Author: "+agent.Author))
+			metadata = append(metadata, "by "+agent.Author)
 		}
 		if len(agent.Tags) > 0 {
-			lines = append(lines, renderer.Dim("    Tags: "+strings.Join(agent.Tags, ", ")))
+			metadata = append(metadata, "Tags: "+strings.Join(agent.Tags, ", "))
 		}
-		if len(agent.Dependencies) > 0 {
-			lines = append(lines, renderer.Dim("    Depends on: "+strings.Join(agent.Dependencies, ", ")))
+
+		if len(metadata) > 0 {
+			lines = append(lines, renderer.Dim("    ("+strings.Join(metadata, " • ")+")"))
 		}
 
 		lines = append(lines, "")
@@ -420,9 +424,24 @@ func buildAgentsListLines(renderer *display.Renderer, result *agents.DiscoveryRe
 
 	lines = append(lines, renderer.Dim(fmt.Sprintf("Total: %d agent(s) discovered", result.Total)))
 	lines = append(lines, "")
-	lines = append(lines, renderer.Cyan("Usage Examples:"))
-	lines = append(lines, "  • "+renderer.Cyan("/run-agent code-reviewer")+" - Show agent details")
-	lines = append(lines, "  • "+renderer.Cyan("/run-agent code-reviewer \"review this code\"")+" - Use agent (preview)")
+	lines = append(lines, renderer.Bold("💡 How Agents Work:"))
+	lines = append(lines, "")
+	lines = append(lines, "Agents are automatically available as specialist tools. Simply ask")
+	lines = append(lines, "the main agent to perform tasks, and it will delegate to the appropriate")
+	lines = append(lines, "specialist agent when needed.")
+	lines = append(lines, "")
+	lines = append(lines, renderer.Bold("Examples:"))
+	lines = append(lines, renderer.Dim("  ❯ Review the security in auth.go"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to code-reviewer"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("  ❯ Write tests for the API handlers"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to test-engineer"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("  ❯ Why is the database connection failing?"))
+	lines = append(lines, renderer.Dim("    → Automatically delegates to debugger"))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Bold("Commands:"))
+	lines = append(lines, "  • "+renderer.Cyan("/run-agent <name>")+" - View agent details and examples")
 	lines = append(lines, "")
 
 	return lines
