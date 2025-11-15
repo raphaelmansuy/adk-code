@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Software architect designing system architecture, data models, and API contracts. Use when planning features, designing systems, or evaluating architectural decisions.
-tools: Read, Grep, Glob, Bash, CodeSearch
+tools: read_file, grep_search, search_files, execute_command
 model: opus
 ---
 

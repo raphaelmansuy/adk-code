@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Expert code reviewer for quality, security, and best practices. Use after writing or modifying code to identify bugs, security issues, and improvement opportunities.
-tools: Read, Grep, Glob, Bash
+tools: read_file, grep_search, search_files, execute_command
 model: sonnet
 ---
 

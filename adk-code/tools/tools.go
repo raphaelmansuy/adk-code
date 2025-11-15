@@ -152,7 +152,9 @@ var (
 	NewModelInfoTool  = discovery.NewModelInfoTool
 
 	// Agent tools
-	NewListAgentsTool = agents.NewListAgentsTool
+	NewListAgentsTool       = agents.NewListAgentsTool
+	LoadSubAgentTools       = agents.InitSubAgentTools
+	LoadSubAgentToolsWithMCP = agents.InitSubAgentToolsWithMCP
 )
 
 // Re-export registry functions for tool access and registration

@@ -1,7 +1,7 @@
 ---
 name: debugger
 description: Debug assistant that helps identify and fix bugs, errors, and unexpected behavior. Use when encountering failures, crashes, or unexpected behavior in code or tests.
-tools: Read, Grep, Glob, Bash, CodeSearch
+tools: read_file, grep_search, search_files, execute_command
 model: sonnet
 ---
 

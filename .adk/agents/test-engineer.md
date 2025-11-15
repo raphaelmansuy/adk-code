@@ -1,7 +1,7 @@
 ---
 name: test-engineer
 description: Testing specialist who designs test strategies, writes comprehensive tests, and improves test coverage. Use when planning tests, improving coverage, or ensuring code quality.
-tools: Read, Grep, Glob, Bash
+tools: read_file, grep_search, search_files, execute_command
 model: sonnet
 ---
 
