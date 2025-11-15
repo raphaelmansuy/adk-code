@@ -323,12 +323,12 @@ func (emt *ExecutionMetricsTracker) GetAverageMetrics() map[string]float64 {
 	}
 
 	return map[string]float64{
-		"avg_duration":        emt.aggregated["total_duration"] / count,
-		"avg_commands":        emt.aggregated["total_commands"] / count,
-		"avg_bytes":           emt.aggregated["total_bytes"] / count,
-		"avg_errors":          emt.aggregated["total_errors"] / count,
-		"avg_memory_usage":    emt.aggregated["total_memory"] / count,
-		"avg_cpu_usage":       emt.aggregated["total_cpu"] / count,
+		"avg_duration":     emt.aggregated["total_duration"] / count,
+		"avg_commands":     emt.aggregated["total_commands"] / count,
+		"avg_bytes":        emt.aggregated["total_bytes"] / count,
+		"avg_errors":       emt.aggregated["total_errors"] / count,
+		"avg_memory_usage": emt.aggregated["total_memory"] / count,
+		"avg_cpu_usage":    emt.aggregated["total_cpu"] / count,
 	}
 }
 

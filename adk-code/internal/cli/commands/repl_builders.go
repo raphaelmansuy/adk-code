@@ -8,6 +8,7 @@ import (
 
 	"adk-code/internal/display"
 	"adk-code/internal/llm/backends"
+	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
 )
 
@@ -32,6 +33,8 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/providers")+" - Show available providers and their models")
 	lines = append(lines, "   • "+renderer.Bold("/current-model")+" - Show details about the current model")
 	lines = append(lines, "   • "+renderer.Bold("/set-model <provider/model>")+" - Validate and plan to switch models")
+	lines = append(lines, "   • "+renderer.Bold("/agents")+" - List available Claude Code agents")
+	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
@@ -363,4 +366,64 @@ func cleanupPromptOutput(prompt string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// buildAgentsListLines builds the agents list as an array of lines for pagination
+func buildAgentsListLines(renderer *display.Renderer, result *agents.DiscoveryResult) []string {
+	var lines []string
+
+	lines = append(lines, "")
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, renderer.Cyan("                    Available Agents"))
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, "")
+
+	if result.IsEmpty() {
+		lines = append(lines, renderer.Yellow("⚠ No agents found in .adk/agents/"))
+		lines = append(lines, "")
+		lines = append(lines, "To create an agent, create a .adk/agents/my-agent.md file with:")
+		lines = append(lines, "")
+		lines = append(lines, renderer.Dim("---"))
+		lines = append(lines, renderer.Dim("name: my-agent"))
+		lines = append(lines, renderer.Dim("description: What this agent does"))
+		lines = append(lines, renderer.Dim("---"))
+		lines = append(lines, renderer.Dim("# My Agent"))
+		lines = append(lines, renderer.Dim("[agent content here]"))
+		lines = append(lines, "")
+		return lines
+	}
+
+	lines = append(lines, renderer.Bold("Claude Code Agents:"))
+	lines = append(lines, "")
+
+	for _, agent := range result.Agents {
+		icon := "•"
+		lines = append(lines, renderer.Cyan("  "+icon)+" "+renderer.Bold(agent.Name))
+		lines = append(lines, renderer.Dim("    "+agent.Description))
+
+		// Show optional metadata
+		if agent.Version != "" {
+			lines = append(lines, renderer.Dim("    Version: "+agent.Version))
+		}
+		if agent.Author != "" {
+			lines = append(lines, renderer.Dim("    Author: "+agent.Author))
+		}
+		if len(agent.Tags) > 0 {
+			lines = append(lines, renderer.Dim("    Tags: "+strings.Join(agent.Tags, ", ")))
+		}
+		if len(agent.Dependencies) > 0 {
+			lines = append(lines, renderer.Dim("    Depends on: "+strings.Join(agent.Dependencies, ", ")))
+		}
+
+		lines = append(lines, "")
+	}
+
+	lines = append(lines, renderer.Dim(fmt.Sprintf("Total: %d agent(s) discovered", result.Total)))
+	lines = append(lines, "")
+	lines = append(lines, renderer.Cyan("Usage Examples:"))
+	lines = append(lines, "  • "+renderer.Cyan("/run-agent code-reviewer")+" - Show agent details")
+	lines = append(lines, "  • "+renderer.Cyan("/run-agent code-reviewer \"review this code\"")+" - Use agent (preview)")
+	lines = append(lines, "")
+
+	return lines
 }

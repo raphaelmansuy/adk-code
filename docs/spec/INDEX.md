@@ -1,8 +1,8 @@
 # Agent Definition Support - Specification Index
 
 **Location**: `/docs/spec/`  
-**Updated**: November 14, 2025  
-**Status**: 🟢 Phase 0 Complete, Phase 1 Planned
+**Updated**: November 15, 2025  
+**Status**: 🟢 Phase 0 Complete | Phase 1 Complete | Phase 2 In Progress
 
 ---
 
@@ -12,11 +12,12 @@
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| **0001** | Main specification & high-level design | ✅ Complete |
-| **0002** | Phase 0 implementation details | ✅ Complete |
-| **0003** | Phase 1 implementation plan | 📋 Planned |
+| **0001** | Original specification & high-level design | ✅ Reference |
+| **0002** | Phase 0 implementation details | ✅ Reference |
+| **0003** | Phase 1 implementation plan | ✅ Reference |
 | **0004** | Phase 0 completion report & metrics | ✅ Complete |
-| **0005** | Full project roadmap (phases 0-4) | 📋 Planned |
+| **0005** | Phase 1 completion (if exists) | 📋 TBD |
+| **0006** | Comprehensive strategic spec (CURRENT) | ✅ **NEW** |
 
 ---
 
@@ -190,6 +191,22 @@
 
 ---
 
-*Last Updated: November 14, 2025*  
+### 0006-comprehensive-agent-system-specification.md
+**Purpose**: Complete strategic and technical specification (NEW)  
+**Audience**: All stakeholders  
+**Contains**:
+- Strategic vision and rationale
+- Current implementation state across all phases
+- Deep technical understanding of architecture
+- Phase-by-phase breakdown with timelines
+- Multi-agent research insights
+- Challenges and mitigations
+- Success criteria and validation
+
+**Read this if**: You want complete understanding of the agent system - why it exists, how it works, and where it's going.
+
+---
+
+*Last Updated: November 15, 2025*  
 *Project Status: 🟢 On Track*  
-*Phase 0: ✅ Complete | Phase 1: 📋 Planned*
+*Phase 0: ✅ Complete | Phase 1: ✅ Complete | Phase 2: 🔄 In Progress*

@@ -10,18 +10,18 @@ import (
 
 // DockerContainerConfig holds configuration for Docker container execution
 type DockerContainerConfig struct {
-	Image                    string
-	Tag                      string
-	Command                  []string
-	WorkDir                  string
-	EnvironmentVariables     map[string]string
-	VolumeMounts             map[string]string
-	MemoryLimit              int64
-	CPUShares                int64
-	Timeout                  time.Duration
-	NetworkMode              string
-	Privileged               bool
-	RemoveAfterExecution     bool
+	Image                string
+	Tag                  string
+	Command              []string
+	WorkDir              string
+	EnvironmentVariables map[string]string
+	VolumeMounts         map[string]string
+	MemoryLimit          int64
+	CPUShares            int64
+	Timeout              time.Duration
+	NetworkMode          string
+	Privileged           bool
+	RemoveAfterExecution bool
 }
 
 // DockerContainerResult holds the result of Docker container execution

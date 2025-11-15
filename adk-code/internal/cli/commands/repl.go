@@ -4,12 +4,14 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	agentprompts "adk-code/internal/prompts"
 	"adk-code/internal/tracking"
+	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
 	"adk-code/tools"
 )
@@ -47,6 +49,10 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		handleTokensCommand(sessionTokens)
 		return true
 
+	case "/agents":
+		handleAgentsCommand(renderer)
+		return true
+
 	default:
 		// Check if it's a /set-model command
 		if strings.HasPrefix(input, "/set-model ") {
@@ -57,6 +63,12 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		// Check if it's an /mcp command
 		if strings.HasPrefix(input, "/mcp") {
 			handleMCPCommand(input, renderer, mcpManager)
+			return true
+		}
+		// Check if it's a /run-agent command
+		if strings.HasPrefix(input, "/run-agent ") {
+			agentRequest := strings.TrimPrefix(input, "/run-agent ")
+			handleRunAgentCommand(renderer, agentRequest)
 			return true
 		}
 		return false
@@ -242,6 +254,112 @@ func handleMCPTools(renderer *display.Renderer, mcpManager *mcp.Manager) {
 	fmt.Println(renderer.Dim("  Note: Tool details are only available during agent execution."))
 	fmt.Println(renderer.Dim("  The agent will have access to all MCP tools when processing requests."))
 	fmt.Println()
+}
+
+// handleAgentsCommand displays available agents
+func handleAgentsCommand(renderer *display.Renderer) {
+	// Get the project root from environment or current directory
+	projectRoot := os.Getenv("ADK_PROJECT_ROOT")
+	if projectRoot == "" {
+		var err error
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			fmt.Println(renderer.Red("Error: Could not determine project root"))
+			return
+		}
+	}
+
+	// Discover agents
+	discoverer := agents.NewDiscoverer(projectRoot)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error discovering agents: %v", err)))
+		return
+	}
+
+	lines := buildAgentsListLines(renderer, result)
+	paginator := display.NewPaginator(renderer)
+	paginator.DisplayPaged(lines)
+}
+
+// handleRunAgentCommand attempts to run a specific agent (preview feature)
+func handleRunAgentCommand(renderer *display.Renderer, agentRequest string) {
+	// Parse agent name from request (format: "agent-name" or "agent-name request")
+	parts := strings.SplitN(agentRequest, " ", 2)
+	agentName := strings.TrimSpace(parts[0])
+
+	if agentName == "" {
+		fmt.Println(renderer.Yellow("⚠ Please specify an agent name: /run-agent agent-name [request]"))
+		return
+	}
+
+	// Get the project root from environment or current directory
+	projectRoot := os.Getenv("ADK_PROJECT_ROOT")
+	if projectRoot == "" {
+		var err error
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			fmt.Println(renderer.Red("Error: Could not determine project root"))
+			return
+		}
+	}
+
+	// Discover agents
+	discoverer := agents.NewDiscoverer(projectRoot)
+	result, err := discoverer.DiscoverAll()
+
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error discovering agents: %v", err)))
+		return
+	}
+
+	// Find the requested agent
+	var foundAgent *agents.Agent
+	for _, agent := range result.Agents {
+		if agent.Name == agentName {
+			foundAgent = agent
+			break
+		}
+	}
+
+	if foundAgent == nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("✗ Agent not found: %s", agentName)))
+		fmt.Println()
+		fmt.Println(renderer.Yellow("Available agents:"))
+		for _, agent := range result.Agents {
+			fmt.Println(renderer.Cyan("  • ") + renderer.Bold(agent.Name))
+		}
+		return
+	}
+
+	// Display agent info
+	fmt.Println()
+	fmt.Println(renderer.Green("✓ ") + renderer.Bold(foundAgent.Name))
+	fmt.Println(renderer.Dim("  Description: ") + foundAgent.Description)
+	if foundAgent.Version != "" {
+		fmt.Println(renderer.Dim("  Version: ") + foundAgent.Version)
+	}
+	if foundAgent.Author != "" {
+		fmt.Println(renderer.Dim("  Author: ") + foundAgent.Author)
+	}
+	if len(foundAgent.Tags) > 0 {
+		fmt.Println(renderer.Dim("  Tags: ") + strings.Join(foundAgent.Tags, ", "))
+	}
+	fmt.Println()
+
+	// If there's a request, show how it would be executed
+	if len(parts) > 1 {
+		request := strings.TrimSpace(parts[1])
+		fmt.Println(renderer.Cyan("Request: ") + request)
+		fmt.Println()
+		fmt.Println(renderer.Yellow("Note: Agent execution with /run-agent is a preview feature."))
+		fmt.Println(renderer.Yellow("Agent execution will be fully integrated in future versions."))
+		fmt.Println()
+	} else {
+		fmt.Println(renderer.Yellow("Tip: Use /run-agent <agent-name> <request> to execute the agent"))
+		fmt.Println()
+	}
 }
 
 // Helper functions for building display lines

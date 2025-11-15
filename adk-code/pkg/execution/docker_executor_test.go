@@ -10,12 +10,12 @@ import (
 // TestNewDockerExecutor verifies Docker executor creation
 func TestNewDockerExecutor(t *testing.T) {
 	executor, err := NewDockerExecutor()
-	
+
 	// If Docker is not available, skip the test
 	if err != nil {
 		t.Skipf("Docker not available: %v", err)
 	}
-	
+
 	if executor == nil {
 		t.Fatal("Expected executor to be non-nil")
 	}

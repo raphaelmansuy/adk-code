@@ -281,8 +281,8 @@ func TestPluginMetadataFilePath(t *testing.T) {
 // TestIsPluginFile tests plugin file detection
 func TestIsPluginFile(t *testing.T) {
 	testCases := []struct {
-		filename  string
-		isPlugin  bool
+		filename string
+		isPlugin bool
 	}{
 		{"plugin.so", true},
 		{"plugin.dll", true},

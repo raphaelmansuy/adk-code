@@ -250,16 +250,16 @@ func (al *AuditLog) ExportJSON() ([]byte, error) {
 
 // AuditLogger is a comprehensive audit logging system
 type AuditLogger struct {
-	log              *AuditLog
-	credentialMgr    *CredentialManager
+	log               *AuditLog
+	credentialMgr     *CredentialManager
 	maskSensitiveData bool
 }
 
 // NewAuditLogger creates a new audit logger
 func NewAuditLogger(credentialMgr *CredentialManager, maskSensitive bool) *AuditLogger {
 	return &AuditLogger{
-		log:              NewAuditLog(),
-		credentialMgr:    credentialMgr,
+		log:               NewAuditLog(),
+		credentialMgr:     credentialMgr,
 		maskSensitiveData: maskSensitive,
 	}
 }
@@ -311,11 +311,11 @@ func (al *AuditLogger) Summary(executionID string) map[string]interface{} {
 	events := al.log.GetEventsByExecutionID(executionID)
 
 	summary := map[string]interface{}{
-		"execution_id": executionID,
-		"event_count":  len(events),
+		"execution_id":   executionID,
+		"event_count":    len(events),
 		"events_by_type": map[string]int{},
-		"first_event": nil,
-		"last_event":  nil,
+		"first_event":    nil,
+		"last_event":     nil,
 	}
 
 	typeCounts := make(map[AuditEventType]int)

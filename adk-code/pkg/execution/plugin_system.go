@@ -12,10 +12,10 @@ import (
 type PluginType string
 
 const (
-	PluginTypeExecutor    PluginType = "executor"
-	PluginTypeStrategy    PluginType = "strategy"
-	PluginTypeCredential  PluginType = "credential"
-	PluginTypeTransport   PluginType = "transport"
+	PluginTypeExecutor   PluginType = "executor"
+	PluginTypeStrategy   PluginType = "strategy"
+	PluginTypeCredential PluginType = "credential"
+	PluginTypeTransport  PluginType = "transport"
 )
 
 // PluginMetadata contains metadata about a plugin
