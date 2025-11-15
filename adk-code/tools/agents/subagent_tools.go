@@ -172,13 +172,21 @@ func (m *SubAgentManager) getAllAvailableTools() []tool.Tool {
 }
 
 // findToolByName searches for a tool in both built-in and MCP toolsets
+// Supports both exact matches and builtin_ prefix variations
+// For example: "read_file" will match "builtin_read_file"
 func (m *SubAgentManager) findToolByName(name string) tool.Tool {
 	// Search in built-in tools
 	registry := common.GetRegistry()
 	builtinTools := registry.GetAllTools()
 
 	for _, t := range builtinTools {
-		if t.Name() == name {
+		toolName := t.Name()
+		// Direct match
+		if toolName == name {
+			return t
+		}
+		// Try matching with builtin_ prefix if not already present
+		if !strings.HasPrefix(name, "builtin_") && toolName == "builtin_"+name {
 			return t
 		}
 	}

@@ -3,6 +3,7 @@ package agents
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"google.golang.org/adk/tool"
@@ -52,7 +53,12 @@ type ListAgentsOutput struct {
 func NewListAgentsTool() (tool.Tool, error) {
 	handler := func(ctx tool.Context, input ListAgentsInput) ListAgentsOutput {
 		// Use current working directory as project root
-		projectRoot := "."
+		// This matches how subagent tools are loaded in coding_agent.go
+		projectRoot, err := os.Getwd()
+		if err != nil {
+			// Fall back to current directory if Getwd fails
+			projectRoot = "."
+		}
 
 		// Load configuration (Phase 1 feature)
 		cfg, err := agents.LoadConfig(projectRoot)
