@@ -46,32 +46,56 @@ func FormatSessionSummary(summary *Summary) string {
 		"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
 	}
 
-	// Calculate used tokens and cache efficiency
-	usedTokens := summary.TotalTokens - summary.TotalCachedTokens
+	// Calculate key metrics
+	usedTokens := summary.TotalPromptTokens + summary.TotalResponseTokens // Actual new tokens
+	cachedTokens := summary.TotalCachedTokens                             // Tokens served from cache
+	totalProcessed := usedTokens + cachedTokens                           // Everything processed
+
 	var cacheEfficiency float64
-	if summary.TotalTokens > 0 {
-		cacheEfficiency = float64(summary.TotalCachedTokens) / float64(summary.TotalTokens) * 100
+	if totalProcessed > 0 {
+		cacheEfficiency = float64(cachedTokens) / float64(totalProcessed) * 100
 	}
 
-	lines = append(lines, fmt.Sprintf("Total Tokens:        %d", summary.TotalTokens))
-	lines = append(lines, fmt.Sprintf("  ├─ Actually Used:  %d", usedTokens))
-	lines = append(lines, fmt.Sprintf("  ├─ Prompt:         %d", summary.TotalPromptTokens))
-	lines = append(lines, fmt.Sprintf("  ├─ Response:       %d", summary.TotalResponseTokens))
+	// Calculate cost savings from caching (rough estimate: cached = 10% of actual cost)
+	estimatedCostSavings := cachedTokens / 10 // Rough estimation
 
-	if summary.TotalCachedTokens > 0 {
-		lines = append(lines, fmt.Sprintf("  ├─ Cached:         %d (%.1f%% saved)", summary.TotalCachedTokens, cacheEfficiency))
-	}
+	// Main metrics - what actually matters
+	lines = append(lines, "")
+	lines = append(lines, "💰 Cost Metrics (What You Pay)")
+	lines = append(lines, fmt.Sprintf("  ├─ New Tokens:     %d (prompt + response you paid for)", usedTokens))
+	lines = append(lines, fmt.Sprintf("  ├─ Cache Reuse:    %d tokens (%.1f%% efficiency)", cachedTokens, cacheEfficiency))
+	lines = append(lines, fmt.Sprintf("  ├─ Cost Savings:   ~%d tokens via caching", estimatedCostSavings))
+	lines = append(lines, fmt.Sprintf("  └─ API Billing:    %d total tokens", totalProcessed))
+
+	// Breakdown by component
+	lines = append(lines, "")
+	lines = append(lines, "🔧 Token Breakdown")
+	lines = append(lines, fmt.Sprintf("  ├─ Prompt (input):   %d", summary.TotalPromptTokens))
+	lines = append(lines, fmt.Sprintf("  ├─ Response (output):%d", summary.TotalResponseTokens))
+
 	if summary.TotalThoughtTokens > 0 {
-		lines = append(lines, fmt.Sprintf("  ├─ Thoughts:       %d", summary.TotalThoughtTokens))
+		lines = append(lines, fmt.Sprintf("  ├─ Thinking:         %d", summary.TotalThoughtTokens))
 	}
 	if summary.TotalToolUseTokens > 0 {
-		lines = append(lines, fmt.Sprintf("  └─ Tool Use:       %d", summary.TotalToolUseTokens))
+		lines = append(lines, fmt.Sprintf("  ├─ Tool Use:         %d", summary.TotalToolUseTokens))
+	}
+	if summary.TotalCachedTokens > 0 {
+		lines = append(lines, fmt.Sprintf("  └─ Cached Reuse:     %d", summary.TotalCachedTokens))
 	}
 
+	// Efficiency metrics
 	lines = append(lines, "")
-	lines = append(lines, fmt.Sprintf("Requests:            %d", summary.RequestCount))
-	lines = append(lines, fmt.Sprintf("Avg Tokens/Request:  %.1f", summary.AvgTokensPerRequest))
-	lines = append(lines, fmt.Sprintf("Session Duration:    %s", formatDuration(summary.SessionDuration)))
+	lines = append(lines, "📈 Session Efficiency")
+	lines = append(lines, fmt.Sprintf("  ├─ Requests:         %d", summary.RequestCount))
+	lines = append(lines, fmt.Sprintf("  ├─ Avg/Request:      %.0f tokens", summary.AvgTokensPerRequest))
+
+	// Cache hit rate if available
+	if cacheEfficiency > 0 {
+		lines = append(lines, fmt.Sprintf("  ├─ Cache Hit Rate:   %.1f%% (excellent!)", cacheEfficiency))
+	}
+
+	lines = append(lines, fmt.Sprintf("  └─ Duration:         %s", formatDuration(summary.SessionDuration)))
+
 	lines = append(lines, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 	return strings.Join(lines, "\n")

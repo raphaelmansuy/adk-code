@@ -58,20 +58,17 @@ func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
 	// Record token metrics if available and update spinner with metrics
 	if event.UsageMetadata != nil {
 		sessionTokens.RecordMetrics(event.UsageMetadata, requestID)
-		// Create token metrics for spinner display
-		metric := &tracking.TokenMetrics{
-			PromptTokens:   event.UsageMetadata.PromptTokenCount,
-			CachedTokens:   event.UsageMetadata.CachedContentTokenCount,
-			ResponseTokens: event.UsageMetadata.CandidatesTokenCount,
-			ThoughtTokens:  event.UsageMetadata.ThoughtsTokenCount,
-			ToolUseTokens:  event.UsageMetadata.ToolUsePromptTokenCount,
-			TotalTokens:    event.UsageMetadata.TotalTokenCount,
-		}
-		// Update spinner with metrics if it's actively running
-		if *toolRunning {
-			spinner.UpdateWithMetrics("Processing", metric)
-		} else {
-			spinner.UpdateWithMetrics("Agent is thinking", metric)
+
+		// Get the correctly calculated per-request metric (with deltas already computed)
+		metric := sessionTokens.GetLastMetric()
+
+		// Update spinner with the per-request metrics if it's actively running
+		if metric != nil {
+			if *toolRunning {
+				spinner.UpdateWithMetrics("Processing", metric)
+			} else {
+				spinner.UpdateWithMetrics("Agent is thinking", metric)
+			}
 		}
 	}
 

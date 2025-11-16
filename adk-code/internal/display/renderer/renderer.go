@@ -235,8 +235,8 @@ func (r *Renderer) RenderTaskFailed() string {
 	return r.metricsFormatter.RenderTaskFailed()
 }
 
-func (r *Renderer) RenderTokenMetrics(promptTokens, cachedTokens, responseTokens, totalTokens int64) string {
-	return r.metricsFormatter.RenderTokenMetrics(promptTokens, cachedTokens, responseTokens, totalTokens)
+func (r *Renderer) RenderTokenMetrics(promptTokens, cachedTokens, responseTokens, thoughtTokens, totalTokens, contextWindow int64) string {
+	return r.metricsFormatter.RenderTokenMetrics(promptTokens, cachedTokens, responseTokens, thoughtTokens, totalTokens, contextWindow)
 }
 
 func (r *Renderer) RenderAPIUsage(status string, usage *formatters.APIUsageInfo) string {

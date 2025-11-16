@@ -36,27 +36,39 @@ func TestSessionTokensRecordMetrics(t *testing.T) {
 func TestSessionTokensMultipleRecords(t *testing.T) {
 	st := NewSessionTokens()
 
+	// The API returns cumulative token counts for multi-turn conversations
+	// First request: cumulative total = 150 (delta from 0 = 150)
 	metadata1 := &genai.GenerateContentResponseUsageMetadata{
 		PromptTokenCount:     100,
 		CandidatesTokenCount: 50,
-		TotalTokenCount:      150,
+		TotalTokenCount:      150, // Cumulative: 0 + 150 = 150
 	}
 
+	// Second request: cumulative total = 275 (delta from 150 = 125)
+	// New prompt tokens: 200, New response tokens: 75
+	// Prompt delta: 200 - 100 = 100, Response delta: 75 - 50 = 25, Total delta: 100 + 25 = 125
 	metadata2 := &genai.GenerateContentResponseUsageMetadata{
 		PromptTokenCount:     200,
 		CandidatesTokenCount: 75,
-		TotalTokenCount:      275,
+		TotalTokenCount:      275, // Cumulative: 150 + 125 = 275
 	}
 
 	st.RecordMetrics(metadata1, "req_1")
 	st.RecordMetrics(metadata2, "req_2")
 
-	if st.TotalTokens != 425 {
-		t.Errorf("Expected TotalTokens=425, got %d", st.TotalTokens)
+	// TotalTokens is the sum of per-request deltas: 150 + 125 = 275
+	if st.TotalTokens != 275 {
+		t.Errorf("Expected TotalTokens=275 (150 + 125), got %d", st.TotalTokens)
 	}
 
-	if st.TotalPromptTokens != 300 {
-		t.Errorf("Expected TotalPromptTokens=300, got %d", st.TotalPromptTokens)
+	// TotalPromptTokens is sum of prompt deltas: 100 + 100 = 200
+	if st.TotalPromptTokens != 200 {
+		t.Errorf("Expected TotalPromptTokens=200 (100 + 100), got %d", st.TotalPromptTokens)
+	}
+
+	// TotalResponseTokens is sum of response deltas: 50 + 25 = 75
+	if st.TotalResponseTokens != 75 {
+		t.Errorf("Expected TotalResponseTokens=75 (50 + 25), got %d", st.TotalResponseTokens)
 	}
 
 	if st.RequestCount != 2 {
@@ -110,12 +122,18 @@ func TestGlobalTrackerGetGlobalSummary(t *testing.T) {
 	st1 := gt.GetOrCreateSession("session1")
 	st2 := gt.GetOrCreateSession("session2")
 
+	// Session 1: First request with 100 total tokens (50 prompt + 50 response)
 	metadata1 := &genai.GenerateContentResponseUsageMetadata{
-		TotalTokenCount: 100,
+		PromptTokenCount:     50,
+		CandidatesTokenCount: 50,
+		TotalTokenCount:      100,
 	}
 
+	// Session 2: First request with 200 total tokens (100 prompt + 100 response)
 	metadata2 := &genai.GenerateContentResponseUsageMetadata{
-		TotalTokenCount: 200,
+		PromptTokenCount:     100,
+		CandidatesTokenCount: 100,
+		TotalTokenCount:      200,
 	}
 
 	st1.RecordMetrics(metadata1, "req_1")
@@ -124,7 +142,7 @@ func TestGlobalTrackerGetGlobalSummary(t *testing.T) {
 	globalSummary := gt.GetGlobalSummary()
 
 	if globalSummary.TotalTokens != 300 {
-		t.Errorf("Expected TotalTokens=300, got %d", globalSummary.TotalTokens)
+		t.Errorf("Expected TotalTokens=300 (100 + 200), got %d", globalSummary.TotalTokens)
 	}
 
 	if globalSummary.TotalRequests != 2 {
@@ -157,6 +175,42 @@ func TestFormatTokenMetrics(t *testing.T) {
 	}
 }
 
+func TestFormatTokenMetrics_WithThinkingTokens(t *testing.T) {
+	metric := TokenMetrics{
+		PromptTokens:   100,
+		ResponseTokens: 50,
+		ThoughtTokens:  20,
+		CachedTokens:   10,
+		TotalTokens:    160,
+	}
+
+	formatted := FormatTokenMetrics(metric)
+
+	if formatted == "" {
+		t.Errorf("FormatTokenMetrics should not return empty string")
+	}
+
+	if !contains(formatted, "prompt=100") {
+		t.Errorf("FormatTokenMetrics should contain 'prompt=100', got: %s", formatted)
+	}
+
+	if !contains(formatted, "response=50") {
+		t.Errorf("FormatTokenMetrics should contain 'response=50', got: %s", formatted)
+	}
+
+	if !contains(formatted, "thoughts=20") {
+		t.Errorf("FormatTokenMetrics should contain 'thoughts=20' when thinking tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "cached=10") {
+		t.Errorf("FormatTokenMetrics should contain 'cached=10' when cached tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "total=160") {
+		t.Errorf("FormatTokenMetrics should contain 'total=160', got: %s", formatted)
+	}
+}
+
 func TestFormatSessionSummary(t *testing.T) {
 	summary := &Summary{
 		TotalTokens:         100,
@@ -174,6 +228,36 @@ func TestFormatSessionSummary(t *testing.T) {
 
 	if !contains(formatted, "Token Usage Summary") {
 		t.Errorf("FormatSessionSummary should contain 'Token Usage Summary'")
+	}
+}
+
+func TestFormatSessionSummary_WithThinkingTokens(t *testing.T) {
+	summary := &Summary{
+		TotalTokens:         200,
+		TotalPromptTokens:   100,
+		TotalResponseTokens: 60,
+		TotalThoughtTokens:  30,
+		TotalCachedTokens:   10,
+		RequestCount:        2,
+		SessionDuration:     time.Second * 10,
+	}
+
+	formatted := FormatSessionSummary(summary)
+
+	if formatted == "" {
+		t.Errorf("FormatSessionSummary should not return empty string")
+	}
+
+	if !contains(formatted, "Token Usage Summary") {
+		t.Errorf("FormatSessionSummary should contain 'Token Usage Summary'")
+	}
+
+	if !contains(formatted, "Thinking:") {
+		t.Errorf("FormatSessionSummary should contain 'Thinking:' when thinking tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "30") {
+		t.Errorf("FormatSessionSummary should show thinking token count (30), got: %s", formatted)
 	}
 }
 
