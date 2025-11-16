@@ -252,8 +252,8 @@ func TestFormatSessionSummary_WithThinkingTokens(t *testing.T) {
 		t.Errorf("FormatSessionSummary should contain 'Token Usage Summary'")
 	}
 
-	if !contains(formatted, "Thoughts:") {
-		t.Errorf("FormatSessionSummary should contain 'Thoughts:' when thinking tokens are present, got: %s", formatted)
+	if !contains(formatted, "Thinking:") {
+		t.Errorf("FormatSessionSummary should contain 'Thinking:' when thinking tokens are present, got: %s", formatted)
 	}
 
 	if !contains(formatted, "30") {

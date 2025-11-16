@@ -39,22 +39,45 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"}).
 		Italic(true)
 
-	// Build metrics string: "Tokens: 2,341 prompt | 892 cached | 1,205 response | Total: 5,054"
-	var parts []string
-
-	if promptTokens > 0 {
-		parts = append(parts, fmt.Sprintf("%d prompt", promptTokens))
+	// Calculate meaningful metrics
+	actualTokensUsed := promptTokens + responseTokens // New tokens actually processed
+	cacheHitTokens := cachedTokens                    // Tokens served from cache
+	
+	// Calculate cache efficiency: how much of the request was cached?
+	var cacheEfficiency float64
+	if totalTokens > 0 {
+		cacheEfficiency = (float64(cacheHitTokens) / float64(totalTokens)) * 100
 	}
-	if cachedTokens > 0 {
-		parts = append(parts, fmt.Sprintf("%d cached", cachedTokens))
+	
+	// Build metrics string with meaningful insights
+	// Format: "Session: 28K actual | 26K cached (92%) | 2K response"
+	var parts []string
+	
+	if actualTokensUsed > 0 {
+		parts = append(parts, fmt.Sprintf("%s actual", formatCompactNumber(actualTokensUsed)))
+	}
+	if cacheHitTokens > 0 {
+		parts = append(parts, fmt.Sprintf("%s cached (%.0f%%)", formatCompactNumber(cacheHitTokens), cacheEfficiency))
 	}
 	if responseTokens > 0 {
-		parts = append(parts, fmt.Sprintf("%d response", responseTokens))
+		parts = append(parts, fmt.Sprintf("%s response", formatCompactNumber(responseTokens)))
 	}
 
-	metricsStr := fmt.Sprintf("Tokens: %s | Total: %d", strings.Join(parts, " | "), totalTokens)
+	metricsStr := fmt.Sprintf("Session: %s", strings.Join(parts, " | "))
 
 	return metricStyle.Render(metricsStr)
+}
+
+// formatCompactNumber converts large numbers to compact form (e.g., 28029 -> 28K)
+func formatCompactNumber(n int64) string {
+	switch {
+	case n >= 1000000:
+		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+	case n >= 1000:
+		return fmt.Sprintf("%.0fK", float64(n)/1000)
+	default:
+		return fmt.Sprintf("%d", n)
+	}
 }
 
 // APIUsageInfo holds token usage and cost information
