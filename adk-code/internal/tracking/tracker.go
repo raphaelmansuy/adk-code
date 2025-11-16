@@ -121,6 +121,20 @@ func (st *SessionTokens) RecordMetrics(metadata *genai.GenerateContentResponseUs
 	st.RequestCount++
 }
 
+// GetLastMetric returns the most recently recorded metric (for current request).
+// This provides the per-request token breakdown that should be displayed.
+func (st *SessionTokens) GetLastMetric() *TokenMetrics {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+
+	if len(st.Metrics) == 0 {
+		return nil
+	}
+
+	metric := st.Metrics[len(st.Metrics)-1]
+	return &metric
+}
+
 // GetSummary returns a formatted summary of token usage.
 func (st *SessionTokens) GetSummary() *Summary {
 	st.mu.RLock()
