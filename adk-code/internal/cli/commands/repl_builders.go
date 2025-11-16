@@ -5,11 +5,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"adk-code/internal/display"
 	"adk-code/internal/llm/backends"
+	"adk-code/internal/session/compaction"
 	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
+	"google.golang.org/adk/session"
 )
 
 // buildHelpMessageLines builds the help message as an array of lines for pagination
@@ -37,6 +40,7 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
+	lines = append(lines, "   • "+renderer.Bold("/sessions")+" - Display current session event history")
 	lines = append(lines, "   • "+renderer.Bold("/compaction")+" - Show session history compaction configuration")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
 	lines = append(lines, "   • "+renderer.Bold("/exit")+" - Exit the agent")
@@ -453,4 +457,244 @@ func buildAgentsListLines(renderer *display.Renderer, result *agents.DiscoveryRe
 	lines = append(lines, "")
 
 	return lines
+}
+
+// buildSessionDisplayLines builds session event history as paginated lines
+func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) []string {
+	var lines []string
+
+	// === HEADER ===
+	lines = append(lines, "")
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, renderer.Cyan(fmt.Sprintf("                    Session: %s", sess.ID())))
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, "")
+
+	// === SESSION METADATA ===
+	lines = append(lines, renderer.Bold("📋 Session Details:"))
+	lines = append(lines, fmt.Sprintf("  %s App:      %s", renderer.Dim("•"), sess.AppName()))
+	lines = append(lines, fmt.Sprintf("  %s User:     %s", renderer.Dim("•"), sess.UserID()))
+	lines = append(lines, fmt.Sprintf("  %s ID:       %s", renderer.Dim("•"), sess.ID()))
+
+	// Update time
+	lastUpdate := sess.LastUpdateTime()
+	lines = append(lines, fmt.Sprintf("  %s Updated:  %s (%s ago)",
+		renderer.Dim("•"),
+		lastUpdate.Format("2006-01-02 15:04:05"),
+		formatTimeAgo(lastUpdate),
+	))
+	lines = append(lines, "")
+
+	// === EVENT SUMMARY ===
+	events := sess.Events()
+	totalEvents := events.Len()
+
+	eventCounts := countEventsByType(events)
+	lines = append(lines, renderer.Bold(fmt.Sprintf("📊 Events: %d total", totalEvents)))
+
+	if eventCounts.userMessages > 0 {
+		lines = append(lines, fmt.Sprintf("  %s User inputs:      %d",
+			renderer.Dim("•"), eventCounts.userMessages))
+	}
+	if eventCounts.modelResponses > 0 {
+		lines = append(lines, fmt.Sprintf("  %s Model responses:  %d",
+			renderer.Dim("•"), eventCounts.modelResponses))
+	}
+	if eventCounts.toolCalls > 0 {
+		lines = append(lines, fmt.Sprintf("  %s Tool calls:       %d",
+			renderer.Dim("•"), eventCounts.toolCalls))
+	}
+	if eventCounts.toolResults > 0 {
+		lines = append(lines, fmt.Sprintf("  %s Tool results:     %d",
+			renderer.Dim("•"), eventCounts.toolResults))
+	}
+	if eventCounts.compactions > 0 {
+		lines = append(lines, fmt.Sprintf("  %s Compactions:      %d",
+			renderer.Green("★"), eventCounts.compactions))
+	}
+	lines = append(lines, "")
+
+	// === CUMULATIVE TOKENS ===
+	totalTokens := countTotalTokens(events)
+	if totalTokens > 0 {
+		lines = append(lines, renderer.Bold(fmt.Sprintf("🎯 Token Usage: %d total", totalTokens)))
+		lines = append(lines, "")
+	}
+
+	// === EVENT TIMELINE ===
+	if totalEvents == 0 {
+		lines = append(lines, renderer.Yellow("⚠ No events in this session yet"))
+		return lines
+	}
+
+	lines = append(lines, renderer.Bold("📜 Event Timeline:"))
+	lines = append(lines, "")
+
+	// Iterate through events
+	for i := 0; i < events.Len(); i++ {
+		event := events.At(i)
+		if event == nil {
+			continue
+		}
+
+		// Event number and timestamp
+		ts := event.Timestamp.Format("15:04:05")
+		eventNum := fmt.Sprintf("[%d/%d]", i+1, totalEvents)
+
+		lines = append(lines, renderer.Dim(fmt.Sprintf("  %s %s", eventNum, ts)))
+
+		// Determine event type and format accordingly
+		if compactionMeta, err := compaction.GetCompactionMetadata(event); err == nil {
+			// === COMPACTION EVENT ===
+			lines = append(lines, renderer.Green("    ★ COMPACTION EVENT"))
+			lines = append(lines, fmt.Sprintf("      Events compressed:    %d → summary",
+				compactionMeta.EventCount))
+			lines = append(lines, fmt.Sprintf("      Tokens saved:          %d → %d (%.1f%% compression)",
+				compactionMeta.OriginalTokens,
+				compactionMeta.CompactedTokens,
+				compactionMeta.CompressionRatio*100,
+			))
+			lines = append(lines, fmt.Sprintf("      Period:                %s to %s",
+				compactionMeta.StartTimestamp.Format("15:04:05"),
+				compactionMeta.EndTimestamp.Format("15:04:05"),
+			))
+		} else if event.LLMResponse.Content != nil {
+			// === REGULAR EVENT ===
+			author := event.Author
+			if author == "" {
+				author = "system"
+			}
+
+			// Color-code by author
+			var authorStr string
+			switch author {
+			case "user":
+				authorStr = renderer.Blue("👤 USER")
+			case "model":
+				authorStr = renderer.Green("🤖 MODEL")
+			case "system":
+				authorStr = renderer.Yellow("⚙️  SYSTEM")
+			default:
+				authorStr = renderer.Dim(fmt.Sprintf("❓ %s", author))
+			}
+
+			lines = append(lines, fmt.Sprintf("    %s (ID: %s)",
+				authorStr,
+				truncateID(event.ID, 8),
+			))
+
+			// Display content preview
+			if len(event.LLMResponse.Content.Parts) > 0 {
+				for _, part := range event.LLMResponse.Content.Parts {
+					if part != nil && part.Text != "" {
+						preview := truncateText(part.Text, 60)
+						lines = append(lines, fmt.Sprintf("      %s", renderer.Dim(preview)))
+					}
+				}
+			}
+
+			// Show token count if available
+			if event.LLMResponse.UsageMetadata != nil {
+				promptTokens := int(event.LLMResponse.UsageMetadata.PromptTokenCount)
+				outputTokens := int(event.LLMResponse.UsageMetadata.CandidatesTokenCount)
+				if promptTokens > 0 || outputTokens > 0 {
+					lines = append(lines, fmt.Sprintf("      %s",
+						renderer.Dim(fmt.Sprintf("Tokens: %d prompt + %d output",
+							promptTokens, outputTokens))))
+				}
+			}
+		}
+
+		// Add spacing between events
+		if i < events.Len()-1 {
+			lines = append(lines, "")
+		}
+	}
+
+	// === FOOTER ===
+	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("Press SPACE to continue, Q to quit"))
+	lines = append(lines, "")
+
+	return lines
+}
+
+// eventTypeCounts tracks the breakdown of event types
+type eventTypeCounts struct {
+	userMessages   int
+	modelResponses int
+	toolCalls      int
+	toolResults    int
+	compactions    int
+}
+
+// countEventsByType counts events by their type
+func countEventsByType(events session.Events) eventTypeCounts {
+	counts := eventTypeCounts{}
+
+	for i := 0; i < events.Len(); i++ {
+		evt := events.At(i)
+		if evt == nil {
+			continue
+		}
+
+		// Check if it's a compaction event first
+		if compaction.IsCompactionEvent(evt) {
+			counts.compactions++
+		} else if evt.Author == "user" {
+			counts.userMessages++
+		} else if evt.Author == "model" {
+			counts.modelResponses++
+		}
+		// Note: Tool call/result detection could be enhanced with Actions field inspection
+	}
+
+	return counts
+}
+
+// countTotalTokens sums up all tokens across events
+func countTotalTokens(events session.Events) int {
+	total := 0
+	for i := 0; i < events.Len(); i++ {
+		evt := events.At(i)
+		if evt == nil {
+			continue
+		}
+		if evt.LLMResponse.UsageMetadata != nil {
+			total += int(evt.LLMResponse.UsageMetadata.TotalTokenCount)
+		}
+	}
+	return total
+}
+
+// truncateText truncates text to maxLen characters with ellipsis
+func truncateText(text string, maxLen int) string {
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen-3] + "..."
+}
+
+// truncateID truncates an ID string to maxLen characters
+func truncateID(id string, maxLen int) string {
+	if len(id) <= maxLen {
+		return id
+	}
+	return id[:maxLen]
+}
+
+// formatTimeAgo formats a time in human-readable "ago" format
+func formatTimeAgo(t time.Time) string {
+	elapsed := time.Since(t)
+	if elapsed < time.Minute {
+		return "just now"
+	} else if elapsed < time.Hour {
+		minutes := int(elapsed.Minutes())
+		return fmt.Sprintf("%dm ago", minutes)
+	} else if elapsed < 24*time.Hour {
+		hours := int(elapsed.Hours())
+		return fmt.Sprintf("%dh ago", hours)
+	}
+	days := int(elapsed.Hours()) / 24
+	return fmt.Sprintf("%dd ago", days)
 }

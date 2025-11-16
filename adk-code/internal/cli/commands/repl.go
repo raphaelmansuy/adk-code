@@ -12,6 +12,7 @@ import (
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	agentprompts "adk-code/internal/prompts"
+	"adk-code/internal/session"
 	"adk-code/internal/tracking"
 	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
@@ -53,6 +54,10 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 
 	case "/compaction":
 		handleCompactionCommand(renderer, appConfig)
+		return true
+
+	case "/sessions":
+		handleSessionsCommand(ctx, renderer, appConfig)
 		return true
 
 	case "/agents":
@@ -196,6 +201,38 @@ func handleCompactionCommand(renderer *display.Renderer, appConfig interface{}) 
 	fmt.Println("           " + renderer.Cyan("--compaction-tokens 700000 \\"))
 	fmt.Println("           " + renderer.Cyan("--compaction-safety 0.7"))
 	fmt.Println()
+}
+
+// handleSessionsCommand displays the current session's event history with pagination
+func handleSessionsCommand(ctx context.Context, renderer *display.Renderer, appConfig interface{}) {
+	// Extract config
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	// Get session manager
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	// Get current session
+	sess, err := sessionMgr.GetSession(ctx, "user1", cfg.SessionName)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error retrieving session: %v", err)))
+		return
+	}
+
+	// Build display lines
+	lines := buildSessionDisplayLines(renderer, sess)
+
+	// Display with pagination
+	paginator := display.NewPaginator(renderer)
+	paginator.DisplayPaged(lines)
 }
 
 // handleMCPCommand handles /mcp commands and subcommands
