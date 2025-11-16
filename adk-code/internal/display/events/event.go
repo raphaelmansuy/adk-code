@@ -65,11 +65,18 @@ func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
 			fmt.Println()
 			fmt.Println(renderer.Cyan("📦 Session History Compaction:"))
 			fmt.Printf("  %s Compacted %d events into 1 summary\n", renderer.Dim("•"), metadata.EventCount)
-			fmt.Printf("  %s Token reduction: %d → %d tokens (%.1f%% compression)\n",
-				renderer.Dim("•"),
-				metadata.OriginalTokens,
-				metadata.CompactedTokens,
-				metadata.CompressionRatio)
+			if metadata.CompactedTokens == 0 {
+				fmt.Printf("  %s Token reduction: %d → %d tokens (N/A compression)\n",
+					renderer.Dim("•"),
+					metadata.OriginalTokens,
+					metadata.CompactedTokens)
+			} else {
+				fmt.Printf("  %s Token reduction: %d → %d tokens (%.1f%% compression)\n",
+					renderer.Dim("•"),
+					metadata.OriginalTokens,
+					metadata.CompactedTokens,
+					metadata.CompressionRatio)
+			}
 			fmt.Printf("  %s Session context optimized for better performance\n", renderer.Dim("•"))
 			fmt.Println()
 		}
