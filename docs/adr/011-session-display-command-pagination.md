@@ -1,7 +1,8 @@
-# ADR-011: `/sessions` Command with Rich Terminal Display and Pagination
+# ADR-011: `/session` Command with Rich Terminal Display and Pagination
 
-**Status:** Proposed  
+**Status:** Accepted (Revised)  
 **Date:** 2025-11-16  
+**Last Updated:** 2025-11-16 (Session Management Extensions)  
 **Authors:** Raphaël MANSUY  
 **Deciders:** adk-code Architecture Team  
 **Scope:** REPL Command, Display System, Session Management  
@@ -10,21 +11,37 @@
 
 ## Executive Summary
 
-This ADR specifies the implementation of a **new `/sessions` REPL command** that displays session details with **rich terminal formatting, comprehensive event visualization, and smart pagination**. The command provides users with an intuitive, visually organized overview of session history without requiring external tools.
+This ADR specifies the implementation of a **new `/session` REPL command** that displays session event history with **rich terminal formatting, comprehensive event visualization, smart pagination, and subcommand support**. The command provides users with an intuitive, visually organized exploration interface for both current and past sessions. Additionally, comprehensive session management commands enable users to create, list, and delete sessions directly from the REPL without exiting.
 
-**Key Features:**
-- ✅ **Rich Terminal Display**: Styled headers, color-coded event types, formatted timestamps
-- ✅ **Smart Pagination**: Automatic pagination for large sessions (>24 lines)
-- ✅ **Event Breakdown**: User inputs, LLM responses, tool calls/results, compaction events
-- ✅ **Token Metrics**: Display tokens used per event and cumulative session tokens
-- ✅ **Practical UX**: Quick session overview, detailed drill-down, navigation hints
-- ✅ **Architecture Alignment**: Leverages Google ADK session API and existing display/pagination infrastructure
+**Core Capabilities:**
+- ✅ **Multi-Mode Display**: View current session overview, specific sessions by ID, or full event details
+- ✅ **Rich Terminal Formatting**: Styled headers, color-coded event types, emojis, formatted timestamps
+- ✅ **Smart Pagination**: Automatic pagination for large content (>24 lines)
+- ✅ **Event Breakdown**: User inputs, model responses, tool calls/results, compaction events
+- ✅ **Token Accounting**: Per-event and cumulative token metrics
+- ✅ **Message Preview & Expansion**: Truncated previews with ability to read full content by event ID
+- ✅ **Session Management**: Create, list, delete sessions without leaving REPL
+- ✅ **Safety Features**: Confirmation prompts, prevent deletion of current session
+
+**REPL Command Hierarchy:**
+
+**Session Display:**
+- `/session` - Display current session overview with event timeline
+- `/session <session-id>` - Display specific session from database
+- `/session event <event-id>` - Display full event content (no truncation)
+- `/session help` - Show command documentation
+
+**Session Management:**
+- `/list-sessions` - List all available sessions
+- `/new-session <name>` - Create a new session
+- `/delete-session <name>` - Delete a session (with confirmation)
 
 **Integration Points:**
 - Uses `google.golang.org/adk/session` interfaces (Session, Event, Events)
 - Integrates with existing `display.Paginator` component (`internal/display/components/paginator.go`)
 - Extends REPL command handlers (`internal/cli/commands/repl.go`)
 - Aligns with session compaction metadata (`internal/session/compaction/`)
+- Shares session manager with CLI commands (`internal/cli/commands/session.go`)
 
 ---
 
@@ -34,17 +51,19 @@ This ADR specifies the implementation of a **new `/sessions` REPL command** that
 
 The adk-code agent currently supports session management CLI commands:
 
-| Command | Purpose | Output |
-|---------|---------|--------|
-| `./code-agent list-sessions` | List all sessions | Basic tabular format (session name + event count) |
-| `./code-agent --session <name>` | Resume session | Resumes, no preview of history |
-| `./code-agent delete-session <name>` | Delete session | Confirmation message only |
-| `/tokens` (REPL) | Show token metrics | Summary statistics, non-contextual |
+| Command | Purpose | REPL Equivalent | Output |
+|---------|---------|-----------------|--------|
+| `./code-agent list-sessions` | List all sessions | `/list-sessions` | Tabular format (session name + event count) |
+| `./code-agent new-session <name>` | Create session | `/new-session <name>` | Confirmation message |
+| `./code-agent delete-session <name>` | Delete session | `/delete-session <name>` | Confirmation message |
+| `./code-agent --session <name>` | Resume session | N/A (exit & restart) | Resumes, no preview of history |
+| N/A | View session history | `/session` | Rich formatted display |
 
 **Missing Capability:**
-Users cannot **interactively explore a session's event history** from within the REPL. To debug a conversation, users must:
-1. Exit the REPL
+Users cannot **interactively manage sessions** from within the REPL. To manage sessions or view history, users must:
+1. Exit the REPL (for management)
 2. Manually query the database or write a script to inspect events
+
 3. Parse raw JSON/event data mentally
 
 ### Impact
@@ -72,29 +91,99 @@ Users cannot **interactively explore a session's event history** from within the
 
 ### Core Decision
 
-**Implement a `/sessions` REPL command that:**
+**Implement a `/session` REPL command with subcommand support:**
 
-1. **Displays current session details** (for active session context)
-   - Session metadata: ID, UserID, app name, creation time, last update
-   - Total event count with breakdown by type
-   - Cumulative token usage (if available)
+1. **View Current Session (default)**
+   - Command: `/session`
+   - Shows current session overview with paginated event timeline
+   - Event metadata: timestamp, author, type, content preview, token counts
+   - Compaction events show compression statistics
 
-2. **Shows paginated event timeline**
-   - Chronological event listing
-   - Each event shows: timestamp, author (user/model/system), type, preview of content
-   - Compaction events show summary metadata (original → compacted tokens, event count)
-   - Tool calls show invocation ID for tracing
+2. **View Specific Session**
+   - Command: `/session <session-id>`
+   - Retrieves and displays any session from database by ID
+   - Same formatted display as current session
+   - Useful for reviewing past conversations
 
-3. **Leverages existing infrastructure**
-   - Use Google ADK's `session.Session` interface (events, state access)
-   - Delegate to `display.Paginator` for pagination logic
-   - Follow REPL command pattern from `/help`, `/tools`, `/models`
+3. **View Full Event Content**
+   - Command: `/session event <event-id>`
+   - Displays complete event without truncation
+   - Shows full message text, tool parameters, results
+   - Useful for inspecting message details without leaving REPL
+   - Includes token counts and metadata
 
-4. **Maintains practical terminal UX**
-   - Respects terminal width (wrap long content, truncate with "...")
-   - Displays in a single page by default for small sessions
-   - Clear "Page X/Y" indicators for multi-page content
-   - Provides keyboard hints for navigation (Space = next, Q = quit)
+4. **Command Help**
+   - Command: `/session help`
+   - Displays usage examples and subcommand documentation
+
+### Design Rationale
+
+**Singular `/session` vs Plural `/sessions`:**
+- More intuitive (similar to `/help`, `/tools`)
+- Primary use case is viewing *one* session at a time
+- Subcommands clarify different modes
+
+**Subcommand Pattern:**
+- Follows established REPL patterns (`/mcp list`, `/mcp status`)
+- Extensible for future features (filters, search, export)
+- Clear command hierarchy and help system
+
+**Three-Layer Access Pattern:**
+1. Overview: Quick view of event structure (default display)
+2. Session-level: Switch between sessions by ID
+3. Event-level: Detailed inspection of specific events
+
+---
+
+## Session Management Extensions
+
+### Additional REPL Commands
+
+In addition to the core `/session` command, the following session management commands have been implemented directly in the REPL:
+
+### List All Sessions
+
+- Command: `/list-sessions`
+- Shows all available sessions for the current user
+- Displays: session name, event count, last update time
+- Useful for discovering past conversations without exiting REPL
+
+### Create New Session
+
+- Command: `/new-session <session-name>`
+- Creates a new empty session
+- Provides CLI hint for resuming the session later
+- Validates session name is provided
+
+### Delete Session
+
+- Command: `/delete-session <session-name>`
+- Deletes a session from the database
+- Includes safety features:
+  - Confirms session exists before deletion
+  - Prevents accidental deletion of current session
+  - Requires user confirmation ("yes") before proceeding
+  - Shows informative error messages
+
+### Design Rationale for Extensions
+
+**Why These Commands in REPL:**
+
+- Users need session management without exiting REPL
+- Improves workflow continuity (create/explore/switch sessions fluidly)
+- Provides visual feedback with formatting/emojis (✨, 📋, 🗑️)
+
+**Safety First Approach:**
+
+- Cannot delete current session (prevents data loss)
+- Explicit confirmation required for deletion (typo-resistant)
+- Pre-deletion verification (session exists)
+
+**Command Hierarchy:**
+
+- CLI commands: Used at shell startup/bootstrap (`./code-agent new-session <name>`)
+- REPL commands: Used during interactive session (`/new-session <name>`)
+- Both have identical functionality, different UX contexts
 
 ---
 
@@ -103,13 +192,18 @@ Users cannot **interactively explore a session's event history** from within the
 ### Architecture Overview
 
 ```
-REPL Input: /sessions
+REPL Input: /session [subcommand] [args]
          ↓
     HandleBuiltinCommand() [repl.go]
          ↓
-    handleSessionsCommand()
+    handleSessionCommand() - dispatcher
+         ├─→ handleSessionOverview() - show current session
+         ├─→ handleSessionByID() - load specific session
+         ├─→ handleEventDetail() - show full event content
+         └─→ handleSessionHelp() - show usage
          ↓
-    buildSessionDisplayLines() [new: repl_builders.go]
+    buildSessionDisplayLines() [repl_builders.go]
+    buildEventDisplayLines() [repl_builders.go]
          ↓
     Display.Paginator.DisplayPaged()
     (internal/display/components/paginator.go)
@@ -124,81 +218,70 @@ REPL Input: /sessions
 Add case to `HandleBuiltinCommand()`:
 
 ```go
-case "/sessions":
-    handleSessionsCommand(ctx, renderer, appConfig)
+case "/session":
+    handleSessionCommand(ctx, renderer, appConfig)
     return true
-```
-
-The session manager is accessed through `appConfig` (which is `*config.Config` passed from REPL):
-
-```go
-// handleSessionsCommand displays the current session's event history with pagination
-func handleSessionsCommand(ctx context.Context, renderer *display.Renderer, appConfig interface{}) {
-    // Extract config
-    cfg, ok := appConfig.(*config.Config)
-    if !ok {
-        fmt.Println(renderer.Yellow("⚠ Configuration not available"))
-        return
-    }
-
-    // Get session manager from config (set up during REPL initialization)
-    // Note: REPL.config has SessionManager field with orchestration.SessionComponents
-    // We need to extract the underlying session.SessionManager from there
-    // For now, create a new instance (matches pattern in session.go commands)
-    manager, err := session.NewSessionManager("code_agent", cfg.DBPath)
-    if err != nil {
-        fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
-        return
-    }
-    defer manager.Close()
-
-    // Get current session (sessionName available from config)
-    sess, err := manager.GetSession(ctx, "user1", cfg.SessionName)
-    if err != nil {
-        fmt.Println(renderer.Red(fmt.Sprintf("Error retrieving session: %v", err)))
-        return
-    }
-
-    // Build display lines
-    lines := buildSessionDisplayLines(renderer, sess)
     
-    // Display with pagination
-    paginator := display.NewPaginator(renderer)
-    paginator.DisplayPaged(lines)
+// For subcommands starting with /session
+if strings.HasPrefix(input, "/session ") {
+    handleSessionCommand(ctx, renderer, appConfig)
+    return true
 }
 ```
 
-**Note:** The implementation creates a new SessionManager instance (similar to other session CLI commands), which loads the session from the database. For improved performance in a future enhancement, the REPL could cache the current session object to avoid DB lookup.
-
-### 2. Display Builder Function
-
-**File:** `adk-code/internal/cli/commands/repl_builders.go` (new function)
+Main dispatcher function:
 
 ```go
-// buildSessionDisplayLines builds session event history as paginated lines
-func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) []string {
-    var lines []string
+// handleSessionCommand handles /session with subcommands
+func handleSessionCommand(ctx context.Context, input string, renderer *display.Renderer, appConfig interface{}) {
+    cfg, ok := appConfig.(*config.Config)
+    if !ok {
+        fmt.Println(renderer.Red("Error: Configuration not available"))
+        return
+    }
 
-    // === HEADER ===
-    lines = append(lines, "")
-    lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
-    lines = append(lines, renderer.Cyan(fmt.Sprintf("                    Session: %s", sess.ID())))
-    lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
-    lines = append(lines, "")
-
-    // === SESSION METADATA ===
-    lines = append(lines, renderer.Bold("📋 Session Details:"))
-    lines = append(lines, fmt.Sprintf("  %s App:      %s", renderer.Dim("•"), sess.AppName()))
-    lines = append(lines, fmt.Sprintf("  %s User:     %s", renderer.Dim("•"), sess.UserID()))
-    lines = append(lines, fmt.Sprintf("  %s ID:       %s", renderer.Dim("•"), sess.ID()))
+    parts := strings.Fields(input)
     
-    // Update time
-    lastUpdate := sess.LastUpdateTime()
-    lines = append(lines, fmt.Sprintf("  %s Updated:  %s (%s ago)",
-        renderer.Dim("•"),
-        lastUpdate.Format("2006-01-02 15:04:05"),
-        formatTimeAgo(lastUpdate),
-    ))
+    // Default to overview if no subcommand
+    if len(parts) == 1 {
+        handleSessionOverview(ctx, renderer, cfg)
+        return
+    }
+
+    subcommand := parts[1]
+    
+    switch subcommand {
+    case "help":
+        handleSessionHelp(renderer)
+    case "event":
+        if len(parts) < 3 {
+            fmt.Println(renderer.Yellow("⚠ Usage: /session event <event-id>"))
+            return
+        }
+        eventID := parts[2]
+        handleEventDetail(ctx, renderer, cfg, eventID)
+    default:
+        // Treat as session ID
+        sessionID := subcommand
+        handleSessionByID(ctx, renderer, cfg, sessionID)
+    }
+}
+```
+
+### 2. Handler Functions
+
+**`handleSessionOverview()`** - Display current session with timeline
+**`handleSessionByID(sessionID)`** - Load and display any session by ID
+**`handleEventDetail(eventID)`** - Show full event content without truncation
+**`handleSessionHelp()`** - Display command usage
+
+### 3. Display Builder Functions
+
+**File:** `adk-code/internal/cli/commands/repl_builders.go`
+
+- `buildSessionDisplayLines()` - Session overview with event timeline
+- `buildEventDisplayLines()` - Detailed view of single event
+- Helper functions for formatting and truncation
     lines = append(lines, "")
 
     // === EVENT SUMMARY ===
@@ -727,26 +810,63 @@ echo "/sessions" | ./adk-code 2>&1 | head -50
 
 ## Success Metrics
 
-✅ **Functional**:
-- `/sessions` command displays current session event history
+✅ **Functional:**
+- `/session` command displays current session event history
+- `/session <id>` retrieves and displays any session by ID
+- `/session event <id>` shows full event content without truncation
 - Pagination works for sessions with >24 events
 - All event types properly formatted and visible
 
-✅ **UX**:
+✅ **UX:**
 - Users understand session flow at a glance
 - Time values human-readable ("5m ago" not millisecond timestamps)
 - Clear visual hierarchy (headers, event blocks, spacing)
+- Event IDs visible for reference in `/session event` command
+- Help text explains subcommand usage
 
-✅ **Code Quality**:
-- ≤200 lines new code (command handler + builder)
+✅ **Code Quality:**
+- ~300-400 lines new code (handler dispatcher + builders)
 - Zero new external dependencies
 - Consistent with existing REPL command patterns
 - All existing tests continue to pass
 
-✅ **Performance**:
+✅ **Performance:**
 - Command executes in <100ms for typical sessions
+- Session lookup by ID in <50ms (database query)
 - No impact on REPL startup time
-- No additional database queries
+
+---
+
+## Implementation Roadmap
+
+### Phase 1: Core Implementation (Priority: High)
+
+- [ ] Add `handleSessionCommand()` dispatcher to `repl.go`
+- [ ] Implement `handleSessionOverview()` for current session
+- [ ] Implement `handleSessionByID()` for loading sessions
+- [ ] Implement `handleEventDetail()` for full event display
+- [ ] Update `HandleBuiltinCommand()` to route `/session` commands
+- [ ] Create `buildSessionDisplayLines()` in `repl_builders.go`
+- [ ] Create `buildEventDisplayLines()` in `repl_builders.go`
+- [ ] Update help message with `/session` documentation
+- [ ] Test pagination with 50+ event session
+- [ ] Test session lookup by ID from database
+
+### Phase 2: Enhanced Formatting (Priority: Medium)
+
+- [ ] Improve tool call/result formatting (show tool name, parameters)
+- [ ] Display thinking output if present in events
+- [ ] Better text wrapping (not just truncation at 60 chars)
+- [ ] Show invocation IDs linking tool calls to results
+- [ ] Syntax highlighting for code blocks
+
+### Phase 3: Advanced Features (Priority: Low)
+
+- [ ] Add filtering: `/session --filter model` or `--filter user`
+- [ ] Add search: `/session search "keyword"`
+- [ ] Add statistics: token usage trends, invocation breakdown
+- [ ] Add export: `/session --format json` for external analysis
+- [ ] Event range display: `/session events 5-15` for specific range
 
 ---
 

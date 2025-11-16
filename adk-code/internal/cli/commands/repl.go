@@ -75,6 +75,25 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 			handleSessionCommand(ctx, input, renderer, appConfig)
 			return true
 		}
+		// Check if it's a /new-session command
+		if strings.HasPrefix(input, "/new-session ") {
+			sessionName := strings.TrimPrefix(input, "/new-session ")
+			sessionName = strings.TrimSpace(sessionName)
+			handleNewSessionREPL(ctx, renderer, appConfig, sessionName)
+			return true
+		}
+		// Check if it's a /list-sessions command
+		if input == "/list-sessions" {
+			handleListSessionsREPL(ctx, renderer, appConfig)
+			return true
+		}
+		// Check if it's a /delete-session command
+		if strings.HasPrefix(input, "/delete-session ") {
+			sessionName := strings.TrimPrefix(input, "/delete-session ")
+			sessionName = strings.TrimSpace(sessionName)
+			handleDeleteSessionREPL(ctx, renderer, appConfig, sessionName)
+			return true
+		}
 		// Check if it's a /set-model command
 		if strings.HasPrefix(input, "/set-model ") {
 			modelSpec := strings.TrimPrefix(input, "/set-model ")
@@ -368,6 +387,150 @@ func handleSessionHelp(renderer *display.Renderer) {
 	fmt.Println()
 	fmt.Println(renderer.Dim("  # View a specific event by ID"))
 	fmt.Println("  " + renderer.Cyan("/session event evt_abc123def456"))
+	fmt.Println()
+}
+
+// handleNewSessionREPL creates a new session from the REPL
+func handleNewSessionREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}, sessionName string) {
+	if sessionName == "" {
+		fmt.Println(renderer.Yellow("⚠ Usage: /new-session <session-name>"))
+		return
+	}
+
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	_, err = sessionMgr.CreateSession(ctx, "user1", sessionName)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error creating session: %v", err)))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Green("✨ Created new session: ") + renderer.Bold(sessionName))
+	fmt.Println(renderer.Dim("   To resume this session in the future, restart with:"))
+	fmt.Println(renderer.Dim(fmt.Sprintf("   ./code-agent --session %s", sessionName)))
+	fmt.Println()
+}
+
+// handleListSessionsREPL lists all sessions from the REPL
+func handleListSessionsREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}) {
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	sessions, err := sessionMgr.ListSessions(ctx, "user1")
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error listing sessions: %v", err)))
+		return
+	}
+
+	if len(sessions) == 0 {
+		fmt.Println()
+		fmt.Println(renderer.Yellow("📭 No sessions found"))
+		fmt.Println()
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Bold("📋 Available Sessions:"))
+	fmt.Println()
+
+	for i, sess := range sessions {
+		eventCount := sess.Events().Len()
+		lastUpdate := sess.LastUpdateTime()
+		timeAgo := formatTimeAgo(lastUpdate)
+
+		fmt.Printf("  %d. %s\n", i+1, renderer.Bold(sess.ID()))
+		fmt.Printf("     %s %d events | Updated: %s ago\n",
+			renderer.Dim("•"), eventCount, timeAgo)
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Dim(fmt.Sprintf("Total: %d session(s)", len(sessions))))
+	fmt.Println()
+}
+
+// handleDeleteSessionREPL deletes a session from the REPL with confirmation
+func handleDeleteSessionREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}, sessionName string) {
+	if sessionName == "" {
+		fmt.Println(renderer.Yellow("⚠ Usage: /delete-session <session-name>"))
+		return
+	}
+
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	// Prevent accidental deletion of current session
+	if sessionName == cfg.SessionName {
+		fmt.Println()
+		fmt.Println(renderer.Red("✗ Error: Cannot delete the current session (" + sessionName + ")"))
+		fmt.Println(renderer.Dim("  Switch to a different session first if you want to delete this one"))
+		fmt.Println()
+		return
+	}
+
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	// Verify session exists before deletion
+	_, err = sessionMgr.GetSession(ctx, "user1", sessionName)
+	if err != nil {
+		fmt.Println()
+		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Session '%s' not found", sessionName)))
+		fmt.Println()
+		return
+	}
+
+	// Prompt for confirmation
+	fmt.Println()
+	fmt.Println(renderer.Yellow("⚠ This action cannot be undone!"))
+	fmt.Printf("  Are you sure you want to delete session '%s'?\n", sessionName)
+	fmt.Print(renderer.Cyan("  Type 'yes' to confirm: "))
+
+	var response string
+	_, err = fmt.Scanln(&response)
+	if err != nil || strings.ToLower(response) != "yes" {
+		fmt.Println(renderer.Yellow("  Deletion cancelled"))
+		fmt.Println()
+		return
+	}
+
+	// Delete the session
+	err = sessionMgr.DeleteSession(ctx, "user1", sessionName)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error deleting session: %v", err)))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Green("🗑️  Successfully deleted session: ") + renderer.Bold(sessionName))
 	fmt.Println()
 }
 

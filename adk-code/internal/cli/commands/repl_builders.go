@@ -12,6 +12,7 @@ import (
 	"adk-code/internal/session/compaction"
 	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
+
 	"google.golang.org/adk/session"
 )
 
@@ -40,7 +41,14 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
-	lines = append(lines, "   • "+renderer.Bold("/session")+" - Display session history and event details")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("📊 Session Management (REPL commands):"))
+	lines = append(lines, "   • "+renderer.Bold("/session")+" - Display current session history and event timeline")
+	lines = append(lines, "   • "+renderer.Bold("/session event <index>")+" - View full content of a specific event")
+	lines = append(lines, "   • "+renderer.Bold("/list-sessions")+" - List all available sessions")
+	lines = append(lines, "   • "+renderer.Bold("/new-session <name>")+" - Create a new session")
+	lines = append(lines, "   • "+renderer.Bold("/delete-session <name>")+" - Delete a session (with confirmation)")
 	lines = append(lines, "   • "+renderer.Bold("/compaction")+" - Show session history compaction configuration")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
 	lines = append(lines, "   • "+renderer.Bold("/exit")+" - Exit the agent")
@@ -70,11 +78,13 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "")
 
 	lines = append(lines, renderer.Bold("📚 Session Management (CLI commands):"))
-	lines = append(lines, "   • "+renderer.Bold("./code-agent new-session <name>")+" - Create a new session")
-	lines = append(lines, "   • "+renderer.Bold("./code-agent list-sessions")+" - List all sessions")
-	lines = append(lines, "   • "+renderer.Bold("./code-agent delete-session <name>")+" - Delete a session")
-	lines = append(lines, "   • "+renderer.Bold("./code-agent --session <name>")+" - Resume a specific session")
+	lines = append(lines, "   These commands are run from the shell (not in the REPL):")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent new-session <name>")+" - Create a new session")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent list-sessions")+" - List all sessions")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent delete-session <name>")+" - Delete a session")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --session <name>")+" - Resume a specific session")
 	lines = append(lines, "")
+	lines = append(lines, renderer.Dim("   Note: Use /list-sessions, /new-session, /delete-session in REPL instead"))
 
 	lines = append(lines, renderer.Bold("💡 Example Requests:"))
 	lines = append(lines, "   ❯ Add error handling to main.go")
