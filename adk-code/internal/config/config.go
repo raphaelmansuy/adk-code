@@ -38,6 +38,13 @@ type Config struct {
 	// MCP configuration
 	MCPConfigPath string
 	MCPConfig     *MCPConfig
+
+	// Compaction configuration
+	CompactionEnabled   bool
+	CompactionThreshold int     // Invocation threshold for triggering compaction
+	CompactionOverlap   int     // Number of invocations to retain in overlap
+	CompactionTokens    int     // Token threshold for triggering compaction
+	CompactionSafety    float64 // Safety ratio for token limits (0.0-1.0)
 }
 
 // LoadFromEnv loads configuration from environment and CLI flags
@@ -76,6 +83,13 @@ func LoadFromEnv() (Config, []string) {
 
 	// MCP configuration flags
 	mcpConfigPath := flag.String("mcp-config", "", "Path to MCP config file (optional)")
+
+	// Compaction configuration flags
+	compactionEnabled := flag.Bool("compaction", false, "Enable session history compaction (optional, default: false)")
+	compactionThreshold := flag.Int("compaction-threshold", 5, "Number of invocations before triggering compaction (default: 5)")
+	compactionOverlap := flag.Int("compaction-overlap", 2, "Number of invocations to retain in overlap window (default: 2)")
+	compactionTokens := flag.Int("compaction-tokens", 700000, "Token threshold for triggering compaction (default: 700000)")
+	compactionSafety := flag.Float64("compaction-safety", 0.7, "Safety ratio for token limits 0.0-1.0 (default: 0.7)")
 
 	flag.Parse()
 
@@ -124,20 +138,25 @@ func LoadFromEnv() (Config, []string) {
 	}
 
 	return Config{
-		OutputFormat:      *outputFormat,
-		TypewriterEnabled: *typewriterEnabled,
-		SessionName:       *sessionName,
-		DBPath:            *dbPath,
-		WorkingDirectory:  *workingDirectory,
-		Backend:           selectedBackend,
-		APIKey:            apiKeyValue,
-		VertexAIProject:   projectValue,
-		VertexAILocation:  locationValue,
-		Model:             *model,
-		EnableThinking:    *enableThinking,
-		ThinkingBudget:    int32(*thinkingBudget),
-		MCPConfigPath:     *mcpConfigPath,
-		MCPConfig:         mcpConfig,
+		OutputFormat:        *outputFormat,
+		TypewriterEnabled:   *typewriterEnabled,
+		SessionName:         *sessionName,
+		DBPath:              *dbPath,
+		WorkingDirectory:    *workingDirectory,
+		Backend:             selectedBackend,
+		APIKey:              apiKeyValue,
+		VertexAIProject:     projectValue,
+		VertexAILocation:    locationValue,
+		Model:               *model,
+		EnableThinking:      *enableThinking,
+		ThinkingBudget:      int32(*thinkingBudget),
+		MCPConfigPath:       *mcpConfigPath,
+		MCPConfig:           mcpConfig,
+		CompactionEnabled:   *compactionEnabled,
+		CompactionThreshold: *compactionThreshold,
+		CompactionOverlap:   *compactionOverlap,
+		CompactionTokens:    *compactionTokens,
+		CompactionSafety:    *compactionSafety,
 	}, flag.Args()
 }
 

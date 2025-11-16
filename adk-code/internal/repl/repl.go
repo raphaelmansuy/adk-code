@@ -17,6 +17,7 @@ import (
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	"adk-code/internal/orchestration"
+	"adk-code/internal/session/compaction"
 	"adk-code/internal/tracking"
 	"adk-code/pkg/models"
 )
@@ -34,6 +35,8 @@ type Config struct {
 	ModelRegistry    *models.Registry
 	SelectedModel    models.Config
 	MCPComponents    *orchestration.MCPComponents
+	AppConfig        interface{} // Holds the application config for commands like /compaction
+	SessionManager   *orchestration.SessionComponents
 }
 
 // REPL manages the read-eval-print loop
@@ -119,7 +122,7 @@ func (r *REPL) Run(ctx context.Context) {
 		if r.config.MCPComponents != nil {
 			mcpManager = r.config.MCPComponents.Manager
 		}
-		if cli.HandleBuiltinCommand(ctx, input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel, mcpManager) {
+		if cli.HandleBuiltinCommand(ctx, input, r.config.Renderer, r.config.SessionTokens, r.config.ModelRegistry, r.config.SelectedModel, mcpManager, r.config.AppConfig) {
 			continue
 		}
 
@@ -202,6 +205,87 @@ agentLoop:
 
 			if result.event != nil {
 				display.PrintEventEnhanced(r.config.Renderer, r.config.StreamingDisplay, result.event, spinner, &activeToolName, &toolRunning, r.config.SessionTokens, requestID, timeline)
+			}
+		}
+	}
+
+	// Trigger compaction if enabled and conditions are met
+	if !hasError && r.config.SessionManager != nil && r.config.SessionManager.Coordinator != nil {
+		ctx := context.Background()
+		
+		// Get the current session to pass to the coordinator
+		getResp, err := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
+			AppName:   "code_agent",
+			UserID:    r.config.UserID,
+			SessionID: r.config.SessionName,
+		})
+		
+		if err == nil && getResp.Session != nil {
+			// Unwrap filtered session if necessary
+			sess := getResp.Session
+			if filtered, ok := sess.(*compaction.FilteredSession); ok {
+				sess = filtered.Underlying
+			}
+			
+			// Create a spinner for compaction
+			compactionSpinner := display.NewSpinner(r.config.Renderer, "Compacting session history")
+			compactionSpinner.Start()
+			
+			// Run compaction if thresholds are met
+			if compErr := r.config.SessionManager.Coordinator.RunCompaction(ctx, sess); compErr != nil {
+				// Log error but don't interrupt user experience
+				compactionSpinner.Stop()
+				fmt.Printf("%s Warning: Compaction failed: %v\n", r.config.Renderer.Yellow("⚠"), compErr)
+			} else {
+				// After compaction, check if an event was added and display feedback
+				// Get the session again to see the new compaction event
+				getResp2, err2 := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
+					AppName:   "code_agent",
+					UserID:    r.config.UserID,
+					SessionID: r.config.SessionName,
+				})
+				
+				if err2 == nil && getResp2.Session != nil {
+					// Unwrap if needed
+					sess2 := getResp2.Session
+					if filtered, ok := sess2.(*compaction.FilteredSession); ok {
+						sess2 = filtered.Underlying
+					}
+					
+					// Check if there's a recent compaction event
+					events := sess2.Events()
+					if events.Len() > 0 {
+						lastEvent := events.At(events.Len() - 1)
+						if lastEvent != nil && compaction.IsCompactionEvent(lastEvent) {
+							// Stop spinner with success
+							compactionSpinner.StopWithSuccess("Session history compacted")
+							
+							// Display compaction notification
+							metadata, metaErr := compaction.GetCompactionMetadata(lastEvent)
+							if metaErr == nil {
+								fmt.Println()
+								fmt.Println(r.config.Renderer.Cyan("📦 Session History Compaction:"))
+								fmt.Printf("  %s Compacted %d events into 1 summary\n", r.config.Renderer.Dim("•"), metadata.EventCount)
+								fmt.Printf("  %s Token reduction: %d → %d tokens (%.1f%% compression)\n",
+									r.config.Renderer.Dim("•"),
+									metadata.OriginalTokens,
+									metadata.CompactedTokens,
+									metadata.CompressionRatio)
+								fmt.Printf("  %s Session context optimized for better performance\n", r.config.Renderer.Dim("•"))
+								fmt.Println()
+							} else {
+								compactionSpinner.Stop()
+							}
+						} else {
+							// No compaction event added (threshold not met)
+							compactionSpinner.Stop()
+						}
+					} else {
+						compactionSpinner.Stop()
+					}
+				} else {
+					compactionSpinner.Stop()
+				}
 			}
 		}
 	}

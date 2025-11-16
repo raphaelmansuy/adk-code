@@ -37,6 +37,7 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
+	lines = append(lines, "   • "+renderer.Bold("/compaction")+" - Show session history compaction configuration")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
 	lines = append(lines, "   • "+renderer.Bold("/exit")+" - Exit the agent")
 	lines = append(lines, "")
@@ -55,6 +56,13 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Dim("./code-agent --enable-thinking=false")+" (disable thinking)")
 	lines = append(lines, "   • "+renderer.Dim("./code-agent --thinking-budget 2048")+" (set token budget)")
 	lines = append(lines, "   Thinking helps with debugging and transparency at a small token cost")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("📦 Session History Compaction:"))
+	lines = append(lines, "   Automatically summarize old conversation history to save tokens:")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --compaction")+" (enable with defaults)")
+	lines = append(lines, "   • "+renderer.Dim("./code-agent --compaction --compaction-threshold 5")+" (customize)")
+	lines = append(lines, "   Use "+renderer.Cyan("'/compaction'")+" command in REPL to see current settings")
 	lines = append(lines, "")
 
 	lines = append(lines, renderer.Bold("📚 Session Management (CLI commands):"))

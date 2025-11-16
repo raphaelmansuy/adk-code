@@ -11,6 +11,7 @@ import (
 	"adk-code/internal/display/streaming"
 	"adk-code/internal/display/tools"
 	"adk-code/internal/grounding"
+	"adk-code/internal/session/compaction"
 	"adk-code/internal/tracking"
 
 	"google.golang.org/adk/session"
@@ -52,6 +53,27 @@ func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
 	sessionTokens *tracking.SessionTokens, requestID string, timeline *EventTimeline) {
 
 	if event.Content == nil || len(event.Content.Parts) == 0 {
+		return
+	}
+
+	// Check if this is a compaction event and display feedback
+	if compaction.IsCompactionEvent(event) {
+		spinner.Stop()
+		metadata, err := compaction.GetCompactionMetadata(event)
+		if err == nil {
+			// Display compaction notification
+			fmt.Println()
+			fmt.Println(renderer.Cyan("📦 Session History Compaction:"))
+			fmt.Printf("  %s Compacted %d events into 1 summary\n", renderer.Dim("•"), metadata.EventCount)
+			fmt.Printf("  %s Token reduction: %d → %d tokens (%.1f%% compression)\n",
+				renderer.Dim("•"),
+				metadata.OriginalTokens,
+				metadata.CompactedTokens,
+				metadata.CompressionRatio)
+			fmt.Printf("  %s Session context optimized for better performance\n", renderer.Dim("•"))
+			fmt.Println()
+		}
+		// Don't process the compaction event further
 		return
 	}
 
