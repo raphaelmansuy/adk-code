@@ -17,6 +17,7 @@ import (
 	"adk-code/pkg/agents"
 	"adk-code/pkg/models"
 	"adk-code/tools"
+	sessionsdk "google.golang.org/adk/session"
 )
 
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
@@ -57,7 +58,10 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		return true
 
 	case "/sessions":
-		handleSessionsCommand(ctx, renderer, appConfig)
+		return false // Not a valid command anymore, check for /session instead
+
+	case "/session":
+		handleSessionCommand(ctx, input, renderer, appConfig)
 		return true
 
 	case "/agents":
@@ -65,6 +69,11 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 		return true
 
 	default:
+		// Check if it's a /session subcommand
+		if strings.HasPrefix(input, "/session ") {
+			handleSessionCommand(ctx, input, renderer, appConfig)
+			return true
+		}
 		// Check if it's a /set-model command
 		if strings.HasPrefix(input, "/set-model ") {
 			modelSpec := strings.TrimPrefix(input, "/set-model ")
@@ -203,15 +212,43 @@ func handleCompactionCommand(renderer *display.Renderer, appConfig interface{}) 
 	fmt.Println()
 }
 
-// handleSessionsCommand displays the current session's event history with pagination
-func handleSessionsCommand(ctx context.Context, renderer *display.Renderer, appConfig interface{}) {
-	// Extract config
+// handleSessionCommand handles /session with subcommands
+func handleSessionCommand(ctx context.Context, input string, renderer *display.Renderer, appConfig interface{}) {
 	cfg, ok := appConfig.(*config.Config)
 	if !ok {
 		fmt.Println(renderer.Red("Error: Configuration not available"))
 		return
 	}
 
+	parts := strings.Fields(input)
+
+	// Default to overview if no subcommand
+	if len(parts) == 1 {
+		handleSessionOverview(ctx, renderer, cfg)
+		return
+	}
+
+	subcommand := parts[1]
+
+	switch subcommand {
+	case "help":
+		handleSessionHelp(renderer)
+	case "event":
+		if len(parts) < 3 {
+			fmt.Println(renderer.Yellow("⚠ Usage: /session event <event-id>"))
+			return
+		}
+		eventID := parts[2]
+		handleEventDetail(ctx, renderer, cfg, eventID)
+	default:
+		// Treat as session ID
+		sessionID := subcommand
+		handleSessionByID(ctx, renderer, cfg, sessionID)
+	}
+}
+
+// handleSessionOverview displays the current session's event history with pagination
+func handleSessionOverview(ctx context.Context, renderer *display.Renderer, cfg *config.Config) {
 	// Get session manager
 	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
 	if err != nil {
@@ -233,6 +270,95 @@ func handleSessionsCommand(ctx context.Context, renderer *display.Renderer, appC
 	// Display with pagination
 	paginator := display.NewPaginator(renderer)
 	paginator.DisplayPaged(lines)
+}
+
+// handleSessionByID displays a specific session by its ID
+func handleSessionByID(ctx context.Context, renderer *display.Renderer, cfg *config.Config, sessionID string) {
+	// Get session manager
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	// Get requested session
+	sess, err := sessionMgr.GetSession(ctx, "user1", sessionID)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error retrieving session '%s': %v", sessionID, err)))
+		return
+	}
+
+	// Build display lines
+	lines := buildSessionDisplayLines(renderer, sess)
+
+	// Display with pagination
+	paginator := display.NewPaginator(renderer)
+	paginator.DisplayPaged(lines)
+}
+
+// handleEventDetail displays the full content of a specific event
+func handleEventDetail(ctx context.Context, renderer *display.Renderer, cfg *config.Config, eventID string) {
+	// Get session manager
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	// Get current session
+	sess, err := sessionMgr.GetSession(ctx, "user1", cfg.SessionName)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error retrieving session: %v", err)))
+		return
+	}
+
+	// Search for the event
+	events := sess.Events()
+	var targetEvent *sessionsdk.Event
+	for i := 0; i < events.Len(); i++ {
+		evt := events.At(i)
+		if evt != nil && evt.ID == eventID {
+			targetEvent = evt
+			break
+		}
+	}
+
+	if targetEvent == nil {
+		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Event '%s' not found in current session", eventID)))
+		return
+	}
+
+	// Build display lines for the event
+	lines := buildEventDisplayLines(renderer, targetEvent, cfg.SessionName)
+
+	// Display with pagination
+	paginator := display.NewPaginator(renderer)
+	paginator.DisplayPaged(lines)
+}
+
+// handleSessionHelp displays usage information for the /session command
+func handleSessionHelp(renderer *display.Renderer) {
+	fmt.Println()
+	fmt.Println(renderer.Bold("Session Command Help:"))
+	fmt.Println()
+	fmt.Println(renderer.Cyan("  /session") + "              - Display current session overview with event timeline")
+	fmt.Println(renderer.Cyan("  /session <id>") + "        - Display specific session by ID")
+	fmt.Println(renderer.Cyan("  /session event <id>") + "  - Display full event content by event ID")
+	fmt.Println(renderer.Cyan("  /session help") + "       - Show this help message")
+	fmt.Println()
+	fmt.Println(renderer.Bold("Examples:"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  # View current session overview"))
+	fmt.Println("  " + renderer.Cyan("/session"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  # View a specific session"))
+	fmt.Println("  " + renderer.Cyan("/session my-session-name"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  # View full content of an event (no truncation)"))
+	fmt.Println("  " + renderer.Cyan("/session event evt_abc123def456"))
+	fmt.Println()
 }
 
 // handleMCPCommand handles /mcp commands and subcommands

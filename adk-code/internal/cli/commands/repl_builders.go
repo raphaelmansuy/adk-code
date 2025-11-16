@@ -40,7 +40,7 @@ func buildHelpMessageLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   • "+renderer.Bold("/run-agent <name>")+" - Show agent details or execute agent (preview)")
 	lines = append(lines, "   • "+renderer.Bold("/prompt")+" - Display the system prompt")
 	lines = append(lines, "   • "+renderer.Bold("/tokens")+" - Show token usage statistics")
-	lines = append(lines, "   • "+renderer.Bold("/sessions")+" - Display current session event history")
+	lines = append(lines, "   • "+renderer.Bold("/session")+" - Display session history and event details")
 	lines = append(lines, "   • "+renderer.Bold("/compaction")+" - Show session history compaction configuration")
 	lines = append(lines, "   • "+renderer.Bold("/mcp")+" - Manage MCP servers (list, status, tools)")
 	lines = append(lines, "   • "+renderer.Bold("/exit")+" - Exit the agent")
@@ -697,4 +697,71 @@ func formatTimeAgo(t time.Time) string {
 	}
 	days := int(elapsed.Hours()) / 24
 	return fmt.Sprintf("%dd ago", days)
+}
+
+// buildEventDisplayLines builds a detailed display of a single event without truncation
+func buildEventDisplayLines(renderer *display.Renderer, evt *session.Event, sessionID string) []string {
+	var lines []string
+
+	// === HEADER ===
+	lines = append(lines, "")
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, renderer.Cyan(fmt.Sprintf("                    Event: %s", evt.ID)))
+	lines = append(lines, renderer.Cyan("════════════════════════════════════════════════════════════════"))
+	lines = append(lines, "")
+
+	// === EVENT METADATA ===
+	lines = append(lines, renderer.Bold("📋 Event Details:"))
+	lines = append(lines, fmt.Sprintf("  %s Session:    %s", renderer.Dim("•"), sessionID))
+	lines = append(lines, fmt.Sprintf("  %s Event ID:   %s", renderer.Dim("•"), evt.ID))
+	lines = append(lines, fmt.Sprintf("  %s Timestamp:  %s", renderer.Dim("•"), evt.Timestamp.Format("2006-01-02 15:04:05")))
+	if evt.InvocationID != "" {
+		lines = append(lines, fmt.Sprintf("  %s Invocation: %s", renderer.Dim("•"), evt.InvocationID))
+	}
+	if evt.Author != "" {
+		lines = append(lines, fmt.Sprintf("  %s Author:     %s", renderer.Dim("•"), evt.Author))
+	}
+	if evt.Branch != "" {
+		lines = append(lines, fmt.Sprintf("  %s Branch:     %s", renderer.Dim("•"), evt.Branch))
+	}
+	lines = append(lines, "")
+
+	// === TOKEN USAGE ===
+	if evt.LLMResponse.UsageMetadata != nil {
+		lines = append(lines, renderer.Bold("🎯 Token Usage:"))
+		lines = append(lines, fmt.Sprintf("  %s Prompt Tokens:    %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.PromptTokenCount))
+		lines = append(lines, fmt.Sprintf("  %s Output Tokens:    %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.CandidatesTokenCount))
+		lines = append(lines, fmt.Sprintf("  %s Total Tokens:     %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.TotalTokenCount))
+		lines = append(lines, "")
+	}
+
+	// === CONTENT ===
+	if evt.LLMResponse.Content != nil && len(evt.LLMResponse.Content.Parts) > 0 {
+		lines = append(lines, renderer.Bold("📝 Content:"))
+		lines = append(lines, "")
+
+		for partIdx, part := range evt.LLMResponse.Content.Parts {
+			if part == nil {
+				continue
+			}
+
+			if part.Text != "" {
+				// Display full text without truncation
+				if partIdx > 0 {
+					lines = append(lines, "")
+				}
+				contentLines := strings.Split(part.Text, "\n")
+				for _, contentLine := range contentLines {
+					lines = append(lines, "  "+contentLine)
+				}
+			}
+		}
+		lines = append(lines, "")
+	}
+
+	// === FOOTER ===
+	lines = append(lines, renderer.Dim("Press SPACE to continue, Q to quit"))
+	lines = append(lines, "")
+
+	return lines
 }
