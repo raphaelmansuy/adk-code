@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -314,19 +315,27 @@ func handleEventDetail(ctx context.Context, renderer *display.Renderer, cfg *con
 		return
 	}
 
-	// Search for the event
+	// Search for the event by ID or index
 	events := sess.Events()
 	var targetEvent *sessionsdk.Event
-	for i := 0; i < events.Len(); i++ {
-		evt := events.At(i)
-		if evt != nil && evt.ID == eventID {
-			targetEvent = evt
-			break
+
+	// Try to parse as index first
+	if index, err := strconv.Atoi(eventID); err == nil && index > 0 && index <= events.Len() {
+		// Valid index (1-based)
+		targetEvent = events.At(index - 1)
+	} else {
+		// Search by event ID
+		for i := 0; i < events.Len(); i++ {
+			evt := events.At(i)
+			if evt != nil && evt.ID == eventID {
+				targetEvent = evt
+				break
+			}
 		}
 	}
 
 	if targetEvent == nil {
-		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Event '%s' not found in current session", eventID)))
+		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Event '%s' not found. Use event index (1-%d) or event ID", eventID, events.Len())))
 		return
 	}
 
@@ -345,7 +354,8 @@ func handleSessionHelp(renderer *display.Renderer) {
 	fmt.Println()
 	fmt.Println(renderer.Cyan("  /session") + "              - Display current session overview with event timeline")
 	fmt.Println(renderer.Cyan("  /session <id>") + "        - Display specific session by ID")
-	fmt.Println(renderer.Cyan("  /session event <id>") + "  - Display full event content by event ID")
+	fmt.Println(renderer.Cyan("  /session event <index>") + " - Display full event content by index (1, 2, 3...)")
+	fmt.Println(renderer.Cyan("  /session event <id>") + "    - Display full event content by event ID")
 	fmt.Println(renderer.Cyan("  /session help") + "       - Show this help message")
 	fmt.Println()
 	fmt.Println(renderer.Bold("Examples:"))
@@ -353,10 +363,10 @@ func handleSessionHelp(renderer *display.Renderer) {
 	fmt.Println(renderer.Dim("  # View current session overview"))
 	fmt.Println("  " + renderer.Cyan("/session"))
 	fmt.Println()
-	fmt.Println(renderer.Dim("  # View a specific session"))
-	fmt.Println("  " + renderer.Cyan("/session my-session-name"))
+	fmt.Println(renderer.Dim("  # View the 3rd event in current session"))
+	fmt.Println("  " + renderer.Cyan("/session event 3"))
 	fmt.Println()
-	fmt.Println(renderer.Dim("  # View full content of an event (no truncation)"))
+	fmt.Println(renderer.Dim("  # View a specific event by ID"))
 	fmt.Println("  " + renderer.Cyan("/session event evt_abc123def456"))
 	fmt.Println()
 }
