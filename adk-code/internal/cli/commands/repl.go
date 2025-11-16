@@ -76,10 +76,14 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 			handleSessionCommand(ctx, input, renderer, appConfig)
 			return true
 		}
-		// Check if it's a /new-session command
-		if strings.HasPrefix(input, "/new-session ") {
-			sessionName := strings.TrimPrefix(input, "/new-session ")
-			sessionName = strings.TrimSpace(sessionName)
+		// Check if it's a /new-session command (with or without name)
+		if strings.HasPrefix(input, "/new-session") {
+			var sessionName string
+			if strings.HasPrefix(input, "/new-session ") {
+				sessionName = strings.TrimPrefix(input, "/new-session ")
+				sessionName = strings.TrimSpace(sessionName)
+			}
+			// sessionName may be empty, which will trigger auto-generation
 			handleNewSessionREPL(ctx, renderer, appConfig, sessionName)
 			return true
 		}
@@ -93,6 +97,20 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 			sessionName := strings.TrimPrefix(input, "/delete-session ")
 			sessionName = strings.TrimSpace(sessionName)
 			handleDeleteSessionREPL(ctx, renderer, appConfig, sessionName)
+			return true
+		}
+		// Check if it's a /switch-session command
+		if strings.HasPrefix(input, "/switch-session ") {
+			sessionID := strings.TrimPrefix(input, "/switch-session ")
+			sessionID = strings.TrimSpace(sessionID)
+			handleSwitchSessionREPL(ctx, renderer, appConfig, sessionID)
+			return true
+		}
+		// Check if it's a /show-session command
+		if strings.HasPrefix(input, "/show-session ") {
+			sessionID := strings.TrimPrefix(input, "/show-session ")
+			sessionID = strings.TrimSpace(sessionID)
+			handleShowSessionREPL(ctx, renderer, appConfig, sessionID)
 			return true
 		}
 		// Check if it's a /set-model command
@@ -376,6 +394,12 @@ func handleSessionHelp(renderer *display.Renderer) {
 	fmt.Println(renderer.Cyan("  /session <id>") + "        - Display specific session by ID")
 	fmt.Println(renderer.Cyan("  /session event <index>") + " - Display full event content by index (1, 2, 3...)")
 	fmt.Println(renderer.Cyan("  /session event <id>") + "    - Display full event content by event ID")
+	fmt.Println(renderer.Cyan("  /show-session <id>") + "   - Display a session by ID (alias for /session <id>)")
+	fmt.Println(renderer.Cyan("  /list-sessions") + "      - List all available sessions")
+	fmt.Println(renderer.Cyan("  /new-session") + "        - Create a new session with auto-generated ID")
+	fmt.Println(renderer.Cyan("  /new-session <name>") + "  - Create a new session with specified name")
+	fmt.Println(renderer.Cyan("  /switch-session <id>") + " - Switch to a different session")
+	fmt.Println(renderer.Cyan("  /delete-session <name>") + " - Delete a session (requires confirmation)")
 	fmt.Println(renderer.Cyan("  /session help") + "       - Show this help message")
 	fmt.Println()
 	fmt.Println(renderer.Bold("Examples:"))
@@ -383,25 +407,31 @@ func handleSessionHelp(renderer *display.Renderer) {
 	fmt.Println(renderer.Dim("  # View current session overview"))
 	fmt.Println("  " + renderer.Cyan("/session"))
 	fmt.Println()
+	fmt.Println(renderer.Dim("  # View a specific session by ID"))
+	fmt.Println("  " + renderer.Cyan("/show-session session-20251116-182717"))
+	fmt.Println()
 	fmt.Println(renderer.Dim("  # View the 3rd event in current session"))
 	fmt.Println("  " + renderer.Cyan("/session event 3"))
 	fmt.Println()
-	fmt.Println(renderer.Dim("  # View a specific event by ID"))
-	fmt.Println("  " + renderer.Cyan("/session event evt_abc123def456"))
+	fmt.Println(renderer.Dim("  # Create a new session (auto-generated ID)"))
+	fmt.Println("  " + renderer.Cyan("/new-session"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  # Switch to a different session"))
+	fmt.Println("  " + renderer.Cyan("/switch-session session-20251116-182717"))
 	fmt.Println()
 }
 
 // handleNewSessionREPL creates a new session from the REPL
 func handleNewSessionREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}, sessionName string) {
-	if sessionName == "" {
-		fmt.Println(renderer.Yellow("⚠ Usage: /new-session <session-name>"))
-		return
-	}
-
 	cfg, ok := appConfig.(*config.Config)
 	if !ok {
 		fmt.Println(renderer.Red("Error: Configuration not available"))
 		return
+	}
+
+	// Auto-generate session name if not provided
+	if sessionName == "" {
+		sessionName = fmt.Sprintf("session-%s", time.Now().Format("20060102-150405"))
 	}
 
 	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
@@ -533,6 +563,64 @@ func handleDeleteSessionREPL(ctx context.Context, renderer *display.Renderer, ap
 	fmt.Println()
 	fmt.Println(renderer.Green("🗑️  Successfully deleted session: ") + renderer.Bold(sessionName))
 	fmt.Println()
+}
+
+// handleSwitchSessionREPL switches to a different session
+func handleSwitchSessionREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}, sessionID string) {
+	if sessionID == "" {
+		fmt.Println(renderer.Yellow("⚠ Usage: /switch-session <session-id>"))
+		return
+	}
+
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	sessionMgr, err := session.NewSessionManager("code_agent", cfg.DBPath)
+	if err != nil {
+		fmt.Println(renderer.Red(fmt.Sprintf("Error: %v", err)))
+		return
+	}
+	defer sessionMgr.Close()
+
+	// Verify session exists before switching
+	sess, err := sessionMgr.GetSession(ctx, "user1", sessionID)
+	if err != nil {
+		fmt.Println()
+		fmt.Println(renderer.Yellow(fmt.Sprintf("⚠ Session '%s' not found", sessionID)))
+		fmt.Println()
+		return
+	}
+
+	// Update the session name in config
+	oldSessionID := cfg.SessionName
+	cfg.SessionName = sessionID
+
+	fmt.Println()
+	fmt.Println(renderer.Green("✨ Switched to session: ") + renderer.Bold(sessionID))
+	fmt.Println(renderer.Dim(fmt.Sprintf("  Previous session: %s", oldSessionID)))
+	eventCount := sess.Events().Len()
+	fmt.Println(renderer.Dim(fmt.Sprintf("  Events in this session: %d", eventCount)))
+	fmt.Println()
+}
+
+// handleShowSessionREPL displays a specific session by ID
+func handleShowSessionREPL(ctx context.Context, renderer *display.Renderer, appConfig interface{}, sessionID string) {
+	if sessionID == "" {
+		fmt.Println(renderer.Yellow("⚠ Usage: /show-session <session-id>"))
+		return
+	}
+
+	// Reuse the existing handleSessionByID logic
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Configuration not available"))
+		return
+	}
+
+	handleSessionByID(ctx, renderer, cfg, sessionID)
 }
 
 // handleMCPCommand handles /mcp commands and subcommands

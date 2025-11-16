@@ -2,7 +2,7 @@
 
 **Status:** Accepted (Revised)  
 **Date:** 2025-11-16  
-**Last Updated:** 2025-11-16 (Session Management Extensions)  
+**Last Updated:** 2025-11-16 (Advanced Session Navigation - Phase 3)  
 **Authors:** Raphaël MANSUY  
 **Deciders:** adk-code Architecture Team  
 **Scope:** REPL Command, Display System, Session Management  
@@ -184,6 +184,55 @@ In addition to the core `/session` command, the following session management com
 - CLI commands: Used at shell startup/bootstrap (`./code-agent new-session <name>`)
 - REPL commands: Used during interactive session (`/new-session <name>`)
 - Both have identical functionality, different UX contexts
+
+### Phase 3: Advanced Session Navigation
+
+**Phase 3 enhancements enable seamless session switching and improved session creation workflows:**
+
+#### Switch Session
+
+- Command: `/switch-session <session-id>`
+- Switches active session during REPL session without exiting
+- Validates session exists before switching
+- Updates internal session reference (cfg.SessionName)
+- Displays confirmation with previous session ID and event count
+- Useful for collaborative sessions or reviewing past work
+
+#### Show Session
+
+- Command: `/show-session <session-id>`
+- Convenience alias for `/session <session-id>`
+- Displays a session by ID with full event timeline
+- Includes event summary, token metrics, and event details
+- Simplifies navigation when working with specific session IDs
+
+#### Auto-Generated Session IDs
+
+- Command: `/new-session` (without arguments)
+- Generates session ID using format: `session-YYYYMMDD-HHMMSS`
+- Example: `session-20251116-182717`
+- Provides quick session creation without manual naming
+- Useful for throwaway sessions or rapid prototyping
+- Still supports manual naming: `/new-session my-custom-name`
+
+**Why These Enhancements:**
+
+- **Session Switching**: Enables analyzing multiple sessions without context switching (exit/restart)
+- **Auto-Generated IDs**: Reduces friction for quick sessions while maintaining human-readable timestamps
+- **Semantic Clarity**: `/show-session` clearly distinguishes display from management operations
+- **Continuous Workflows**: Users can explore, create, and switch sessions fluidly within single REPL session
+
+### Session Management Features Summary
+
+| Feature | Phase 1 (/session) | Phase 2 (mgmt) | Phase 3 (nav) |
+|---------|---|---|---|
+| View current session | ✓ | - | - |
+| View specific session | ✓ | - | ✓ (/show-session) |
+| List all sessions | - | ✓ (/list-sessions) | - |
+| Create session | - | ✓ (/new-session <name>) | ✓ auto-generate |
+| Delete session | - | ✓ (/delete-session) | - |
+| Switch active session | - | - | ✓ (/switch-session) |
+| View event details | ✓ (/session event) | - | - |
 
 ---
 
