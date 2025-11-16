@@ -231,11 +231,14 @@ agentLoop:
 	// Display token metrics for this request
 	summary := r.config.SessionTokens.GetSummary()
 	if summary.TotalTokens > 0 {
+		contextWindow := int64(r.config.SelectedModel.ContextWindow)
 		metrics := r.config.Renderer.RenderTokenMetrics(
 			summary.TotalPromptTokens,
 			summary.TotalCachedTokens,
 			summary.TotalResponseTokens,
+			summary.TotalThoughtTokens,
 			summary.TotalTokens,
+			contextWindow,
 		)
 		if metrics != "" {
 			fmt.Printf("%s\n", metrics)
