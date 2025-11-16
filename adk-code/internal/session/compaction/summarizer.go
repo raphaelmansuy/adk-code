@@ -117,7 +117,7 @@ func (ls *LLMSummarizer) Summarize(
 	compactionEvent := &session.Event{
 		ID:           uuid.NewString(),
 		InvocationID: uuid.NewString(),
-		Author:       "system",
+		Author:       "user",
 		Timestamp:    time.Now(),
 		LLMResponse: model.LLMResponse{
 			Content: summaryContent,
