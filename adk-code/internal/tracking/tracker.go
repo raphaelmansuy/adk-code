@@ -32,6 +32,13 @@ type SessionTokens struct {
 	RequestCount        int
 	Metrics             []TokenMetrics
 	SessionStartTime    time.Time
+	// Track previous API response totals to calculate per-request deltas
+	// API returns cumulative values, so we need to subtract previous to get current request's cost
+	PreviousPromptTotal   int32
+	PreviousCachedTotal   int32
+	PreviousResponseTotal int32
+	PreviousThoughtTotal  int32
+	PreviousToolUseTotal  int32
 }
 
 // NewSessionTokens creates a new session token tracker.
@@ -43,6 +50,9 @@ func NewSessionTokens() *SessionTokens {
 }
 
 // RecordMetrics records token usage from a GenerateContentResponseUsageMetadata.
+// For multi-turn conversations, the API returns cumulative token counts.
+// We calculate the per-request delta for each component (prompt, response, cached, etc.)
+// to show accurate current request usage.
 func (st *SessionTokens) RecordMetrics(metadata *genai.GenerateContentResponseUsageMetadata, requestID string) {
 	if metadata == nil {
 		return
@@ -51,24 +61,63 @@ func (st *SessionTokens) RecordMetrics(metadata *genai.GenerateContentResponseUs
 	st.mu.Lock()
 	defer st.mu.Unlock()
 
+	// Calculate per-request deltas for each component
+	// The API returns cumulative values, so we subtract the previous total to get this request's cost
+	promptDelta := metadata.PromptTokenCount - st.PreviousPromptTotal
+	responseDelta := metadata.CandidatesTokenCount - st.PreviousResponseTotal
+	cachedDelta := metadata.CachedContentTokenCount - st.PreviousCachedTotal
+	thoughtDelta := metadata.ThoughtsTokenCount - st.PreviousThoughtTotal
+	toolUseDelta := metadata.ToolUsePromptTokenCount - st.PreviousToolUseTotal
+
+	// Ensure we don't get negative values (safeguard against API quirks)
+	if promptDelta < 0 {
+		promptDelta = metadata.PromptTokenCount
+	}
+	if responseDelta < 0 {
+		responseDelta = metadata.CandidatesTokenCount
+	}
+	if cachedDelta < 0 {
+		cachedDelta = metadata.CachedContentTokenCount
+	}
+	if thoughtDelta < 0 {
+		thoughtDelta = metadata.ThoughtsTokenCount
+	}
+	if toolUseDelta < 0 {
+		toolUseDelta = metadata.ToolUsePromptTokenCount
+	}
+
+	// Total for this request = input (prompt) + output (response) + cached
+	// This is the actual cost of this single request
+	perRequestTotal := promptDelta + responseDelta + cachedDelta + thoughtDelta + toolUseDelta
+
 	metric := TokenMetrics{
-		PromptTokens:   metadata.PromptTokenCount,
-		CachedTokens:   metadata.CachedContentTokenCount,
-		ResponseTokens: metadata.CandidatesTokenCount,
-		ThoughtTokens:  metadata.ThoughtsTokenCount,
-		ToolUseTokens:  metadata.ToolUsePromptTokenCount,
-		TotalTokens:    metadata.TotalTokenCount,
+		PromptTokens:   promptDelta,
+		CachedTokens:   cachedDelta,
+		ResponseTokens: responseDelta,
+		ThoughtTokens:  thoughtDelta,
+		ToolUseTokens:  toolUseDelta,
+		TotalTokens:    perRequestTotal, // Only this request's cost, not cumulative
 		Timestamp:      time.Now(),
 		RequestID:      requestID,
 	}
 
 	st.Metrics = append(st.Metrics, metric)
-	st.TotalPromptTokens += int64(metadata.PromptTokenCount)
-	st.TotalCachedTokens += int64(metadata.CachedContentTokenCount)
-	st.TotalResponseTokens += int64(metadata.CandidatesTokenCount)
-	st.TotalThoughtTokens += int64(metadata.ThoughtsTokenCount)
-	st.TotalToolUseTokens += int64(metadata.ToolUsePromptTokenCount)
-	st.TotalTokens += int64(metadata.TotalTokenCount)
+
+	// Accumulate the per-request deltas for session totals
+	st.TotalPromptTokens += int64(promptDelta)
+	st.TotalCachedTokens += int64(cachedDelta)
+	st.TotalResponseTokens += int64(responseDelta)
+	st.TotalThoughtTokens += int64(thoughtDelta)
+	st.TotalToolUseTokens += int64(toolUseDelta)
+	st.TotalTokens += int64(perRequestTotal)
+
+	// Update previous totals for next request's delta calculation
+	st.PreviousPromptTotal = metadata.PromptTokenCount
+	st.PreviousResponseTotal = metadata.CandidatesTokenCount
+	st.PreviousCachedTotal = metadata.CachedContentTokenCount
+	st.PreviousThoughtTotal = metadata.ThoughtsTokenCount
+	st.PreviousToolUseTotal = metadata.ToolUsePromptTokenCount
+
 	st.RequestCount++
 }
 
