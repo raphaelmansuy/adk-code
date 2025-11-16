@@ -175,6 +175,42 @@ func TestFormatTokenMetrics(t *testing.T) {
 	}
 }
 
+func TestFormatTokenMetrics_WithThinkingTokens(t *testing.T) {
+	metric := TokenMetrics{
+		PromptTokens:   100,
+		ResponseTokens: 50,
+		ThoughtTokens:  20,
+		CachedTokens:   10,
+		TotalTokens:    160,
+	}
+
+	formatted := FormatTokenMetrics(metric)
+
+	if formatted == "" {
+		t.Errorf("FormatTokenMetrics should not return empty string")
+	}
+
+	if !contains(formatted, "prompt=100") {
+		t.Errorf("FormatTokenMetrics should contain 'prompt=100', got: %s", formatted)
+	}
+
+	if !contains(formatted, "response=50") {
+		t.Errorf("FormatTokenMetrics should contain 'response=50', got: %s", formatted)
+	}
+
+	if !contains(formatted, "thoughts=20") {
+		t.Errorf("FormatTokenMetrics should contain 'thoughts=20' when thinking tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "cached=10") {
+		t.Errorf("FormatTokenMetrics should contain 'cached=10' when cached tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "total=160") {
+		t.Errorf("FormatTokenMetrics should contain 'total=160', got: %s", formatted)
+	}
+}
+
 func TestFormatSessionSummary(t *testing.T) {
 	summary := &Summary{
 		TotalTokens:         100,
@@ -192,6 +228,36 @@ func TestFormatSessionSummary(t *testing.T) {
 
 	if !contains(formatted, "Token Usage Summary") {
 		t.Errorf("FormatSessionSummary should contain 'Token Usage Summary'")
+	}
+}
+
+func TestFormatSessionSummary_WithThinkingTokens(t *testing.T) {
+	summary := &Summary{
+		TotalTokens:         200,
+		TotalPromptTokens:   100,
+		TotalResponseTokens: 60,
+		TotalThoughtTokens:  30,
+		TotalCachedTokens:   10,
+		RequestCount:        2,
+		SessionDuration:     time.Second * 10,
+	}
+
+	formatted := FormatSessionSummary(summary)
+
+	if formatted == "" {
+		t.Errorf("FormatSessionSummary should not return empty string")
+	}
+
+	if !contains(formatted, "Token Usage Summary") {
+		t.Errorf("FormatSessionSummary should contain 'Token Usage Summary'")
+	}
+
+	if !contains(formatted, "Thoughts:") {
+		t.Errorf("FormatSessionSummary should contain 'Thoughts:' when thinking tokens are present, got: %s", formatted)
+	}
+
+	if !contains(formatted, "30") {
+		t.Errorf("FormatSessionSummary should show thinking token count (30), got: %s", formatted)
 	}
 }
 

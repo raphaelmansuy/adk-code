@@ -58,10 +58,10 @@ func PrintEventEnhanced(renderer *Renderer, streamDisplay *StreamingDisplay,
 	// Record token metrics if available and update spinner with metrics
 	if event.UsageMetadata != nil {
 		sessionTokens.RecordMetrics(event.UsageMetadata, requestID)
-		
+
 		// Get the correctly calculated per-request metric (with deltas already computed)
 		metric := sessionTokens.GetLastMetric()
-		
+
 		// Update spinner with the per-request metrics if it's actively running
 		if metric != nil {
 			if *toolRunning {
