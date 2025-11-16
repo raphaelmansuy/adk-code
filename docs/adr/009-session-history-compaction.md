@@ -16,6 +16,8 @@ Session histories in `adk-code` grow unbounded as users interact with agents. Ea
 3. **Performance Degradation**: Event retrieval and processing slows as history lengthens
 4. **Cost Escalation**: API costs scale with input token count on every turn
 
+**Key Architectural Decision:** Compaction uses the **Agent's current LLM model** for summarization, ensuring consistency with user's model choice and eliminating the need for separate API configuration.
+
 **Current Implementation Gap:**
 - `research/adk-python` implements sliding window compaction via LLM-based summarization
 - `research/adk-go` has **no compaction** mechanism (confirmed via codebase grep)
@@ -231,9 +233,10 @@ type Config struct {
     TokenThreshold      int     // ρ·Λ: Max tokens before forced compaction
     SafetyRatio         float64 // ρ: Fraction of context window (0.7 = 70%)
     
-    // LLM configuration
-    SummarizerModel     string  // Model for summarization
+    // Prompt configuration
     PromptTemplate      string  // Custom prompt (optional)
+    
+    // Note: No SummarizerModel needed - uses Agent's current LLM
 }
 
 func DefaultConfig() *Config {
@@ -242,8 +245,8 @@ func DefaultConfig() *Config {
         OverlapSize:         2,      // Keep 2 invocations overlap
         TokenThreshold:      700000, // 700k tokens (70% of 1M)
         SafetyRatio:         0.7,
-        SummarizerModel:     "gemini-2.0-flash-exp",
         PromptTemplate:      defaultPromptTemplate,
+        // Uses Agent's current LLM - no separate model configuration
     }
 }
 ```
@@ -402,9 +405,14 @@ func (s *Selector) SelectEventsToCompact(
 // File: internal/session/compaction/summarizer.go
 package compaction
 
+import (
+	"google.golang.org/adk/model"
+	"google.golang.org/genai"
+)
+
 type LLMSummarizer struct {
-    client *genai.Client
-    config *Config
+	llm    model.LLM  // Agent's current LLM model
+	config *Config
 }
 
 const defaultPromptTemplate = `The following is a conversation history between a user and an AI agent. 
@@ -421,28 +429,53 @@ Conversation History:
 `
 
 func (ls *LLMSummarizer) Summarize(
-    ctx context.Context,
-    events []*session.Event,
+	ctx context.Context,
+	events []*session.Event,
 ) (*session.Event, error) {
-    // Format events for prompt
-    conversationText := ls.formatEvents(events)
-    prompt := fmt.Sprintf(ls.config.PromptTemplate, conversationText)
-    
-    // Call LLM
-    model := ls.client.GenerativeModel(ls.config.SummarizerModel)
-    resp, err := model.GenerateContent(ctx, genai.Text(prompt))
-    if err != nil {
-        return nil, err
-    }
-    
-    // Extract summary content
-    summaryContent := resp.Candidates[0].Content
-    // Ensure role is 'model' (following ADK Python)
-    summaryContent.Role = "model"
-    
-    // Calculate metrics (adk-code enhancement)
+	// Format events for prompt
+	conversationText := ls.formatEvents(events)
+	prompt := fmt.Sprintf(ls.config.PromptTemplate, conversationText)
+	
+	// Call LLM using Agent's model
+	llmRequest := &model.LLMRequest{
+		Model: ls.llm.Name(),
+		Contents: []*genai.Content{
+			{
+				Role: "user",
+				Parts: []genai.Part{
+					genai.Text(prompt),
+				},
+			},
+		},
+		Config: &genai.GenerateContentConfig{},
+	}
+	
+	// Generate content using the agent's LLM
+	var summaryContent *genai.Content
+	var usageMetadata *genai.GenerateContentResponseUsageMetadata
+	
+	for resp, err := range ls.llm.GenerateContent(ctx, llmRequest, false) {
+		if err != nil {
+			return nil, err
+		}
+		if resp.Content != nil {
+			summaryContent = resp.Content
+			usageMetadata = resp.UsageMetadata
+			break
+		}
+	}
+	
+	if summaryContent == nil {
+		return nil, fmt.Errorf("no summary content generated")
+	}
+	
+	// Ensure role is 'model' (following ADK Python)
+	summaryContent.Role = "model"        // Calculate metrics (adk-code enhancement)
     originalTokens := ls.countTokens(events)
-    compactedTokens := int(resp.UsageMetadata.TotalTokenCount)
+    compactedTokens := 0
+    if usageMetadata != nil {
+        compactedTokens = int(usageMetadata.TotalTokenCount)
+    }
     
     // Serialize summary content to JSON
     summaryJSON, err := json.Marshal(summaryContent)
@@ -702,20 +735,20 @@ import (
 type Coordinator struct {
     config         *Config
     selector       *Selector
-    summarizer     *LLMSummarizer
+    agentLLM       model.LLM  // Agent's LLM model for summarization
     sessionService session.Service
 }
 
 func NewCoordinator(
     config *Config,
     selector *Selector,
-    summarizer *LLMSummarizer,
+    agentLLM model.LLM,
     sessionService session.Service,
 ) *Coordinator {
     return &Coordinator{
         config:         config,
         selector:       selector,
-        summarizer:     summarizer,
+        agentLLM:       agentLLM,
         sessionService: sessionService,
     }
 }
@@ -737,8 +770,14 @@ func (c *Coordinator) RunCompaction(
         return err // No compaction needed
     }
     
+    // Create summarizer with agent's LLM
+    summarizer := &LLMSummarizer{
+        llm:    c.agentLLM,
+        config: c.config,
+    }
+    
     // Summarize selected events
-    compactionEvent, err := c.summarizer.Summarize(ctx, toCompact)
+    compactionEvent, err := summarizer.Summarize(ctx, toCompact)
     if err != nil {
         return err
     }
@@ -782,39 +821,58 @@ func NewSessionManager(appName, dbPath string) (*SessionManager, error) {
 ```
 
 ```go
-// File: internal/orchestration/components.go or wherever Runner is created
-// Add compaction coordinator hook
+// File: internal/repl/repl.go or orchestration layer
+// Add compaction coordinator hook after invocation completes
 
-func setupCompactionHook(runner *runner.Runner, coordinator *compaction.Coordinator) {
-    // Hook into runner's event stream to trigger compaction after invocations
-    // This would be implemented in the REPL or orchestration layer
-    // Example pseudo-code:
+func (r *REPL) runWithCompaction(
+    ctx context.Context,
+    userMsg *genai.Content,
+    requestID string,
+) {
+    // ... existing event processing loop ...
     
-    originalRun := runner.Run
-    runner.Run = func(ctx, userID, sessionID string, msg *genai.Content, cfg agent.RunConfig) iter.Seq2[*session.Event, error] {
-        events := originalRun(ctx, userID, sessionID, msg, cfg)
-        
-        return func(yield func(*session.Event, error) bool) {
-            var sess session.Session
-            for event, err := range events {
-                if !yield(event, err) {
-                    return
-                }
-                if event != nil && event.IsFinalResponse() {
-                    sess = getSessionFromContext(ctx)
-                }
+agentLoop:
+    for {
+        select {
+        case <-ctx.Done():
+            break agentLoop
+        case result, ok := <-eventChan:
+            if !ok {
+                break agentLoop
             }
-            
-            // After all events processed, trigger compaction async
-            if sess != nil {
-                go coordinator.RunCompaction(context.Background(), sess)
-            }
+            // Process event...
         }
     }
+    
+    // After all events processed, trigger compaction asynchronously
+    if !hasError && r.config.CompactionEnabled {
+        go func() {
+            // Get current session
+            sess, err := r.config.SessionManager.GetSession(
+                context.Background(),
+                r.config.UserID,
+                r.config.SessionName,
+            )
+            if err != nil {
+                log.Printf("Failed to get session for compaction: %v", err)
+                return
+            }
+            
+            // Create coordinator with agent's LLM
+            coordinator := compaction.NewCoordinator(
+                r.config.CompactionConfig,
+                compaction.NewSelector(r.config.CompactionConfig),
+                r.config.Agent.LLM(),  // Use agent's current LLM
+                r.config.SessionManager.GetService(),
+            )
+            
+            if err := coordinator.RunCompaction(context.Background(), sess); err != nil {
+                log.Printf("Compaction failed: %v", err)
+            }
+        }()
+    }
 }
-```
-
----
+```---
 
 ## Consequences
 
@@ -944,9 +1002,10 @@ func TestCompactionE2E(t *testing.T) {
 
 ### Phase 2: Summarization (Week 3)
 
-- [ ] Implement `LLMSummarizer` with Gemini integration
+- [ ] Implement `LLMSummarizer` using Agent's LLM model
 - [ ] Add prompt template configuration
 - [ ] Token counting utilities
+- [ ] Ensure compatibility with all model backends (Gemini, Vertex AI, OpenAI)
 
 ### Phase 3: Coordination (Week 4)
 
@@ -979,10 +1038,12 @@ invocation_threshold = 5
 overlap_size = 2
 token_threshold = 700000
 safety_ratio = 0.7
-summarizer_model = "gemini-2.0-flash-exp"
 
 # Custom prompt (optional)
 # prompt_template = "file://~/.code_agent/compaction_prompt.txt"
+
+# Note: Compaction automatically uses the Agent's current model
+# No separate model configuration needed
 ```
 
 ---
