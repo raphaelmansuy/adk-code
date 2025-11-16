@@ -46,8 +46,8 @@ func (ls *LLMSummarizer) Summarize(
 		Contents: []*genai.Content{
 			{
 				Role: "user",
-				Parts: []genai.Part{
-					genai.Text(prompt),
+				Parts: []*genai.Part{
+					{Text: prompt},
 				},
 			},
 		},
@@ -59,7 +59,10 @@ func (ls *LLMSummarizer) Summarize(
 	var usageMetadata *genai.GenerateContentResponseUsageMetadata
 
 	responseStream := ls.llm.GenerateContent(ctx, llmRequest, false)
-	for resp := range responseStream {
+	for resp, err := range responseStream {
+		if err != nil {
+			return nil, fmt.Errorf("LLM generation error: %w", err)
+		}
 		if resp == nil {
 			continue
 		}
