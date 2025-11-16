@@ -3,6 +3,7 @@ package repl
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,35 +210,40 @@ agentLoop:
 		}
 	}
 
-	// Trigger compaction if enabled and conditions are met
+	// Trigger compaction asynchronously if enabled and conditions are met
+	// This avoids blocking the REPL for 1-5 seconds during compaction
 	if !hasError && r.config.SessionManager != nil && r.config.SessionManager.Coordinator != nil {
-		ctx := context.Background()
+		go func() {
+			ctx := context.Background()
 
-		// Get the current session to pass to the coordinator
-		getResp, err := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
-			AppName:   "code_agent",
-			UserID:    r.config.UserID,
-			SessionID: r.config.SessionName,
-		})
+			// Get the current session to pass to the coordinator
+			getResp, err := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
+				AppName:   "code_agent",
+				UserID:    r.config.UserID,
+				SessionID: r.config.SessionName,
+			})
 
-		if err == nil && getResp.Session != nil {
+			if err != nil {
+				log.Printf("Failed to get session for compaction: %v", err)
+				return
+			}
+
+			if getResp.Session == nil {
+				return
+			}
+
 			// Unwrap filtered session if necessary
 			sess := getResp.Session
 			if filtered, ok := sess.(*compaction.FilteredSession); ok {
 				sess = filtered.Underlying
 			}
 
-			// Create a spinner for compaction
-			compactionSpinner := display.NewSpinner(r.config.Renderer, "Compacting session history")
-			compactionSpinner.Start()
-
 			// Run compaction if thresholds are met
 			if compErr := r.config.SessionManager.Coordinator.RunCompaction(ctx, sess); compErr != nil {
 				// Log error but don't interrupt user experience
-				compactionSpinner.Stop()
-				fmt.Printf("%s Warning: Compaction failed: %v\n", r.config.Renderer.Yellow("⚠"), compErr)
+				log.Printf("Compaction failed: %v", compErr)
 			} else {
-				// After compaction, check if an event was added and display feedback
+				// After compaction, check if an event was added
 				// Get the session again to see the new compaction event
 				getResp2, err2 := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
 					AppName:   "code_agent",
@@ -257,37 +263,22 @@ agentLoop:
 					if events.Len() > 0 {
 						lastEvent := events.At(events.Len() - 1)
 						if lastEvent != nil && compaction.IsCompactionEvent(lastEvent) {
-							// Stop spinner with success
-							compactionSpinner.StopWithSuccess("Session history compacted")
-
-							// Display compaction notification
+							// Log compaction success with metrics
 							metadata, metaErr := compaction.GetCompactionMetadata(lastEvent)
 							if metaErr == nil {
-								fmt.Println()
-								fmt.Println(r.config.Renderer.Cyan("📦 Session History Compaction:"))
-								fmt.Printf("  %s Compacted %d events into 1 summary\n", r.config.Renderer.Dim("•"), metadata.EventCount)
-								fmt.Printf("  %s Token reduction: %d → %d tokens (%.1f%% compression)\n",
-									r.config.Renderer.Dim("•"),
+								log.Printf("Session history compacted: %d events → 1 summary, %d → %d tokens (%.1f%% compression)",
+									metadata.EventCount,
 									metadata.OriginalTokens,
 									metadata.CompactedTokens,
 									metadata.CompressionRatio)
-								fmt.Printf("  %s Session context optimized for better performance\n", r.config.Renderer.Dim("•"))
-								fmt.Println()
 							} else {
-								compactionSpinner.Stop()
+								log.Printf("Session history compacted successfully")
 							}
-						} else {
-							// No compaction event added (threshold not met)
-							compactionSpinner.Stop()
 						}
-					} else {
-						compactionSpinner.Stop()
 					}
-				} else {
-					compactionSpinner.Stop()
 				}
 			}
-		}
+		}()
 	}
 
 	// Stop spinner and show completion
