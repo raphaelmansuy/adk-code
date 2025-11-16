@@ -64,7 +64,7 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 	}
 
 	// Build metrics string with meaningful insights
-	// Format: "Session: cost:28K | cached:26K (92% excellent) | out:2K"
+	// Format: "Session: cost:28K | cached:26K (92% excellent) | response:2K"
 	var parts []string
 
 	if actualTokensUsed > 0 {
@@ -74,7 +74,7 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 		parts = append(parts, fmt.Sprintf("cached:%s (%.0f%% %s)", formatCompactNumber(cacheHitTokens), cacheEfficiency, cacheIndicator))
 	}
 	if responseTokens > 0 {
-		parts = append(parts, fmt.Sprintf("out:%s", formatCompactNumber(responseTokens)))
+		parts = append(parts, fmt.Sprintf("response:%s", formatCompactNumber(responseTokens)))
 	}
 
 	metricsStr := fmt.Sprintf("Session: %s", strings.Join(parts, " | "))
