@@ -120,13 +120,19 @@ func buildToolsListLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   ✓ "+renderer.Bold("search_replace")+" - Make targeted changes (RECOMMENDED)")
 	lines = append(lines, "   ✓ "+renderer.Bold("edit_lines")+" - Edit by line number (structural changes)")
 	lines = append(lines, "   ✓ "+renderer.Bold("apply_patch")+" - Apply unified diff patches (standard)")
-	lines = append(lines, "   ✓ "+renderer.Bold("apply_v4a_patch")+" - Apply V4A semantic patches (NEW!)")
+	lines = append(lines, "   ✓ "+renderer.Bold("apply_v4a_patch")+" - Apply V4A semantic patches")
 	lines = append(lines, "")
 
-	lines = append(lines, renderer.Bold("🔍 Discovery Tools:"))
+	lines = append(lines, renderer.Bold("🔍 Discovery & Search Tools:"))
 	lines = append(lines, "   ✓ "+renderer.Bold("list_files")+" - Explore directory structure")
 	lines = append(lines, "   ✓ "+renderer.Bold("search_files")+" - Find files by pattern (*.go, test_*.py)")
 	lines = append(lines, "   ✓ "+renderer.Bold("grep_search")+" - Search text in files (with line numbers)")
+	lines = append(lines, "   ✓ "+renderer.Bold("preview_replace")+" - Preview search/replace results before applying")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("🌐 Web Tools:"))
+	lines = append(lines, "   ✓ "+renderer.Bold("fetch_web")+" - Fetch and parse web content from URLs")
+	lines = append(lines, "   ✓ "+renderer.Bold("google_search")+" - Search the web with Google (real-time)")
 	lines = append(lines, "")
 
 	lines = append(lines, renderer.Bold("⚡ Execution Tools:"))
@@ -134,7 +140,30 @@ func buildToolsListLines(renderer *display.Renderer) []string {
 	lines = append(lines, "   ✓ "+renderer.Bold("execute_program")+" - Run programs directly (no quoting issues)")
 	lines = append(lines, "")
 
-	lines = append(lines, "💡 Tip: Type "+renderer.Cyan("'/help'")+" for usage examples and patterns")
+	// Agent management is not an LLM tool; it is controlled via CLI commands and
+	// the REPL command '/agents'. Keep agent management functionality implemented
+	// in the `tools/agents` package (used by CLI tools), but do not advertise it
+	// in the model-accessible tools list. This prevents accidental LLM tool use.
+
+	// Also show a short pointer to the REPL/CLI commands so users know how to
+	// interact with agent functionality without exposing it as a model-callable
+	// tool.
+	lines = append(lines, renderer.Bold("🛠 Agent Management (CLI-only):"))
+	lines = append(lines, "   • "+renderer.Bold("/agents")+" - Discover and list ADK Code agents (REPL command; not model-callable)")
+	lines = append(lines, "   • "+renderer.Bold("adk-code agents")+" - CLI agent helper commands (not model-callable)")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("📊 Discovery & Info Tools:"))
+	lines = append(lines, "   ✓ "+renderer.Bold("list_models")+" - List available AI models and capabilities")
+	lines = append(lines, "   ✓ "+renderer.Bold("model_info")+" - Get detailed info about a specific model")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Bold("🎨 Display & UI Tools:"))
+	lines = append(lines, "   ✓ "+renderer.Bold("display_message")+" - Display formatted messages to user")
+	lines = append(lines, "   ✓ "+renderer.Bold("update_task_list")+" - Show/update task progress in REPL")
+	lines = append(lines, "")
+
+	lines = append(lines, renderer.Dim("💡 Total: 18 tools across 6 categories | Type /help for commands"))
 	lines = append(lines, "")
 
 	return lines
@@ -572,14 +601,15 @@ func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) 
 				compactionMeta.StartTimestamp.Format("15:04:05"),
 				compactionMeta.EndTimestamp.Format("15:04:05"),
 			))
-		} else if event.LLMResponse.Content != nil {
+		} else if event.Content != nil {
 			// === REGULAR EVENT ===
 			author := event.Author
 			if author == "" {
 				author = "system"
 			}
 
-			// Color-code by author
+			// Color-code by author. Support subagents (e.g., "coding_agent")
+			// which should be displayed as a model/agent response rather than a "?" fallback.
 			var authorStr string
 			switch author {
 			case "user":
@@ -589,7 +619,11 @@ func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) 
 			case "system":
 				authorStr = renderer.Yellow("⚙️  SYSTEM")
 			default:
-				authorStr = renderer.Dim(fmt.Sprintf("❓ %s", author))
+				if strings.Contains(author, "agent") {
+					authorStr = renderer.Green("🤖 AGENT")
+				} else {
+					authorStr = renderer.Dim(fmt.Sprintf("❓ %s", author))
+				}
 			}
 
 			lines = append(lines, fmt.Sprintf("    %s (ID: %s)",
@@ -598,9 +632,28 @@ func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) 
 			))
 
 			// Display content preview
-			if len(event.LLMResponse.Content.Parts) > 0 {
-				for _, part := range event.LLMResponse.Content.Parts {
-					if part != nil && part.Text != "" {
+			if len(event.Content.Parts) > 0 {
+				for _, part := range event.Content.Parts {
+					if part == nil {
+						continue
+					}
+
+					// Handle tool calls (function invocations)
+					if part.FunctionCall != nil {
+						lines = append(lines, fmt.Sprintf("      %s Tool: %s",
+							renderer.Cyan("🔧"),
+							renderer.Bold(part.FunctionCall.Name)))
+					}
+
+					// Handle tool responses (results)
+					if part.FunctionResponse != nil {
+						lines = append(lines, fmt.Sprintf("      %s %s",
+							renderer.Green("✅ Result:"),
+							renderer.Bold(part.FunctionResponse.Name)))
+					}
+
+					// Handle text content
+					if part.Text != "" {
 						preview := truncateText(part.Text, 60)
 						lines = append(lines, fmt.Sprintf("      %s", renderer.Dim(preview)))
 					}
@@ -608,9 +661,9 @@ func buildSessionDisplayLines(renderer *display.Renderer, sess session.Session) 
 			}
 
 			// Show token count if available
-			if event.LLMResponse.UsageMetadata != nil {
-				promptTokens := int(event.LLMResponse.UsageMetadata.PromptTokenCount)
-				outputTokens := int(event.LLMResponse.UsageMetadata.CandidatesTokenCount)
+			if event.UsageMetadata != nil {
+				promptTokens := int(event.UsageMetadata.PromptTokenCount)
+				outputTokens := int(event.UsageMetadata.CandidatesTokenCount)
 				if promptTokens > 0 || outputTokens > 0 {
 					lines = append(lines, fmt.Sprintf("      %s",
 						renderer.Dim(fmt.Sprintf("Tokens: %d prompt + %d output",
@@ -657,10 +710,23 @@ func countEventsByType(events session.Events) eventTypeCounts {
 			counts.compactions++
 		} else if evt.Author == "user" {
 			counts.userMessages++
-		} else if evt.Author == "model" {
+		} else if evt.Author == "model" || strings.Contains(evt.Author, "agent") {
 			counts.modelResponses++
 		}
-		// Note: Tool call/result detection could be enhanced with Actions field inspection
+
+		// Count tool calls and results from Content.Parts
+		if evt.Content != nil && len(evt.Content.Parts) > 0 {
+			for _, part := range evt.Content.Parts {
+				if part != nil {
+					if part.FunctionCall != nil {
+						counts.toolCalls++
+					}
+					if part.FunctionResponse != nil {
+						counts.toolResults++
+					}
+				}
+			}
+		}
 	}
 
 	return counts
@@ -674,8 +740,8 @@ func countTotalTokens(events session.Events) int {
 		if evt == nil {
 			continue
 		}
-		if evt.LLMResponse.UsageMetadata != nil {
-			total += int(evt.LLMResponse.UsageMetadata.TotalTokenCount)
+		if evt.UsageMetadata != nil {
+			total += int(evt.UsageMetadata.TotalTokenCount)
 		}
 	}
 	return total
@@ -733,7 +799,23 @@ func buildEventDisplayLines(renderer *display.Renderer, evt *session.Event, sess
 		lines = append(lines, fmt.Sprintf("  %s Invocation: %s", renderer.Dim("•"), evt.InvocationID))
 	}
 	if evt.Author != "" {
-		lines = append(lines, fmt.Sprintf("  %s Author:     %s", renderer.Dim("•"), evt.Author))
+		author := evt.Author
+		var authorLabel string
+		switch author {
+		case "user":
+			authorLabel = renderer.Blue("👤 USER")
+		case "model":
+			authorLabel = renderer.Green("🤖 MODEL")
+		case "system":
+			authorLabel = renderer.Yellow("⚙️  SYSTEM")
+		default:
+			if strings.Contains(author, "agent") {
+				authorLabel = renderer.Green("🤖 AGENT")
+			} else {
+				authorLabel = evt.Author
+			}
+		}
+		lines = append(lines, fmt.Sprintf("  %s Author:     %s", renderer.Dim("•"), authorLabel))
 	}
 	if evt.Branch != "" {
 		lines = append(lines, fmt.Sprintf("  %s Branch:     %s", renderer.Dim("•"), evt.Branch))
@@ -741,22 +823,52 @@ func buildEventDisplayLines(renderer *display.Renderer, evt *session.Event, sess
 	lines = append(lines, "")
 
 	// === TOKEN USAGE ===
-	if evt.LLMResponse.UsageMetadata != nil {
+	if evt.UsageMetadata != nil {
 		lines = append(lines, renderer.Bold("🎯 Token Usage:"))
-		lines = append(lines, fmt.Sprintf("  %s Prompt Tokens:    %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.PromptTokenCount))
-		lines = append(lines, fmt.Sprintf("  %s Output Tokens:    %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.CandidatesTokenCount))
-		lines = append(lines, fmt.Sprintf("  %s Total Tokens:     %d", renderer.Dim("•"), evt.LLMResponse.UsageMetadata.TotalTokenCount))
+		lines = append(lines, fmt.Sprintf("  %s Prompt Tokens:    %d", renderer.Dim("•"), evt.UsageMetadata.PromptTokenCount))
+		lines = append(lines, fmt.Sprintf("  %s Output Tokens:    %d", renderer.Dim("•"), evt.UsageMetadata.CandidatesTokenCount))
+		lines = append(lines, fmt.Sprintf("  %s Total Tokens:     %d", renderer.Dim("•"), evt.UsageMetadata.TotalTokenCount))
 		lines = append(lines, "")
 	}
 
 	// === CONTENT ===
-	if evt.LLMResponse.Content != nil && len(evt.LLMResponse.Content.Parts) > 0 {
+	if evt.Content != nil && len(evt.Content.Parts) > 0 {
 		lines = append(lines, renderer.Bold("📝 Content:"))
 		lines = append(lines, "")
 
-		for partIdx, part := range evt.LLMResponse.Content.Parts {
+		for partIdx, part := range evt.Content.Parts {
 			if part == nil {
 				continue
+			}
+
+			// Display tool calls with icon
+			if part.FunctionCall != nil {
+				if partIdx > 0 {
+					lines = append(lines, "")
+				}
+				lines = append(lines, renderer.Cyan("🔧 Tool Call:"))
+				lines = append(lines, fmt.Sprintf("  Tool: %s", renderer.Bold(part.FunctionCall.Name)))
+				if len(part.FunctionCall.Args) > 0 {
+					lines = append(lines, "  Arguments:")
+					for k, v := range part.FunctionCall.Args {
+						lines = append(lines, fmt.Sprintf("    %s: %v", k, v))
+					}
+				}
+			}
+
+			// Display tool responses with icon
+			if part.FunctionResponse != nil {
+				if partIdx > 0 {
+					lines = append(lines, "")
+				}
+				lines = append(lines, renderer.Green("✅ Tool Result:"))
+				lines = append(lines, fmt.Sprintf("  Tool: %s", renderer.Bold(part.FunctionResponse.Name)))
+				if len(part.FunctionResponse.Response) > 0 {
+					lines = append(lines, "  Response:")
+					for k, v := range part.FunctionResponse.Response {
+						lines = append(lines, fmt.Sprintf("    %s: %v", k, v))
+					}
+				}
 			}
 
 			if part.Text != "" {

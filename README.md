@@ -14,11 +14,12 @@
 ### Key Features
 
 - **🤖 Multi-Model Support**: Seamlessly switch between Gemini, OpenAI, and Vertex AI
-- **🛠️ 22 Built-in Tools**: File operations, code editing, execution, web search, web fetching, and more
+- **🛠️ 30+ Built-in Tools**: File operations, code editing, execution, Google Search, HTTP fetch, agent discovery, and more
 - **🔌 MCP Integration**: Unlimited extensibility via Model Context Protocol
-- **💾 Session Persistence**: Maintain context across conversations with automatic history
+- **💾 Session Persistence**: Maintain context across conversations with automatic history and token-aware compaction
+- **🌐 Web Integration**: Google Search and HTTP fetch tools for research and content retrieval
 - **⚡ Streaming Responses**: Real-time output as the model thinks and executes
-- **🎨 Beautiful Terminal UI**: Rich formatting, colors, and interactive displays
+- **🎨 Beautiful Terminal UI**: Rich formatting, colors, pagination, and interactive displays
 - **📦 Zero External Dependencies**: No Langchain, Claude Code, or Cline baggage
 
 ## Quick Start
@@ -132,13 +133,13 @@ That's it! You're ready to ask questions about your code.
              │
     ┌────────┴────────┬──────────┐
     ▼                 ▼          ▼
-┌────────────┐  ┌─────────┐  ┌──────────┐
-│ 21 Tools   │  │LLM APIs │  │ Display  │
-├────────────┤  ├─────────┤  ├──────────┤
-│ File Ops   │  │ Gemini  │  │ Rich UI  │
-│ Execution  │  │ OpenAI  │  │ Colors   │
-│ Search     │  │ Vertex  │  │ Markdown │
-└────────────┘  └─────────┘  └──────────┘
+┌────────────────┐  ┌─────────┐  ┌──────────┐
+│ 30+ Tools      │  │LLM APIs │  │ Display  │
+├────────────────┤  ├─────────┤  ├──────────┤
+│ File Ops       │  │ Gemini  │  │ Rich UI  │
+│ Web Tools      │  │ OpenAI  │  │ Colors   │
+│ Search         │  │ Vertex  │  │ Markdown │
+└────────────────┘  └─────────┘  └──────────┘
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
@@ -160,11 +161,30 @@ adk-code supports a dynamic sub-agent system that enables intent-driven delegati
 
 Benefits: concise intent routing, modular agent definitions, scalable delegation to domain-specific sub-agents, and transparent tool/MCP integration.
 
+## ✨ Recent Features (Nov 2025)
+
+### Google Search Tool
+
+Integrated native Google Search via ADK's `geminitool.GoogleSearch` for real-time web searches without external dependencies.
+
+### HTTP Fetch Tool
+
+Fetch and parse web content directly—extract text from URLs for research, documentation retrieval, and content analysis.
+
+### Session Management Commands
+
+New REPL commands (`/sessions`, `/session`) for managing conversation sessions, viewing event history, and optimizing token usage with automatic session compaction.
+
+### Session Compaction
+
+Intelligent token compression that reduces conversation history size while preserving context—extends long conversations without token limits.
+
 ## 📚 Documentation
 
 - **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — Daily commands & flags (2 min)
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — System design & components (15 min)
 - **[TOOL_DEVELOPMENT.md](docs/TOOL_DEVELOPMENT.md)** — Build your own tools (20 min)
+- **[ADR Repository](docs/adr/)** — Architecture decision records for new features
 - **[docs/](docs/)** — Complete documentation suite
 
 ## 💻 Requirements
@@ -381,9 +401,10 @@ Built on:
 
 ## 📈 Stats
 
-- **~1000 lines** of critical code
-- **30+ tools** across 8 categories
-- **3 LLM backends** supported
+- **~15,000 lines** of Go code
+- **30+ tools** across 8 categories (file, web, search, execution, edit, display, discovery, agents)
+- **3 LLM backends** supported (Gemini, OpenAI, Vertex AI)
+- **Session management** with token-aware compaction
 - **100% test coverage** target
 
 ---
