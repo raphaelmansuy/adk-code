@@ -29,11 +29,11 @@ type ModelComponents struct {
 
 // SessionComponents groups all session-related fields
 type SessionComponents struct {
-	Manager        *session.SessionManager
-	Runner         *runner.Runner
-	Tokens         *tracking.SessionTokens
-	Coordinator    *compaction.Coordinator
-	CompactionCfg  *compaction.Config
+	Manager       *session.SessionManager
+	Runner        *runner.Runner
+	Tokens        *tracking.SessionTokens
+	Coordinator   *compaction.Coordinator
+	CompactionCfg *compaction.Config
 }
 
 // MCPComponents groups MCP-related fields

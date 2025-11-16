@@ -212,25 +212,25 @@ agentLoop:
 	// Trigger compaction if enabled and conditions are met
 	if !hasError && r.config.SessionManager != nil && r.config.SessionManager.Coordinator != nil {
 		ctx := context.Background()
-		
+
 		// Get the current session to pass to the coordinator
 		getResp, err := r.config.SessionManager.Manager.GetService().Get(ctx, &sessionpkg.GetRequest{
 			AppName:   "code_agent",
 			UserID:    r.config.UserID,
 			SessionID: r.config.SessionName,
 		})
-		
+
 		if err == nil && getResp.Session != nil {
 			// Unwrap filtered session if necessary
 			sess := getResp.Session
 			if filtered, ok := sess.(*compaction.FilteredSession); ok {
 				sess = filtered.Underlying
 			}
-			
+
 			// Create a spinner for compaction
 			compactionSpinner := display.NewSpinner(r.config.Renderer, "Compacting session history")
 			compactionSpinner.Start()
-			
+
 			// Run compaction if thresholds are met
 			if compErr := r.config.SessionManager.Coordinator.RunCompaction(ctx, sess); compErr != nil {
 				// Log error but don't interrupt user experience
@@ -244,14 +244,14 @@ agentLoop:
 					UserID:    r.config.UserID,
 					SessionID: r.config.SessionName,
 				})
-				
+
 				if err2 == nil && getResp2.Session != nil {
 					// Unwrap if needed
 					sess2 := getResp2.Session
 					if filtered, ok := sess2.(*compaction.FilteredSession); ok {
 						sess2 = filtered.Underlying
 					}
-					
+
 					// Check if there's a recent compaction event
 					events := sess2.Events()
 					if events.Len() > 0 {
@@ -259,7 +259,7 @@ agentLoop:
 						if lastEvent != nil && compaction.IsCompactionEvent(lastEvent) {
 							// Stop spinner with success
 							compactionSpinner.StopWithSuccess("Session history compacted")
-							
+
 							// Display compaction notification
 							metadata, metaErr := compaction.GetCompactionMetadata(lastEvent)
 							if metaErr == nil {
