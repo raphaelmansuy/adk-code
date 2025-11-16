@@ -46,8 +46,8 @@ func (ls *LLMSummarizer) Summarize(
 		Contents: []*genai.Content{
 			{
 				Role: "user",
-				Parts: []genai.Part{
-					genai.Text(prompt),
+				Parts: []*genai.Part{
+					{Text: prompt},
 				},
 			},
 		},
