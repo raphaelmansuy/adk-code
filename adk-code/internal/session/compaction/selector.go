@@ -107,21 +107,25 @@ func (s *Selector) filterEventsByInvocationRange(
 	startInvocationID, endInvocationID string,
 ) []*session.Event {
 	result := make([]*session.Event, 0, len(events))
-	inRange := false
 
-	for _, event := range events {
-		if event.InvocationID == startInvocationID {
-			inRange = true
+	// Find the first index with startInvocationID and last index with endInvocationID
+	startIdx := -1
+	endIdx := -1
+	for i, event := range events {
+		if startIdx == -1 && event.InvocationID == startInvocationID {
+			startIdx = i
 		}
-
-		if inRange {
-			result = append(result, event)
-		}
-
 		if event.InvocationID == endInvocationID {
-			inRange = false
+			endIdx = i
 		}
 	}
 
+	// If not found, return empty
+	if startIdx == -1 || endIdx == -1 || startIdx > endIdx {
+		return result
+	}
+
+	// Collect all events from startIdx to endIdx (inclusive)
+	result = append(result, events[startIdx:endIdx+1]...)
 	return result
 }
