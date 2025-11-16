@@ -42,17 +42,17 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 	// Calculate meaningful metrics
 	actualTokensUsed := promptTokens + responseTokens // New tokens actually processed
 	cacheHitTokens := cachedTokens                    // Tokens served from cache
-	
+
 	// Calculate cache efficiency: how much of the request was cached?
 	var cacheEfficiency float64
 	if totalTokens > 0 {
 		cacheEfficiency = (float64(cacheHitTokens) / float64(totalTokens)) * 100
 	}
-	
+
 	// Build metrics string with meaningful insights
 	// Format: "Session: 28K actual | 26K cached (92%) | 2K response"
 	var parts []string
-	
+
 	if actualTokensUsed > 0 {
 		parts = append(parts, fmt.Sprintf("%s actual", formatCompactNumber(actualTokensUsed)))
 	}

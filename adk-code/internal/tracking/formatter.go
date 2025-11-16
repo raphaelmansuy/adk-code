@@ -50,12 +50,12 @@ func FormatSessionSummary(summary *Summary) string {
 	usedTokens := summary.TotalPromptTokens + summary.TotalResponseTokens // Actual new tokens
 	cachedTokens := summary.TotalCachedTokens                             // Tokens served from cache
 	totalProcessed := usedTokens + cachedTokens                           // Everything processed
-	
+
 	var cacheEfficiency float64
 	if totalProcessed > 0 {
 		cacheEfficiency = float64(cachedTokens) / float64(totalProcessed) * 100
 	}
-	
+
 	// Calculate cost savings from caching (rough estimate: cached = 10% of actual cost)
 	estimatedCostSavings := cachedTokens / 10 // Rough estimation
 
@@ -72,7 +72,7 @@ func FormatSessionSummary(summary *Summary) string {
 	lines = append(lines, "🔧 Token Breakdown")
 	lines = append(lines, fmt.Sprintf("  ├─ Prompt (input):   %d", summary.TotalPromptTokens))
 	lines = append(lines, fmt.Sprintf("  ├─ Response (output):%d", summary.TotalResponseTokens))
-	
+
 	if summary.TotalThoughtTokens > 0 {
 		lines = append(lines, fmt.Sprintf("  ├─ Thinking:         %d", summary.TotalThoughtTokens))
 	}
@@ -88,14 +88,14 @@ func FormatSessionSummary(summary *Summary) string {
 	lines = append(lines, "📈 Session Efficiency")
 	lines = append(lines, fmt.Sprintf("  ├─ Requests:         %d", summary.RequestCount))
 	lines = append(lines, fmt.Sprintf("  ├─ Avg/Request:      %.0f tokens", summary.AvgTokensPerRequest))
-	
+
 	// Cache hit rate if available
 	if cacheEfficiency > 0 {
 		lines = append(lines, fmt.Sprintf("  ├─ Cache Hit Rate:   %.1f%% (excellent!)", cacheEfficiency))
 	}
-	
+
 	lines = append(lines, fmt.Sprintf("  └─ Duration:         %s", formatDuration(summary.SessionDuration)))
-	
+
 	lines = append(lines, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 	return strings.Join(lines, "\n")
