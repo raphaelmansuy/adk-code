@@ -43,9 +43,9 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 	// Calculate meaningful metrics
 	// Note: promptTokens from tracker includes cached portion (from Gemini API PromptTokenCount)
 	// So we need to subtract cached to get truly new tokens
-	newPromptTokens := promptTokens - cachedTokens // New prompt tokens (excluding cached)
+	newPromptTokens := promptTokens - cachedTokens       // New prompt tokens (excluding cached)
 	actualTokensUsed := newPromptTokens + responseTokens // New tokens actually processed (what you pay for)
-	cacheHitTokens := cachedTokens                      // Tokens served from cache
+	cacheHitTokens := cachedTokens                       // Tokens served from cache
 
 	// Calculate cache efficiency: percentage of INPUT that was cached
 	// (response tokens don't apply to caching, only input does)
@@ -91,13 +91,13 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 	if contextWindow > 0 {
 		contextUsagePercent := (float64(totalTokens) / float64(contextWindow)) * 100
 		contextIndicator := getContextWindowIndicator(contextUsagePercent)
-		
+
 		// Show thought tokens if they're a significant portion (>10% of total)
 		thoughtNote := ""
 		if thoughtTokens > 0 && float64(thoughtTokens)/float64(totalTokens) > 0.1 {
 			thoughtNote = fmt.Sprintf(" incl. %s thoughts", formatCompactNumber(thoughtTokens))
 		}
-		
+
 		parts = append(parts, fmt.Sprintf("session:%s/%s tok (%.1f%% %s%s)", formatCompactNumber(totalTokens), formatCompactNumber(contextWindow), contextUsagePercent, contextIndicator, thoughtNote))
 	}
 
