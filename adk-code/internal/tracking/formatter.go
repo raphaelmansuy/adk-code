@@ -61,11 +61,11 @@ func FormatSessionSummary(summary *Summary) string {
 
 	// Main metrics - what actually matters
 	lines = append(lines, "")
-	lines = append(lines, "💰 Cost Metrics (what matters)")
-	lines = append(lines, fmt.Sprintf("  ├─ Actual Tokens:  %d (new prompt + response)", usedTokens))
-	lines = append(lines, fmt.Sprintf("  ├─ Cached Tokens:  %d (%.1f%% of processed)", cachedTokens, cacheEfficiency))
-	lines = append(lines, fmt.Sprintf("  ├─ Saved Cost:     ~%d tokens (cache reuse)", estimatedCostSavings))
-	lines = append(lines, fmt.Sprintf("  └─ Total Proc:     %d (for API billing)", totalProcessed))
+	lines = append(lines, "💰 Cost Metrics (What You Pay)")
+	lines = append(lines, fmt.Sprintf("  ├─ New Tokens:     %d (prompt + response you paid for)", usedTokens))
+	lines = append(lines, fmt.Sprintf("  ├─ Cache Reuse:    %d tokens (%.1f%% efficiency)", cachedTokens, cacheEfficiency))
+	lines = append(lines, fmt.Sprintf("  ├─ Cost Savings:   ~%d tokens via caching", estimatedCostSavings))
+	lines = append(lines, fmt.Sprintf("  └─ API Billing:    %d total tokens", totalProcessed))
 
 	// Breakdown by component
 	lines = append(lines, "")

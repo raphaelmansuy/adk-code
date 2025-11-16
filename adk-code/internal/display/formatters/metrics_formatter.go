@@ -42,25 +42,39 @@ func (mf *MetricsFormatter) RenderTokenMetrics(promptTokens, cachedTokens, respo
 	// Calculate meaningful metrics
 	actualTokensUsed := promptTokens + responseTokens // New tokens actually processed
 	cacheHitTokens := cachedTokens                    // Tokens served from cache
+	totalProcessed := actualTokensUsed + cacheHitTokens
 
 	// Calculate cache efficiency: how much of the request was cached?
 	var cacheEfficiency float64
-	if totalTokens > 0 {
-		cacheEfficiency = (float64(cacheHitTokens) / float64(totalTokens)) * 100
+	if totalProcessed > 0 {
+		cacheEfficiency = (float64(cacheHitTokens) / float64(totalProcessed)) * 100
+	}
+
+	// Determine cache efficiency indicator
+	cacheIndicator := ""
+	switch {
+	case cacheEfficiency >= 80:
+		cacheIndicator = "🚀 excellent"
+	case cacheEfficiency >= 50:
+		cacheIndicator = "✅ good"
+	case cacheEfficiency >= 20:
+		cacheIndicator = "⚠️ modest"
+	default:
+		cacheIndicator = "❌ minimal"
 	}
 
 	// Build metrics string with meaningful insights
-	// Format: "Session: 28K actual | 26K cached (92%) | 2K response"
+	// Format: "Session: cost:28K | cached:26K (92% excellent) | out:2K"
 	var parts []string
 
 	if actualTokensUsed > 0 {
-		parts = append(parts, fmt.Sprintf("%s actual", formatCompactNumber(actualTokensUsed)))
+		parts = append(parts, fmt.Sprintf("cost:%s", formatCompactNumber(actualTokensUsed)))
 	}
 	if cacheHitTokens > 0 {
-		parts = append(parts, fmt.Sprintf("%s cached (%.0f%%)", formatCompactNumber(cacheHitTokens), cacheEfficiency))
+		parts = append(parts, fmt.Sprintf("cached:%s (%.0f%% %s)", formatCompactNumber(cacheHitTokens), cacheEfficiency, cacheIndicator))
 	}
 	if responseTokens > 0 {
-		parts = append(parts, fmt.Sprintf("%s response", formatCompactNumber(responseTokens)))
+		parts = append(parts, fmt.Sprintf("out:%s", formatCompactNumber(responseTokens)))
 	}
 
 	metricsStr := fmt.Sprintf("Session: %s", strings.Join(parts, " | "))
