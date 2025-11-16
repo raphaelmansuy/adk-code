@@ -223,7 +223,7 @@ func TestFetchWebTool_NoRedirects(t *testing.T) {
 
 func TestExtractText_RemovesHTMLTags(t *testing.T) {
 	html := "<html><body><h1>Title</h1><p>Paragraph</p></body></html>"
-	result, wasProcessed := extractText(html, "text/html")
+	result, wasProcessed := extractText(html, "text/html", true)
 
 	if !wasProcessed {
 		t.Error("Expected HTML to be processed")
@@ -238,7 +238,7 @@ func TestExtractText_RemovesHTMLTags(t *testing.T) {
 
 func TestExtractText_PlainText(t *testing.T) {
 	text := "Plain text content"
-	result, wasProcessed := extractText(text, "text/plain")
+	result, wasProcessed := extractText(text, "text/plain", true)
 
 	if wasProcessed {
 		t.Error("Expected plain text to not be processed")
@@ -432,6 +432,64 @@ func TestFetchWebTool_HTMLFormat(t *testing.T) {
 	}
 	if !strings.Contains(output.Content, "Header") || !strings.Contains(output.Content, "Content") {
 		t.Errorf("Expected HTML text to be extracted, got: %s", output.Content)
+	}
+}
+
+func TestFetchWebTool_StripCSSJS_DefaultStrips(t *testing.T) {
+	htmlContent := `<html><head><style>body{display:none}</style><script>console.log('hi')</script></head><body><h1>Header</h1><p>Content</p></body></html>`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(htmlContent))
+	}))
+	defer server.Close()
+
+	format := "html"
+	input := FetchWebInput{
+		URL:    server.URL,
+		Format: &format,
+		// Default behavior should strip scripts/styles
+	}
+
+	output := FetchWebHandler(nil, input)
+	if !output.Success {
+		t.Fatalf("Expected success, got error: %s", output.Error)
+	}
+
+	if strings.Contains(output.Content, "console.log") || strings.Contains(output.Content, "body{display:none}") {
+		t.Fatalf("Expected script/style to be stripped, got: %s", output.Content)
+	}
+
+	if !strings.Contains(output.Content, "Header") || !strings.Contains(output.Content, "Content") {
+		t.Fatalf("Expected HTML content to be preserved, got: %s", output.Content)
+	}
+}
+
+func TestFetchWebTool_StripCSSJS_Disabled(t *testing.T) {
+	htmlContent := `<html><head><style>body{display:none}</style><script>console.log('hi')</script></head><body><h1>Header</h1><p>Content</p></body></html>`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(htmlContent))
+	}))
+	defer server.Close()
+
+	format := "html"
+	strip := false
+	input := FetchWebInput{
+		URL:        server.URL,
+		Format:     &format,
+		StripCSSJS: &strip,
+	}
+
+	output := FetchWebHandler(nil, input)
+	if !output.Success {
+		t.Fatalf("Expected success, got error: %s", output.Error)
+	}
+
+	// When not stripping, script text should be present
+	if !strings.Contains(output.Content, "console.log") || !strings.Contains(output.Content, "body{display:none}") {
+		t.Fatalf("Expected script/style to be preserved, got: %s", output.Content)
 	}
 }
 

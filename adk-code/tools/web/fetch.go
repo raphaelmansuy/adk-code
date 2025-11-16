@@ -44,6 +44,11 @@ type FetchWebInput struct {
 
 	// Headers are optional custom HTTP headers to send with the request
 	Headers map[string]string `json:"headers,omitempty" jsonschema:"Custom HTTP headers (e.g., Authorization)"`
+
+	// StripCSSJS controls whether to remove style/script tags and linked CSS
+	// from HTML responses when processing as text/html or html format.
+	// Default: true
+	StripCSSJS *bool `json:"strip_css_js,omitempty" jsonschema:"Strip <script>/<style> and linked CSS from HTML (default: true)"`
 }
 
 // FetchWebOutput contains the fetched web content and metadata.
@@ -191,10 +196,17 @@ func FetchWebHandler(ctx tool.Context, input FetchWebInput) FetchWebOutput {
 	}
 
 	// 9. Process content based on format
+	// Determine strip option (default true)
+	strip := true
+	if input.StripCSSJS != nil {
+		strip = *input.StripCSSJS
+	}
+
 	processed, wasProcessed := processContent(
 		string(content),
 		resp.Header.Get("Content-Type"),
 		getFormat(input.Format),
+		strip,
 	)
 
 	output.Success = true
@@ -232,8 +244,8 @@ func getTimeout(timeoutSeconds *int) time.Duration {
 
 // getMaxSize returns the configured max response size with bounds checking.
 func getMaxSize(maxSize *int64) int64 {
-	const defaultMaxSize = 1024 * 1024     // 1 MB
-	const absMaxSize = 50 * 1024 * 1024    // 50 MB hard limit
+	const defaultMaxSize = 1024 * 1024  // 1 MB
+	const absMaxSize = 50 * 1024 * 1024 // 50 MB hard limit
 
 	if maxSize == nil {
 		return defaultMaxSize
@@ -291,28 +303,31 @@ func addHeaders(req *http.Request, headers map[string]string) {
 }
 
 // processContent parses and formats response based on requested format.
-func processContent(content, contentType, format string) (string, bool) {
+func processContent(content, contentType, format string, stripCSSJS bool) (string, bool) {
 	switch format {
 	case "json":
 		return extractJSON(content, contentType)
 	case "html":
-		return extractHTML(content, contentType)
+		return extractHTML(content, contentType, stripCSSJS)
 	case "raw":
 		return content, false
 	case "text":
 		fallthrough
 	default:
-		return extractText(content, contentType)
+		return extractText(content, contentType, stripCSSJS)
 	}
 }
 
 // extractText removes HTML tags and returns clean text.
-func extractText(content, contentType string) (string, bool) {
+func extractText(content, contentType string, stripCSSJS bool) (string, bool) {
 	if !isHTMLContent(contentType) {
 		return content, false
 	}
 
 	// Simple HTML tag removal using regexp
+	if stripCSSJS {
+		content = removeScriptAndStyle(content)
+	}
 	re := regexp.MustCompile(`<[^>]*>`)
 	text := re.ReplaceAllString(content, "")
 
@@ -324,7 +339,7 @@ func extractText(content, contentType string) (string, bool) {
 }
 
 // extractHTML parses and returns HTML structure.
-func extractHTML(content, contentType string) (string, bool) {
+func extractHTML(content, contentType string, stripCSSJS bool) (string, bool) {
 	if !isHTMLContent(contentType) {
 		return content, false
 	}
@@ -336,16 +351,30 @@ func extractHTML(content, contentType string) (string, bool) {
 	}
 
 	// Extract text and structure
-	extracted := extractHTMLStructure(doc)
+	extracted := extractHTMLStructure(doc, stripCSSJS)
 	return extracted, true
 }
 
 // extractHTMLStructure walks the HTML tree and extracts structured content.
-func extractHTMLStructure(n *html.Node) string {
+func extractHTMLStructure(n *html.Node, stripCSSJS bool) string {
 	var buf strings.Builder
 
 	var f func(*html.Node)
 	f = func(n *html.Node) {
+		// Optionally skip script/style/link nodes
+		if stripCSSJS && n.Type == html.ElementNode {
+			switch strings.ToLower(n.Data) {
+			case "script", "style":
+				return // skip node and children
+			case "link":
+				// Skip linked stylesheets
+				for _, a := range n.Attr {
+					if strings.ToLower(a.Key) == "rel" && strings.ToLower(a.Val) == "stylesheet" {
+						return
+					}
+				}
+			}
+		}
 		if n.Type == html.TextNode {
 			text := strings.TrimSpace(n.Data)
 			if text != "" {
@@ -364,6 +393,23 @@ func extractHTMLStructure(n *html.Node) string {
 	// Clean up multiple spaces
 	result = regexp.MustCompile(`\s+`).ReplaceAllString(result, " ")
 	return result
+}
+
+// removeScriptAndStyle strips <script>, <style>, and CSS link tags.
+func removeScriptAndStyle(content string) string {
+	// Remove <script>...</script> blocks
+	reScript := regexp.MustCompile(`(?is)<script[^>]*>.*?</script>`)
+	content = reScript.ReplaceAllString(content, "")
+
+	// Remove <style>...</style> blocks
+	reStyle := regexp.MustCompile(`(?is)<style[^>]*>.*?</style>`)
+	content = reStyle.ReplaceAllString(content, "")
+
+	// Remove <link ... rel="stylesheet" ...>
+	reLink := regexp.MustCompile(`(?i)<link[^>]+rel=["']?stylesheet["']?[^>]*>`)
+	content = reLink.ReplaceAllString(content, "")
+
+	return content
 }
 
 // extractJSON validates and formats JSON.
@@ -406,6 +452,7 @@ func NewFetchWebTool() (tool.Tool, error) {
 **Parameters:**
 - url (required): The URL to fetch (http or https only)
 - format (optional): How to process the response - "text" (default, extracts plain text from HTML), "json" (formats JSON), "html" (extracts HTML structure), "raw" (returns raw content)
+- strip_css_js (optional): When true (default), strip <script> and <style> blocks as well as linked CSS <link rel="stylesheet"> from HTML responses to avoid noisy content.
 - timeout (optional): Request timeout in seconds (default: 30, max: 300)
 - follow_redirects (optional): Follow HTTP redirects (default: true)
 - max_size (optional): Maximum response size in bytes (default: 1MB, max: 50MB)
