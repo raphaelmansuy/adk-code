@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"adk-code/internal/session/compaction"
 	"adk-code/internal/session/persistence"
 	pkgerrors "adk-code/pkg/errors"
 
@@ -117,4 +118,12 @@ func (sm *SessionManager) Close() error {
 		return sqlite.Close()
 	}
 	return nil
+}
+
+// WrapWithCompaction wraps the session service with compaction filtering
+func (sm *SessionManager) WrapWithCompaction(config *compaction.Config) {
+	if config == nil {
+		config = compaction.DefaultConfig()
+	}
+	sm.sessionService = compaction.NewCompactionService(sm.sessionService, config)
 }

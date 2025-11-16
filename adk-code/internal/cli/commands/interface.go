@@ -316,12 +316,43 @@ func (c *SetModelCommand) Execute(ctx context.Context, args []string) error {
 	return nil
 }
 
+// CompactionCommand implements REPLCommand for /compaction
+type CompactionCommand struct {
+	renderer *display.Renderer
+	config   interface{} // Will accept *config.Config
+}
+
+// NewCompactionCommand creates a new compaction command
+func NewCompactionCommand(renderer *display.Renderer, appConfig interface{}) *CompactionCommand {
+	return &CompactionCommand{
+		renderer: renderer,
+		config:   appConfig,
+	}
+}
+
+// Name returns the command name
+func (c *CompactionCommand) Name() string {
+	return "compaction"
+}
+
+// Description returns command help text
+func (c *CompactionCommand) Description() string {
+	return "Display session history compaction configuration"
+}
+
+// Execute runs the compaction command
+func (c *CompactionCommand) Execute(ctx context.Context, args []string) error {
+	handleCompactionCommand(c.renderer, c.config)
+	return nil
+}
+
 // NewDefaultCommandRegistry creates a command registry with all standard REPL commands
 func NewDefaultCommandRegistry(
 	renderer *display.Renderer,
 	modelRegistry *models.Registry,
 	currentModel models.Config,
 	sessionTokens *tracking.SessionTokens,
+	appConfig interface{},
 ) *CommandRegistry {
 	registry := NewCommandRegistry()
 
@@ -334,6 +365,7 @@ func NewDefaultCommandRegistry(
 	registry.Register(NewProvidersCommand(renderer, modelRegistry))
 	registry.Register(NewTokensCommand(sessionTokens))
 	registry.Register(NewSetModelCommand(renderer, modelRegistry))
+	registry.Register(NewCompactionCommand(renderer, appConfig))
 
 	return registry
 }

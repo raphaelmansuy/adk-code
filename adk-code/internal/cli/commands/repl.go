@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"adk-code/internal/config"
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	agentprompts "adk-code/internal/prompts"
@@ -20,7 +21,7 @@ import (
 // HandleBuiltinCommand handles built-in REPL commands like /help, /tools, etc.
 // Returns true if a command was handled, false if input should be sent to agent
 // Note: /exit and /quit are handled separately in repl.go to break the loop
-func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager *mcp.Manager) bool {
+func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.Renderer, sessionTokens *tracking.SessionTokens, modelRegistry *models.Registry, currentModel models.Config, mcpManager *mcp.Manager, appConfig interface{}) bool {
 	switch input {
 	case "/prompt":
 		handlePromptCommand(renderer)
@@ -48,6 +49,10 @@ func HandleBuiltinCommand(ctx context.Context, input string, renderer *display.R
 
 	case "/tokens":
 		handleTokensCommand(sessionTokens)
+		return true
+
+	case "/compaction":
+		handleCompactionCommand(renderer, appConfig)
 		return true
 
 	case "/agents":
@@ -137,6 +142,60 @@ func handleProvidersCommand(ctx context.Context, renderer *display.Renderer, reg
 func handleTokensCommand(sessionTokens *tracking.SessionTokens) {
 	summary := sessionTokens.GetSummary()
 	fmt.Print(tracking.FormatSessionSummary(summary))
+}
+
+// handleCompactionCommand displays the session history compaction configuration
+func handleCompactionCommand(renderer *display.Renderer, appConfig interface{}) {
+	// Type assert to get the actual config
+	cfg, ok := appConfig.(*config.Config)
+	if !ok {
+		fmt.Println(renderer.Red("Error: Unable to access configuration"))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(renderer.Bold("Session History Compaction Configuration:"))
+	fmt.Println()
+
+	// Display status
+	if cfg.CompactionEnabled {
+		fmt.Println(renderer.Green("✓ Status: ") + renderer.Cyan("ENABLED"))
+	} else {
+		fmt.Println(renderer.Yellow("⚠ Status: ") + renderer.Dim("DISABLED"))
+	}
+	fmt.Println()
+
+	// Display current settings
+	fmt.Println(renderer.Bold("Current Settings:"))
+	fmt.Printf("  %s Invocation Threshold:  %d invocations\n", renderer.Dim("•"), cfg.CompactionThreshold)
+	fmt.Printf("  %s Overlap Window:        %d invocations\n", renderer.Dim("•"), cfg.CompactionOverlap)
+	fmt.Printf("  %s Token Threshold:       %d tokens\n", renderer.Dim("•"), cfg.CompactionTokens)
+	fmt.Printf("  %s Safety Ratio:          %.1f%%\n", renderer.Dim("•"), cfg.CompactionSafety*100)
+	fmt.Println()
+
+	// Display what this means
+	fmt.Println(renderer.Bold("What This Means:"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  • Invocation Threshold: Compaction triggers after this many agent interactions"))
+	fmt.Println(renderer.Dim("  • Overlap Window: How many recent invocations to retain in context"))
+	fmt.Println(renderer.Dim("  • Token Threshold: Summarization occurs when session exceeds this token limit"))
+	fmt.Println(renderer.Dim("  • Safety Ratio: Buffer below the token limit to prevent exceeding it"))
+	fmt.Println()
+
+	// Display usage information
+	fmt.Println(renderer.Bold("Enable Compaction:"))
+	fmt.Println(renderer.Dim("  To enable compaction, start adk-code with the --compaction flag:"))
+	fmt.Println()
+	fmt.Println("  " + renderer.Cyan("adk-code --compaction"))
+	fmt.Println()
+	fmt.Println(renderer.Dim("  Or customize settings:"))
+	fmt.Println()
+	fmt.Println("  " + renderer.Cyan("adk-code --compaction \\"))
+	fmt.Println("           " + renderer.Cyan("--compaction-threshold 5 \\"))
+	fmt.Println("           " + renderer.Cyan("--compaction-overlap 2 \\"))
+	fmt.Println("           " + renderer.Cyan("--compaction-tokens 700000 \\"))
+	fmt.Println("           " + renderer.Cyan("--compaction-safety 0.7"))
+	fmt.Println()
 }
 
 // handleMCPCommand handles /mcp commands and subcommands

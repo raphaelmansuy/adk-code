@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	"google.golang.org/adk/agent"
+	"google.golang.org/adk/model"
 	"google.golang.org/adk/runner"
 
 	"adk-code/internal/config"
 	"adk-code/internal/display"
 	"adk-code/internal/session"
+	"adk-code/internal/session/compaction"
 	"adk-code/internal/tracking"
 )
 
@@ -21,7 +23,7 @@ type sessionInitializer struct {
 }
 
 // InitializeSessionComponents sets up session management
-func InitializeSessionComponents(ctx context.Context, cfg *config.Config, ag agent.Agent, bannerRenderer *display.BannerRenderer) (*SessionComponents, error) {
+func InitializeSessionComponents(ctx context.Context, cfg *config.Config, ag agent.Agent, bannerRenderer *display.BannerRenderer, agentLLM model.LLM) (*SessionComponents, error) {
 	initializer := &sessionInitializer{}
 
 	var err error
@@ -43,6 +45,32 @@ func InitializeSessionComponents(ctx context.Context, cfg *config.Config, ag age
 
 	// Create agent runner
 	sessionService := initializer.manager.GetService()
+
+	// Set up compaction configuration and coordinator if enabled
+	var compactionConfig *compaction.Config
+	var coordinator *compaction.Coordinator
+
+	// Wrap with compaction if enabled
+	if cfg.CompactionEnabled {
+		compactionConfig = &compaction.Config{
+			InvocationThreshold: cfg.CompactionThreshold,
+			OverlapSize:         cfg.CompactionOverlap,
+			TokenThreshold:      cfg.CompactionTokens,
+			SafetyRatio:         cfg.CompactionSafety,
+			PromptTemplate:      compaction.DefaultConfig().PromptTemplate,
+		}
+		sessionService = compaction.NewCompactionService(sessionService, compactionConfig)
+
+		// Create the compaction coordinator
+		selector := compaction.NewSelector(compactionConfig)
+		coordinator = compaction.NewCoordinator(
+			compactionConfig,
+			selector,
+			agentLLM,
+			sessionService,
+		)
+	}
+
 	initializer.runner, err = runner.New(runner.Config{
 		AppName:        "code_agent",
 		Agent:          ag,
@@ -56,8 +84,10 @@ func InitializeSessionComponents(ctx context.Context, cfg *config.Config, ag age
 	initializer.tokens = tracking.NewSessionTokens()
 
 	return &SessionComponents{
-		Manager: initializer.manager,
-		Runner:  initializer.runner,
-		Tokens:  initializer.tokens,
+		Manager:       initializer.manager,
+		Runner:        initializer.runner,
+		Tokens:        initializer.tokens,
+		Coordinator:   coordinator,
+		CompactionCfg: compactionConfig,
 	}, nil
 }

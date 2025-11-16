@@ -7,6 +7,7 @@ import (
 	"adk-code/internal/display"
 	"adk-code/internal/mcp"
 	"adk-code/internal/session"
+	"adk-code/internal/session/compaction"
 	"adk-code/internal/tracking"
 	"adk-code/pkg/models"
 )
@@ -28,9 +29,11 @@ type ModelComponents struct {
 
 // SessionComponents groups all session-related fields
 type SessionComponents struct {
-	Manager *session.SessionManager
-	Runner  *runner.Runner
-	Tokens  *tracking.SessionTokens
+	Manager       *session.SessionManager
+	Runner        *runner.Runner
+	Tokens        *tracking.SessionTokens
+	Coordinator   *compaction.Coordinator
+	CompactionCfg *compaction.Config
 }
 
 // MCPComponents groups MCP-related fields
